@@ -1,0 +1,2049 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Origami 3D Viewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f6f5f1; --panel: #ffffff; --ink: #1d1d1b; --muted: #5d5c57; --line: #d9d6cd; --chip: #efede6;
+  --accent: #b5481d; --accent-ink: #ffffff;
+  --scene-bg: #fbfaf7; --s-ink: #222222; --s-top: #d9d7d0; --s-side: #b9b6ad; --s-cut: #e3d3b4;
+  --f111: #9a9a9a; --f100: #8fb3cf; --f110: #d7b072; --m-up: #e8e6df; --m-low: #8d8b85;
+  --disc: #8c8a84; --mask: #b5481d; --ghost: #2f6f9f;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151514; --panel: #1f1f1d; --ink: #ecebe6; --muted: #a8a69f; --line: #3a3935; --chip: #2a2a27;
+    --accent: #f08a5d; --accent-ink: #1a1a18;
+    --scene-bg: #1a1a19; --s-ink: #e6e4dc; --s-top: #5b5a55; --s-side: #484743; --s-cut: #75654a;
+    --f111: #8e8d88; --f100: #5f8db3; --f110: #b78d4c; --m-up: #66655f; --m-low: #96948c;
+    --disc: #a19f97; --mask: #f08a5d; --ghost: #7fb6e0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #151514; --panel: #1f1f1d; --ink: #ecebe6; --muted: #a8a69f; --line: #3a3935; --chip: #2a2a27;
+  --accent: #f08a5d; --accent-ink: #1a1a18;
+  --scene-bg: #1a1a19; --s-ink: #e6e4dc; --s-top: #5b5a55; --s-side: #484743; --s-cut: #75654a;
+  --f111: #8e8d88; --f100: #5f8db3; --f110: #b78d4c; --m-up: #66655f; --m-low: #96948c;
+  --disc: #a19f97; --mask: #f08a5d; --ghost: #7fb6e0;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 "IBM Plex Sans", system-ui, sans-serif; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 20px 16px 40px; }
+header h1 { font: 600 26px/1.2 "Source Serif 4", Georgia, serif; margin: 0 0 4px; letter-spacing: -0.01em; }
+header p { margin: 0; color: var(--muted); max-width: 70ch; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; margin: 16px 0 12px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel); }
+.seg button { border: 0; background: none; color: var(--ink); font: 500 14px "IBM Plex Sans", sans-serif; padding: 7px 13px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.lbl { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-right: 8px; }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.stage { position: relative; background: var(--scene-bg); border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+  height: min(68vh, 620px); min-height: 360px; touch-action: none; }
+.stage canvas { display: block; width: 100%; height: 100%; }
+.labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.labels div { position: absolute; transform: translate(-50%, -50%); font: 12px/1.2 "IBM Plex Mono", monospace; color: var(--ink);
+  background: color-mix(in srgb, var(--scene-bg) 80%, transparent); padding: 1px 4px; border-radius: 3px; white-space: nowrap; }
+.labels div.acc { color: var(--accent); font-weight: 500; }
+.labels div.big { font-size: 13px; }
+.tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px;
+  font: 12.5px/1.35 "IBM Plex Sans", sans-serif; display: none; max-width: 260px; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+.hint { position: absolute; left: 10px; bottom: 8px; font-size: 12px; color: var(--muted); pointer-events: none; }
+.views { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.views button, .btn { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 6px; padding: 5px 10px;
+  font: 13px "IBM Plex Sans", sans-serif; cursor: pointer; }
+.views button:hover, .btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn:disabled { opacity: .45; cursor: default; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.panel h2 { font: 600 17px/1.3 "Source Serif 4", Georgia, serif; margin: 0 0 8px; }
+.panel h3 { font: 600 13px "IBM Plex Sans", sans-serif; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 16px 0 6px; }
+.panel ol { margin: 0; padding-left: 20px; }
+.panel li { margin: 3px 0; }
+.panel select { width: 100%; font: 14px "IBM Plex Sans", sans-serif; padding: 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+.row label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 14px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; font-family: "IBM Plex Mono", monospace; font-size: 13.5px; }
+table.walls { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+table.walls td { padding: 3px 4px; border-top: 1px solid var(--line); }
+table.walls td.num { font-family: "IBM Plex Mono", monospace; text-align: right; }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; border: 1px solid rgba(0,0,0,.25); }
+.ob { display: inline-block; line-height: 1; border-top: 1.5px solid currentColor; padding-top: 1px; margin: 0 1px; }
+.note { font-size: 13px; color: var(--muted); }
+.face { border-left: 3px solid var(--accent); padding: 4px 0 4px 10px; margin-top: 8px; }
+.face b { font-family: "IBM Plex Mono", monospace; font-weight: 500; }
+footer { margin-top: 18px; font-size: 12.5px; color: var(--muted); max-width: 100ch; }
+.hidden { display: none !important; }
+.tline { display: flex; justify-content: space-between; font-family: "IBM Plex Mono", monospace; font-size: 13px; }
+:root { --fhi: #b9675a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fhi: #d0897c; } }
+:root[data-theme="dark"] { --fhi: #d0897c; }
+.simnote { border-left: 3px solid var(--accent); padding: 2px 0 2px 10px; margin: 8px 0; }
+.note.src { font-size: 12px; margin: 4px 0 0; }
+.fields { display: grid; gap: 4px; margin-top: 8px; }
+.fields label { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13.5px; }
+.fields input[type=number] { width: 70px; font: 13px "IBM Plex Mono", monospace; padding: 3px 4px; border: 1px solid var(--line); border-radius: 5px; background: var(--bg); color: var(--ink); }
+.fields select { width: auto; font-size: 13px; padding: 3px 4px; }
+.pbar { height: 4px; background: var(--chip); border-radius: 2px; overflow: hidden; margin-top: 6px; }
+.pbar div { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; }
+.legend i.sw { font-style: normal; }
+.maskcv { width: 100%; display: block; border-radius: 6px; touch-action: none; cursor: grab; }
+.seccv { width: 100%; display: block; }
+.tblwrap { overflow-x: auto; }
+table.shapes { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 4px; }
+table.shapes td { padding: 2px 2px; border-top: 1px solid var(--line); white-space: nowrap; }
+table.shapes tr.hd td { color: var(--muted); font-size: 11.5px; border-top: 0; }
+table.shapes tr.sel td { background: var(--chip); }
+table.shapes input { width: 48px; font: 12px "IBM Plex Mono", monospace; padding: 2px 3px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--ink); }
+table.shapes select { width: auto; font-size: 12px; padding: 2px; }
+table.shapes td.ty { color: var(--muted); }
+table.shapes button.x { border: 0; background: none; color: var(--muted); font-size: 16px; cursor: pointer; }
+details.srcs { margin-top: 14px; font-size: 13px; }
+details.srcs summary { cursor: pointer; font-weight: 600; }
+details.srcs ul { padding-left: 18px; margin: 6px 0 0; }
+details.srcs li { margin: 4px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Origami 3D viewer</h1>
+  <p>The HW2 {111} octahedron held over a (100), (110) or (111) wafer, the KOH pit it predicts, and a KOH etch simulator for any mask (cantilevers, bridges, corner attack and compensation, merging windows). Drag to turn, scroll or pinch to zoom.</p>
+</header>
+
+<div class="bar">
+  <div><span class="lbl">Wafer</span><span class="seg" id="segW">
+    <button data-w="100" aria-pressed="true">(100)</button><button data-w="110" aria-pressed="false">(110)</button><button data-w="111" aria-pressed="false">(111)</button></span></div>
+  <div><span class="lbl">Scene</span><span class="seg" id="segM">
+    <button data-m="model" aria-pressed="true">Model on wafer</button><button data-m="pit" aria-pressed="false">Etched pit</button><button data-m="sim" aria-pressed="false">Etch simulator</button></span></div>
+</div>
+
+<div class="grid">
+  <div>
+    <div class="stage" id="stage">
+      <div class="labels" id="labels"></div>
+      <div class="tip" id="tip"></div>
+      <div class="hint" id="hint">Click a face of the model</div>
+    </div>
+    <div class="views" id="views">
+      <button data-v="oblique">Oblique</button>
+      <button data-v="back">Other side</button>
+      <button data-v="top">Top</button>
+      <button data-v="flat">Facing the flat</button>
+      <button data-v="left">Flat on the left</button>
+      <button data-v="below">From below</button>
+      <button data-v="along" id="vAlong" disabled>Along the selected line</button>
+    </div>
+    <div class="panel hidden" id="simBelow" style="margin-top:12px">
+      <h2 style="margin-bottom:4px">Cross-section</h2>
+      <canvas id="secCanvas" class="seccv"></canvas>
+    </div>
+  </div>
+
+  <aside class="panel" id="panelModel">
+    <h2 id="holdTitle">How to hold it</h2>
+    <ol id="holdSteps"></ol>
+    <h3>Show</h3>
+    <div class="row"><label><input type="checkbox" id="cCorners" checked> corner directions</label></div>
+    <div class="row"><label><input type="checkbox" id="cFaces"> face indices</label></div>
+    <div class="row"><label><input type="checkbox" id="cUpper" checked> upper half (above the wafer)</label></div>
+    <h3>Selected face</h3>
+    <div id="faceInfo" class="note">Click any face. The page then draws where its plane cuts the wafer surface, the two normals and the angle between the planes. Use "Along the selected line" to see the angle at true size.</div>
+  </aside>
+
+  <aside class="panel hidden" id="panelPit">
+    <h2>Etch</h2>
+    <h3>Mask opening</h3>
+    <select id="selOpen"></select>
+    <h3>Etchant</h3>
+    <select id="selRate"></select>
+    <h3>Time</h3>
+    <div class="tline"><span id="tNow">0 min</span><span id="tMax"></span></div>
+    <input type="range" id="tSlider" min="0" max="1000" value="350">
+    <div class="row"><button class="btn primary" id="bPlay">Play</button>
+      <label><input type="checkbox" id="cFinal"> long-etch limit ({111} only)</label></div>
+    <h3>Show</h3>
+    <div class="row"><label><input type="checkbox" id="cCut"> cut open along the x axis (y = 0)</label></div>
+    <div class="row"><label><input type="checkbox" id="cBlock" checked> silicon block (off: cast of the pit)</label></div>
+    <div class="row"><label><input type="checkbox" id="cGhost" checked> final {111} shape (wire)</label></div>
+    <div class="row"><label><input type="checkbox" id="cMask"> mask layer</label></div>
+    <h3>Now</h3>
+    <dl class="kv" id="readout"></dl>
+    <h3>Walls now</h3>
+    <table class="walls" id="walls"></table>
+    <p class="note" style="margin-top:8px">Hover a wall in the picture for its index and angle.</p>
+  </aside>
+  <aside class="panel hidden" id="panelSim">
+    <h2>KOH etch simulator</h2>
+    <p class="note" style="margin:0 0 6px">Any mask on a (100), (110) or (111) wafer: undercut, release, convex-corner attack, compensation and merging windows. Pick an example or edit the mask below, then run.</p>
+    <h3>Example</h3>
+    <select id="simPreset"></select>
+    <p class="note simnote" id="simNote"></p>
+    <div class="row hidden" id="simFrameRow" style="display:block"><span class="lbl">(110) reference</span>
+      <select id="simFrame"><option value="110f">Flat along ⟨110⟩ (Lec 4-1 p. 6)</option><option value="110a">⟨111⟩ arrow = flat normal (Lec 4-1 p. 11, HW2 P5)</option><option value="100" hidden>(100)</option><option value="111" hidden>(111)</option></select></div>
+    <p class="note src" id="simFrameSrc"></p>
+    <h3>Process</h3>
+    <select id="simRate"></select>
+    <p class="note src" id="simRateSrc"></p>
+    <div class="fields">
+      <label>etch time <span><input type="number" id="simTime" min="1" step="5"> min</span></label>
+      <label>wafer thickness <span><input type="number" id="simThick" min="50" step="25"> µm</span></label>
+      <label>pre-etch depth <span><input type="number" id="simPre" min="0" step="5"> µm</span></label>
+      <label>domain x × y <span><input type="number" id="simHx" min="40" step="20"> × <input type="number" id="simHy" min="40" step="20"> µm</span></label>
+      <label>resolution <span><select id="simQual"><option value="draft">draft (fast)</option><option value="normal">normal</option><option value="fine">fine (slow)</option></select></span></label>
+    </div>
+    <div class="row"><button class="btn primary" id="bSimRun">Run</button><span class="note hidden" id="simDirty">Mask or process changed: press Run.</span></div>
+    <div class="pbar"><div id="simBar"></div></div>
+    <p class="note" id="simStatus" style="margin:4px 0 0"></p>
+    <h3>Time</h3>
+    <div class="tline"><span id="simTnow">0 min</span><span id="simTmax"></span></div>
+    <input type="range" id="simT" min="0" max="1" step="any" value="0">
+    <div class="row"><button class="btn" id="bSimPlay">Play</button>
+      <label><input type="checkbox" id="cSimMask" checked> mask layer</label>
+      <label><input type="checkbox" id="cSimCut"> cut away at the section</label></div>
+    <h3>Section line</h3>
+    <div class="row"><span class="seg" id="segCut"><button data-a="y" aria-pressed="true">along x</button><button data-a="x" aria-pressed="false">along y</button></span><span class="note" id="simCutLbl"></span></div>
+    <input type="range" id="simCutPos" min="-100" max="100" step="1" value="0">
+    <h3>Now</h3>
+    <dl class="kv" id="simReadout"></dl>
+    <h3>Planes (colour)</h3>
+    <div class="legend"><span><i class="sw" style="background:var(--f111)"></i>{111}</span><span><i class="sw" style="background:var(--f100)"></i>{100}</span><span><i class="sw" style="background:var(--f110)"></i>{110}</span><span><i class="sw" style="background:var(--fhi)"></i>higher index ({311}, {211}, {411} …)</span><span><i class="sw" style="background:var(--s-side)"></i>no plane within 4°</span><span><i class="sw" style="background:var(--s-cut)"></i>cut face</span></div>
+    <h3>Mask editor</h3>
+    <p class="note" style="margin:0 0 4px">Shapes are applied top to bottom: “open” removes the mask, “mask” puts it back. Drag a shape to move it. Solid outline: open; dashed: mask.</p>
+    <canvas id="maskCanvas" class="maskcv"></canvas>
+    <div class="row" style="flex-wrap:wrap"><button class="btn" id="bAddRect">+ rectangle</button><button class="btn" id="bAddCirc">+ circle</button><button class="btn" id="bAddTri">+ triangle</button></div>
+    <div class="tblwrap"><table class="shapes" id="shapeList"></table></div>
+    <details class="srcs"><summary>Model, sources and assumptions</summary>
+      <ul>
+        <li><b>Rates</b> (sourced): KOH 30, 40, 50 wt% at 70 °C for 12 orientations, Pal &amp; Sato Table 4.1, p. 87. KOH 42 wt% at 75 °C: {100} 42, {110} 66, {111} 0.5 µm/h, Lec 4-1 p. 7; its other 9 orientations are the Pal &amp; Sato 40 wt% values scaled by R(100) (assumption).</li>
+        <li><b>Rates between the measured orientations</b> (assumption): linear interpolation over a triangulation of the 12 orientations in the standard triangle (gnomonic coordinates), with cubic symmetry. It keeps the cusp at {111}: rates grow linearly with the off-angle, as measured for vicinal (111) (Pal &amp; Sato p. 104).</li>
+        <li><b>Corner rules</b> (sourced, not imposed): concave corners show the slowest plane and convex corners the fastest (Lec 4-1 p. 8). The simulator does not apply these rules; they come out of the rate map.</li>
+        <li><b>Front motion</b> (method): every surface element moves along its normal at R(hkl); this is solved as a 3D level set (first-order Lax-Friedrichs scheme, fast-marching re-initialisation) on a cubic grid. Accuracy is about one cell; sharp edges are rounded over about two cells. Check: square window on (100), 60 min in 30 wt%: depth 47.9 µm against 0.797 × 60 = 47.82 µm; {111} wall 54.5° against 54.74°.</li>
+        <li><b>Mask edge</b> (assumption): no etchant reaches silicon through the mask, so the level set has no downward slope at the top boundary under the mask; silicon under the mask is only removed from the side.</li>
+        <li><b>Known numerical limits</b>: silicon walls and beams narrower than about 8 grid cells thin slowly (numerical dissipation, not physics), most when they are oblique to the grid; windows narrower than about 5 cells etch too slowly. Use “fine” quality or wider features when this matters. Undercut values are good to about one to two cells.</li>
+        <li><b>Mask</b> (assumption): inert and infinitely thin; etchant reaches the silicon only through openings and under released mask. The SiO₂ loss shown for 42 wt% uses 0.34 µm/h (thermal oxide, Lec 4-1 p. 7).</li>
+        <li><b>Wafer</b>: 525 µm thick by default (100 mm wafer, Pal &amp; Sato Table 2.1, p. 30); only the depth that the etch can reach is simulated, and the back side is protected (assumption). Frames: (100) x = [1̄10] along the flat (Rev 1); (110) two conventions, see above; (111) flat along [11̄0] (assumption).</li>
+        <li><b>Pre-etch</b> (assumption): a vertical prism of the opening shape, as by deep RIE (Lec 4-1 p. 16), before KOH.</li>
+        <li><b>Compensation data</b> (sourced): ⟨100⟩ beam width W = 2d (Pal &amp; Sato p. 249); ⟨110⟩ beam d = (0.5 W cos α + L sin α)/Ur (Pal &amp; Sato p. 244); KOH turns a 90° convex corner into 150 ± 2° (Pal &amp; Sato p. 235). Example dimensions not covered by these are design choices.</li>
+      </ul>
+    </details>
+  </aside>
+</div>
+
+<footer>
+  Scenes 1 and 2 (model and pit): each wall is a crystal plane that moves outward at its own rate from the mask opening (n·x ≤ h + R·t over the {100}, {110} and {111} planes); the long-etch limit keeps only {111} planes with R = 0. This is the construction used in the origami tutorial; non-convex openings are not modelled there, use the etch simulator (its model and sources are listed in its panel).
+  Rates: Pal &amp; Sato, p. 87 (KOH 30 wt% and 40 wt%, 70 °C); Lec 4-1, p. 7 (KOH 42 wt%, 75 °C). Primary flat ⟨110⟩ for (100) and (110): Lec 4-1, p. 6. For (111) the flat is assumed along [1<span class="ob">1</span>0]. Wafer thickness 525 µm (assumption). x runs along the flat, z is the wafer normal.
+</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+// Geometry core: port of octa.py (Wulff-Jaccodine cavity as an intersection of half-spaces).
+const Core = (() => {
+  const dot = (a, b) => a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+  const cross = (a, b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+  const sub = (a, b) => [a[0]-b[0], a[1]-b[1], a[2]-b[2]];
+  const add = (a, b) => [a[0]+b[0], a[1]+b[1], a[2]+b[2]];
+  const mul = (a, s) => [a[0]*s, a[1]*s, a[2]*s];
+  const norm = a => Math.hypot(a[0], a[1], a[2]);
+  const unit = a => mul(a, 1/norm(a));
+  const DEG = 180/Math.PI;
+
+  function family(fam) {
+    const base = fam.split("").map(Number), out = new Map();
+    const perms = [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];
+    for (const p of perms) for (let s = 0; s < 8; s++) {
+      const v = p.map((k, i) => base[k]*((s >> i) & 1 ? -1 : 1));
+      if (v.some(x => x !== 0)) out.set(v.join(","), v.map(x => x === 0 ? 0 : x));
+    }
+    return [...out.values()];
+  }
+  const s2 = Math.SQRT1_2, s3 = 1/Math.sqrt(3), s6 = 1/Math.sqrt(6);
+  // e1 along the primary flat, e2 in-plane, e3 = wafer normal (up)
+  const FRAMES = {
+    "100": [[-s2, s2, 0], [-s2, -s2, 0], [0, 0, 1]],
+    "110": [[-s2, s2, 0], [0, 0, 1], [s2, s2, 0]],
+    "111": [[s2, -s2, 0], [s6, s6, -2*s6], [s3, s3, s3]],
+  };
+  const FRAME_IDX = { "100": [[-1,1,0],[-1,-1,0],[0,0,1]], "110": [[-1,1,0],[0,0,1],[1,1,0]], "111": [[1,-1,0],[1,1,-2],[1,1,1]] };
+  const toWafer = (v, wf) => FRAMES[wf].map(e => dot(e, v));
+  const toCrystal = (p, wf) => { const [e1, e2, e3] = FRAMES[wf]; return add(add(mul(e1, p[0]), mul(e2, p[1])), mul(e3, p[2])); };
+
+  // smallest integer direction parallel to v
+  function intDir(v) {
+    const m = Math.max(...v.map(Math.abs));
+    for (let k = 1; k <= 12; k++) {
+      const w = v.map(x => x/m*k);
+      if (w.every(x => Math.abs(x - Math.round(x)) < 1e-4)) {
+        let r = w.map(x => Math.round(x));
+        const g = r.reduce((a, b) => gcd(a, Math.abs(b)), 0) || 1;
+        return r.map(x => x/g);
+      }
+    }
+    return null;
+  }
+  function gcd(a, b) { return b ? gcd(b, a % b) : Math.abs(a); }
+
+  const angleToSurface = n => Math.acos(Math.min(1, Math.abs(n[2])))*DEG;
+
+  // ---------------------------------------------------------------- polyhedron from half-spaces A x <= b
+  function solve3(a, b, c, d) {    // rows a,b,c ; rhs d
+    const det = dot(a, cross(b, c));
+    if (Math.abs(det) < 1e-10) return null;
+    const x = [
+      dot([d[0], a[1], a[2]], cross([d[1], b[1], b[2]], [d[2], c[1], c[2]])),
+      dot([a[0], d[0], a[2]], cross([b[0], d[1], b[2]], [c[0], d[2], c[2]])),
+      dot([a[0], a[1], d[0]], cross([b[0], b[1], d[1]], [c[0], c[1], d[2]])),
+    ];
+    return mul(x, 1/det);
+  }
+
+  function polyhedron(H) {   // H: [{n, b, label, fam}]
+    const m = H.length;
+    let scale = 1;
+    for (const h of H) scale = Math.max(scale, Math.abs(h.b));
+    const tol = 1e-7*scale, V = [];
+    for (let i = 0; i < m; i++) for (let j = i+1; j < m; j++) {
+      const cij = cross(H[i].n, H[j].n);
+      if (norm(cij) < 1e-10) continue;
+      for (let k = j+1; k < m; k++) {
+        const v = solve3(H[i].n, H[j].n, H[k].n, [H[i].b, H[j].b, H[k].b]);
+        if (!v) continue;
+        let ok = true;
+        for (let q = 0; q < m; q++) if (dot(H[q].n, v) > H[q].b + tol) { ok = false; break; }
+        if (!ok) continue;
+        if (!V.some(u => Math.abs(u[0]-v[0]) + Math.abs(u[1]-v[1]) + Math.abs(u[2]-v[2]) < 1e-6*scale)) V.push(v);
+      }
+    }
+    const faces = [];
+    if (V.length < 4) return { verts: V, faces, scale };
+    for (const h of H) {
+      const on = V.filter(v => Math.abs(dot(h.n, v) - h.b) < 1e-6*scale);
+      if (on.length < 3) continue;
+      const c = mul(on.reduce(add, [0, 0, 0]), 1/on.length);
+      let u = null;
+      for (const p of on) { const d = sub(p, c); if (norm(d) > 1e-9*scale) { u = unit(d); break; } }
+      if (!u) continue;
+      const w = cross(h.n, u);
+      const P = on.map(p => [p, Math.atan2(dot(sub(p, c), w), dot(sub(p, c), u))]).sort((a, b) => a[1] - b[1]).map(t => t[0]);
+      let A = [0, 0, 0];
+      for (let k = 0; k < P.length; k++) A = add(A, cross(P[k], P[(k+1) % P.length]));
+      const area = 0.5*Math.abs(dot(A, h.n));
+      if (area < 1e-9*scale*scale) continue;
+      faces.push({ n: h.n, poly: P, label: h.label, fam: h.fam, area, b: h.b });
+    }
+    return { verts: V, faces, scale };
+  }
+
+  function volume(P) {
+    if (P.faces.length < 4) return 0;
+    let v = 0;
+    for (const f of P.faces) v += f.area*f.b/3;     // origin-based: sum area * (n.x0) / 3, valid for any origin
+    return v;
+  }
+  const depth = P => P.verts.length ? -Math.min(...P.verts.map(v => v[2])) : 0;
+
+  // 2D clip of polygon P by a.q <= b
+  function clip2(P, a, b) {
+    const out = [], n = P.length;
+    for (let i = 0; i < n; i++) {
+      const p = P[i], q = P[(i+1) % n];
+      const fp = a[0]*p[0] + a[1]*p[1] - b, fq = a[0]*q[0] + a[1]*q[1] - b;
+      if (fp <= 1e-12) out.push(p);
+      if (fp*fq < -1e-24) { const t = fp/(fp - fq); out.push([p[0] + t*(q[0]-p[0]), p[1] + t*(q[1]-p[1])]); }
+    }
+    return out;
+  }
+  function section2d(cons, big = 1e5) {   // cons: [[a2, b]]
+    let P = [[-big, -big], [big, -big], [big, big], [-big, big]];
+    for (const [a, b] of cons) {
+      if (Math.hypot(a[0], a[1]) < 1e-12) { if (b < -1e-9) return []; continue; }
+      P = clip2(P, a, b);
+      if (!P.length) break;
+    }
+    return simplify2(P);
+  }
+  function simplify2(P, tol = 1e-6) {
+    P = P.filter((p, i) => Math.hypot(p[0] - P[(i-1+P.length) % P.length][0], p[1] - P[(i-1+P.length) % P.length][1]) > tol);
+    const out = [];
+    for (let i = 0; i < P.length; i++) {
+      const a = P[(i-1+P.length) % P.length], b = P[i], c = P[(i+1) % P.length];
+      if (Math.abs((b[0]-a[0])*(c[1]-b[1]) - (b[1]-a[1])*(c[0]-b[0])) > tol*Math.max(1, Math.hypot(c[0]-a[0], c[1]-a[1]))) out.push(b);
+    }
+    return out;
+  }
+  // horizontal section at height z0
+  const outline = (H, z0 = 0) => section2d(H.map(h => [[h.n[0], h.n[1]], h.b - h.n[2]*z0]));
+  // vertical section through the plane y = y0 : polygon in (x, z)
+  const vsectionY = (H, y0 = 0) => section2d(H.map(h => [[h.n[0], h.n[2]], h.b - h.n[1]*y0]));
+
+  function planes(wf, fams, rates) {
+    const out = [];
+    for (const f of fams) for (const hkl of family(f))
+      out.push({ hkl, fam: f, n: toWafer(unit(hkl), wf), R: rates ? rates[f] : 0 });
+    return out;
+  }
+
+  // cavity under a convex opening; t = null -> final {111} shape
+  function etchH(wf, opening, { t = null, T = null, pre = 0, rates = null } = {}) {
+    let P = opening.map(p => [p[0], p[1], 0]);
+    if (pre > 0) P = P.concat(opening.map(p => [p[0], p[1], -pre]));
+    const pl = t === null ? planes(wf, ["111"], null) : planes(wf, ["100", "110", "111"], rates);
+    const H = pl.map(p => {
+      let s = -Infinity; for (const q of P) s = Math.max(s, dot(p.n, q));
+      return { n: p.n, b: s + (t === null ? 0 : p.R*t), label: p.hkl, fam: p.fam };
+    });
+    H.push({ n: [0, 0, 1], b: 0, label: "surface", fam: "surface" });
+    if (T !== null) H.push({ n: [0, 0, -1], b: T, label: "back", fam: "back" });
+    return H;
+  }
+  function etch(wf, opening, opts) { const H = etchH(wf, opening, opts); const P = polyhedron(H); P.H = H; return P; }
+
+  function circle(R, m = 180) { const o = []; for (let i = 0; i < m; i++) { const a = 2*Math.PI*i/m; o.push([R*Math.cos(a), R*Math.sin(a)]); } return o; }
+  function rect(cx, cy, w, h, deg = 0) {
+    const c = Math.cos(deg/DEG), s = Math.sin(deg/DEG);
+    return [[-w/2, -h/2], [w/2, -h/2], [w/2, h/2], [-w/2, h/2]].map(([x, y]) => [cx + x*c - y*s, cy + x*s + y*c]);
+  }
+  return { dot, cross, sub, add, mul, norm, unit, DEG, family, FRAMES, FRAME_IDX, toWafer, toCrystal, intDir, angleToSurface,
+           polyhedron, volume, depth, outline, vsectionY, section2d, clip2, planes, etchH, etch, circle, rect, simplify2 };
+})();
+
+</script>
+<script>
+// ===================================================================================== etch engine
+// KOH rate map over all orientations (piecewise-linear interpolation of measured rates in the standard
+// triangle) + 3D level-set etch front (first-order Lax-Friedrichs, fast-marching redistancing),
+// arrival-time field T(x) for instant time scrubbing, surface-nets mesh extraction and 2D sections.
+// No DOM access: runs in a Web Worker or in the page.
+function etchEngineFactory() {
+  const ORIENT = { "100": [1,0,0], "110": [1,1,0], "210": [2,1,0], "211": [2,1,1], "221": [2,2,1], "310": [3,1,0],
+                   "311": [3,1,1], "320": [3,2,0], "331": [3,3,1], "530": [5,3,0], "540": [5,4,0], "111": [1,1,1] };
+  const uvOf = (h, k, l) => { const s = [Math.abs(h), Math.abs(k), Math.abs(l)].sort((x, y) => y - x); return [s[1]/s[0], s[2]/s[0]]; };
+
+  function delaunay(P) {
+    const big = 100, pts = P.concat([[-big, -big], [big*2, -big], [0.5, big*2]]), n = P.length;
+    let tris = [[n, n+1, n+2]];
+    const circ = t => {
+      const [a, b, c] = t.map(i => pts[i]);
+      const d = 2*(a[0]*(b[1]-c[1]) + b[0]*(c[1]-a[1]) + c[0]*(a[1]-b[1]));
+      const A = a[0]**2 + a[1]**2, Bq = b[0]**2 + b[1]**2, C = c[0]**2 + c[1]**2;
+      const ux = (A*(b[1]-c[1]) + Bq*(c[1]-a[1]) + C*(a[1]-b[1]))/d, uy = (A*(c[0]-b[0]) + Bq*(a[0]-c[0]) + C*(b[0]-a[0]))/d;
+      return [ux, uy, (a[0]-ux)**2 + (a[1]-uy)**2];
+    };
+    for (let p = 0; p < n; p++) {
+      const [x, y] = pts[p], bad = [], keep = [];
+      for (const t of tris) { const [cx, cy, r2] = circ(t); ((x-cx)**2 + (y-cy)**2 < r2*(1 - 1e-12)) ? bad.push(t) : keep.push(t); }
+      const edges = new Map();
+      for (const t of bad) for (let e = 0; e < 3; e++) {
+        const a = t[e], b = t[(e+1)%3], key = a < b ? a + "," + b : b + "," + a;
+        edges.set(key, edges.has(key) ? null : [a, b]);
+      }
+      tris = keep;
+      for (const e of edges.values()) if (e) tris.push([e[0], e[1], p]);
+    }
+    return tris.filter(t => t.every(i => i < n));
+  }
+
+  function makeRate(values) {
+    const keys = Object.keys(values), P = keys.map(k => uvOf(...ORIENT[k])), V = keys.map(k => values[k]);
+    const tris = delaunay(P), N = 256, W = N + 1, tab = new Float32Array(W*W);
+    for (let a = 0; a <= N; a++) for (let b = 0; b <= a; b++) {
+      const u = a/N, v = b/N; let val = 0;
+      for (const t of tris) {
+        const [p0, p1, p2] = t.map(i => P[i]);
+        const det = (p1[1]-p2[1])*(p0[0]-p2[0]) + (p2[0]-p1[0])*(p0[1]-p2[1]);
+        if (Math.abs(det) < 1e-14) continue;
+        const l0 = ((p1[1]-p2[1])*(u-p2[0]) + (p2[0]-p1[0])*(v-p2[1]))/det;
+        const l1 = ((p2[1]-p0[1])*(u-p2[0]) + (p0[0]-p2[0])*(v-p2[1]))/det, l2 = 1 - l0 - l1;
+        if (l0 > -1e-9 && l1 > -1e-9 && l2 > -1e-9) { val = l0*V[t[0]] + l1*V[t[1]] + l2*V[t[2]]; break; }
+      }
+      tab[a*W + b] = val; tab[b*W + a] = val;
+    }
+    return { N, tab, tris: tris.map(t => t.map(i => keys[i])) };
+  }
+  function rateC(RT, x, y, z) {
+    x = x < 0 ? -x : x; y = y < 0 ? -y : y; z = z < 0 ? -z : z;
+    let a = x, b = y, c = z, t;
+    if (b > a) { t = a; a = b; b = t; } if (c > a) { t = a; a = c; c = t; } if (c > b) { t = b; b = c; c = t; }
+    const N = RT.N, fu = b/a*N, fv = c/a*N;
+    let iu = fu | 0, iv = fv | 0; if (iu >= N) iu = N - 1; if (iv >= N) iv = N - 1;
+    const du = fu - iu, dv = fv - iv, tab = RT.tab, W = N + 1, o = iu*W + iv;
+    return (tab[o]*(1-dv) + tab[o+1]*dv)*(1-du) + (tab[o+W]*(1-dv) + tab[o+W+1]*dv)*du;
+  }
+
+  // ---------------------------------------------------------------- 2D mask -> signed distance
+  function edt1d(f, n, d, v, z) {
+    let k = 0; v[0] = 0; z[0] = -Infinity; z[1] = Infinity;
+    for (let q = 1; q < n; q++) {
+      let s;
+      while (true) { s = ((f[q] + q*q) - (f[v[k]] + v[k]*v[k]))/(2*q - 2*v[k]); if (s <= z[k] && k > 0) k--; else break; }
+      if (s <= z[k]) { v[0] = q; z[0] = -Infinity; z[1] = Infinity; k = 0; continue; }
+      k++; v[k] = q; z[k] = s; z[k+1] = Infinity;
+    }
+    k = 0;
+    for (let q = 0; q < n; q++) { while (z[k+1] < q) k++; d[q] = (q - v[k])**2 + f[v[k]]; }
+  }
+  function edt2d(bin, W, H) {
+    const INF = 1e20, D = new Float64Array(W*H), n = Math.max(W, H);
+    const f = new Float64Array(n), d = new Float64Array(n), v = new Int32Array(n), z = new Float64Array(n + 1);
+    for (let x = 0; x < W; x++) { for (let y = 0; y < H; y++) f[y] = bin[y*W + x] ? 0 : INF; edt1d(f, H, d, v, z); for (let y = 0; y < H; y++) D[y*W + x] = d[y]; }
+    for (let y = 0; y < H; y++) { for (let x = 0; x < W; x++) f[x] = D[y*W + x]; edt1d(f, W, d, v, z); for (let x = 0; x < W; x++) D[y*W + x] = d[x]; }
+    return D;
+  }
+  function inPoly(P, x, y) {
+    let c = false;
+    for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0]-a[0])*(y-a[1])/(b[1]-a[1]) + a[0]) c = !c; }
+    return c;
+  }
+  // shapes are painted in order: "open" removes mask, "mask" puts it back. Default: masked.
+  function isOpen(shapes, x, y) { let o = false; for (const s of shapes) if (inPoly(s.pts, x, y)) o = s.op === "open"; return o; }
+
+  // ---------------------------------------------------------------- simulation
+  function create(cfg) {
+    // cfg: frame [e1,e2,e3] (crystal components of the wafer x,y,z axes), rates {key: um/min}, shapes,
+    //      X0,X1,Y0,Y1 (um), depth (um, simulated depth = back side), dx (um), pre (um, vertical pre-etch), alphaScale
+    const dx = cfg.dx, Nx = Math.max(4, Math.round((cfg.X1 - cfg.X0)/dx)), Ny = Math.max(4, Math.round((cfg.Y1 - cfg.Y0)/dx));
+    const Nz = Math.max(3, Math.round(cfg.depth/dx)), NXY = Nx*Ny, NN = NXY*Nz;
+    const RT = makeRate(cfg.rates);
+    const [e1, e2, e3] = cfg.frame;
+    const Rg = (x, y, z) => rateC(RT, e1[0]*x + e2[0]*y + e3[0]*z, e1[1]*x + e2[1]*y + e3[1]*z, e1[2]*x + e2[2]*y + e3[2]*z);
+    // signed in-plane distance to the opening edge (supersampled EDT); >0 under the mask
+    const SS = 4, W = Nx*SS, H = Ny*SS, inb = new Uint8Array(W*H), outb = new Uint8Array(W*H);
+    for (let y = 0; y < H; y++) { const yy = cfg.Y0 + (y + 0.5)*dx/SS;
+      for (let x = 0; x < W; x++) { const o = isOpen(cfg.shapes, cfg.X0 + (x + 0.5)*dx/SS, yy); inb[y*W + x] = o ? 1 : 0; outb[y*W + x] = o ? 0 : 1; } }
+    const Din = edt2d(inb, W, H), Dout = edt2d(outb, W, H);
+    const sd = new Float32Array(NXY), open = new Uint8Array(NXY);
+    for (let j = 0; j < Ny; j++) for (let i = 0; i < Nx; i++) {
+      let s = 0;
+      for (let b = 1; b <= 2; b++) for (let a = 1; a <= 2; a++) { const q = (j*SS + b)*W + i*SS + a; s += inb[q] ? -(Math.sqrt(Dout[q]) - 0.5) : (Math.sqrt(Din[q]) - 0.5); }
+      sd[j*Nx + i] = s/4*dx/SS; open[j*Nx + i] = sd[j*Nx + i] < 0 ? 1 : 0;
+    }
+    const band = cfg.band || 4, B = band*dx, pre = cfg.pre || 0;
+    const phi = new Float32Array(NN), T = new Float32Array(NN).fill(Infinity), Hr = new Float32Array(NN);
+    for (let k = 0; k < Nz; k++) { const z = (k + 0.5)*dx;
+      for (let q = 0; q < NXY; q++) {
+        const d = Math.max(sd[q], 0); let v;
+        if (sd[q] < 0 && z < pre) v = Math.max(sd[q], z - pre);               // inside the pre-etched prism
+        else v = Math.hypot(d, Math.max(0, z - (sd[q] < 0 ? pre : 0)) || (sd[q] >= 0 && z < pre ? 0 : 0)) ;
+        if (sd[q] >= 0 && z < pre) v = d;                                     // beside the prism: lateral distance
+        else if (sd[q] >= 0) v = Math.hypot(d, Math.max(0, z - pre));
+        v = Math.max(-B, Math.min(B, v));
+        phi[k*NXY + q] = v; if (v <= 0) T[k*NXY + q] = 0;
+      } }
+    const gOpen = new Float32Array(NXY); for (let q = 0; q < NXY; q++) gOpen[q] = Math.max(-0.5*dx, sd[q]);
+    // dissipation coefficients alpha_i >= max |dH/dp_i| (sampled)
+    const al = [0, 0, 0], h = 1e-4; let rmax = 0;
+    for (let s = 0; s < 30000; s++) {
+      const u = 2*((s*0.6180339887) % 1) - 1, ph = 2*Math.PI*((s*0.7548776662) % 1), r = Math.sqrt(1 - u*u), p = [r*Math.cos(ph), r*Math.sin(ph), u];
+      const H0 = Rg(p[0], p[1], p[2]); if (H0 > rmax) rmax = H0;
+      for (let i = 0; i < 3; i++) { const q = p.slice(); q[i] += h; const nq = Math.hypot(q[0], q[1], q[2]); const g = (Rg(q[0]/nq, q[1]/nq, q[2]/nq)*nq - H0)/h; if (Math.abs(g) > al[i]) al[i] = Math.abs(g); }
+    }
+    const as = cfg.alphaScale || 1; for (let i = 0; i < 3; i++) al[i] *= as;
+    const S = { cfg, Nx, Ny, Nz, NXY, NN, dx, B, phi, T, Hr, gOpen, open, sd, RT, Rg, al, rmax, t: 0, steps: 0, e: [e1, e2, e3] };
+    S.dt0 = (cfg.cfl || 0.9)*dx/(al[0] + al[1] + al[2]);
+    // band bookkeeping
+    S.act = new Int32Array(Math.min(NN, 1 << 20)); S.nact = 0; S.stamp = new Uint32Array(NN); S.gen = 1; S.tmp = new Float32Array(S.act.length);
+    S.reinit = makeReinit(Nx, Ny, Nz, dx, B);
+    rebuild(S, true);
+    return S;
+  }
+
+  function rebuild(S, full) {
+    const { Nx, Ny, Nz, NXY, NN, phi, B, stamp } = S;
+    S.gen++; const gen = S.gen;
+    const old = full ? null : S.act.slice(0, S.nact);
+    let act = S.act, n = 0;
+    const add = q => {
+      if (stamp[q] === gen) return; stamp[q] = gen;
+      if (phi[q] <= -B) return;
+      if (n >= act.length) { const a = new Int32Array(act.length*2); a.set(act); act = a; S.tmp = new Float32Array(act.length); }
+      act[n++] = q;
+    };
+    const visit = q => {
+      const p = phi[q]; if (p >= B || p <= -B) return;
+      add(q);
+      const k = (q / NXY) | 0, r = q - k*NXY, j = (r / Nx) | 0, i = r - j*Nx;
+      if (i > 0) add(q - 1); if (i < Nx - 1) add(q + 1); if (j > 0) add(q - Nx); if (j < Ny - 1) add(q + Nx);
+      if (k > 0) add(q - NXY); if (k < Nz - 1) add(q + NXY);
+    };
+    if (old) { for (let m = 0; m < old.length; m++) visit(old[m]); } else for (let q = 0; q < NN; q++) visit(q);
+    S.act = act; S.nact = n;
+  }
+
+  function step(S, tEnd, maxSteps) {
+    const { Nx, Ny, Nz, NXY, dx, B, phi, T, Hr, gOpen, open, RT, al } = S;
+    const [e1, e2, e3] = S.e, tab = RT.tab, N = RT.N, WT = N + 1;
+    const ax = al[0], ay = al[1], az = al[2], idx = 1/dx;
+    let ns = 0;
+    while (S.t < tEnd - 1e-9 && ns < maxSteps) {
+      const dt = Math.min(S.dt0, tEnd - S.t), act = S.act, nact = S.nact, tmp = S.tmp;
+      for (let m = 0; m < nact; m++) {
+        const q = act[m], c = phi[q];
+        const k = (q / NXY) | 0, r = q - k*NXY, j = (r / Nx) | 0, i = r - j*Nx;
+        const xm = i > 0 ? phi[q-1] : c, xp = i < Nx-1 ? phi[q+1] : c;
+        const ym = j > 0 ? phi[q-Nx] : c, yp = j < Ny-1 ? phi[q+Nx] : c;
+        const zp = k < Nz-1 ? phi[q+NXY] : c;
+        let zm;
+        if (k > 0) zm = phi[q-NXY]; else { zm = 2*c - zp; if (open[r]) { if (zm > gOpen[r]) zm = gOpen[r]; } else if (zm < c) zm = c; }
+        const dxm = (c - xm)*idx, dxp = (xp - c)*idx, dym = (c - ym)*idx, dyp = (yp - c)*idx, dzm = (c - zm)*idx, dzp = (zp - c)*idx;
+        const px = 0.5*(dxm + dxp), py = 0.5*(dym + dyp), pz = -0.5*(dzm + dzp);   // grid k runs downward
+        const pn = Math.sqrt(px*px + py*py + pz*pz);
+        let Hn = 0;
+        if (pn > 1e-12) {
+          const nx = px/pn, ny = py/pn, nz = pz/pn;
+          let a = e1[0]*nx + e2[0]*ny + e3[0]*nz, b = e1[1]*nx + e2[1]*ny + e3[1]*nz, cc = e1[2]*nx + e2[2]*ny + e3[2]*nz, t;
+          if (a < 0) a = -a; if (b < 0) b = -b; if (cc < 0) cc = -cc;
+          if (b > a) { t = a; a = b; b = t; } if (cc > a) { t = a; a = cc; cc = t; } if (cc > b) { t = b; b = cc; cc = t; }
+          const fu = b/a*N, fv = cc/a*N; let iu = fu | 0, iv = fv | 0; if (iu >= N) iu = N - 1; if (iv >= N) iv = N - 1;
+          const du = fu - iu, dv = fv - iv, o = iu*WT + iv;
+          Hn = ((tab[o]*(1-dv) + tab[o+1]*dv)*(1-du) + (tab[o+WT]*(1-dv) + tab[o+WT+1]*dv)*du)*pn;
+        }
+        Hn -= 0.5*(ax*(dxp - dxm) + ay*(dyp - dym) + az*(dzp - dzm));
+        let v = c - dt*Hn; if (v > c) v = c; if (v < -B) v = -B; else if (v > B) v = B;   // etching is irreversible: phi never rises
+        tmp[m] = v; Hr[q] = Hn;
+      }
+      for (let m = 0; m < nact; m++) {
+        const q = act[m], c = phi[q], v = tmp[m];
+        if (c > 0 && v <= 0) T[q] = S.t + dt*c/(c - v);
+        phi[q] = v;
+      }
+      S.t += dt; S.steps++; ns++;
+      if (S.steps % 2 === 0) rebuild(S, false);
+      if (S.steps % 6 === 0) { S.reinit(phi, S.act, S.nact); rebuild(S, false); }
+    }
+    return S.t;
+  }
+
+  function makeReinit(Nx, Ny, Nz, dx, B) {
+    const NXY = Nx*Ny, NN = NXY*Nz, st = new Uint8Array(NN), dist = new Float32Array(NN);
+    let hv = new Float32Array(1 << 16), hi = new Int32Array(1 << 16), hn = 0;
+    const push = (v, q) => {
+      if (hn >= hv.length) { const a = new Float32Array(hv.length*2); a.set(hv); hv = a; const b = new Int32Array(hi.length*2); b.set(hi); hi = b; }
+      let k = hn++;
+      while (k > 0) { const p = (k - 1) >> 1; if (hv[p] <= v) break; hv[k] = hv[p]; hi[k] = hi[p]; k = p; }
+      hv[k] = v; hi[k] = q;
+    };
+    const pop = () => {
+      const q = hi[0], lv = hv[--hn], li = hi[hn]; let k = 0;
+      while (true) { let c = 2*k + 1; if (c >= hn) break; if (c + 1 < hn && hv[c+1] < hv[c]) c++; if (hv[c] >= lv) break; hv[k] = hv[c]; hi[k] = hi[c]; k = c; }
+      hv[k] = lv; hi[k] = li; return q;
+    };
+    const NB = new Int32Array(6);
+    const nb = q => {
+      const k = (q / NXY) | 0, r = q - k*NXY, j = (r / Nx) | 0, i = r - j*Nx;
+      NB[0] = i > 0 ? q-1 : -1; NB[1] = i < Nx-1 ? q+1 : -1; NB[2] = j > 0 ? q-Nx : -1; NB[3] = j < Ny-1 ? q+Nx : -1;
+      NB[4] = k > 0 ? q-NXY : -1; NB[5] = k < Nz-1 ? q+NXY : -1;
+    };
+    const A3 = new Float64Array(3);
+    function solve(q) {
+      nb(q); let na = 0;
+      for (let ax = 0; ax < 3; ax++) {
+        let m = Infinity; const r0 = NB[2*ax], r1 = NB[2*ax+1];
+        if (r0 >= 0 && st[r0] === 2 && dist[r0] < m) m = dist[r0];
+        if (r1 >= 0 && st[r1] === 2 && dist[r1] < m) m = dist[r1];
+        if (m < Infinity) A3[na++] = m;
+      }
+      if (na === 0) return Infinity;
+      // sort small array
+      for (let a = 1; a < na; a++) { const v = A3[a]; let b = a - 1; while (b >= 0 && A3[b] > v) { A3[b+1] = A3[b]; b--; } A3[b+1] = v; }
+      let d = A3[0] + dx;
+      if (na > 1 && d > A3[1]) {
+        d = 0.5*(A3[0] + A3[1] + Math.sqrt(Math.max(0, 2*dx*dx - (A3[0] - A3[1])**2)));
+        if (na > 2 && d > A3[2]) { const s = A3[0] + A3[1] + A3[2], q2 = A3[0]*A3[0] + A3[1]*A3[1] + A3[2]*A3[2]; d = (s + Math.sqrt(Math.max(0, s*s - 3*(q2 - dx*dx))))/3; }
+      }
+      return d;
+    }
+    const touched = [];
+    return function (phi, list, n) {
+      hn = 0; touched.length = 0;
+      for (let m = 0; m < n; m++) {
+        const q = list[m], c = phi[q]; nb(q);
+        let inv = 0, any = false;
+        for (let ax = 0; ax < 3; ax++) {
+          let best = Infinity;
+          for (let s = 0; s < 2; s++) { const r = NB[2*ax+s]; if (r >= 0) { const o = phi[r]; if ((c > 0) !== (o > 0)) { const f = c/(c - o); if (f < best) best = f; } } }
+          if (best < Infinity) { const dd = Math.max(best*dx, 1e-3*dx); inv += 1/(dd*dd); any = true; }
+        }
+        if (any) { dist[q] = 1/Math.sqrt(inv); st[q] = 2; touched.push(q); }
+      }
+      const nInit = touched.length;
+      for (let m = 0; m < nInit; m++) { nb(touched[m]); for (let s = 0; s < 6; s++) { const r = NB[s]; if (r >= 0 && st[r] === 0) { st[r] = 1; push(solve(r), r); } } }
+      while (hn > 0) {
+        const q = pop(); if (st[q] === 2) continue;
+        const d = solve(q); st[q] = 2; dist[q] = d; touched.push(q);
+        if (d >= B) continue;
+        nb(q); for (let s = 0; s < 6; s++) { const r = NB[s]; if (r >= 0 && st[r] !== 2) { st[r] = 1; push(solve(r), r); } }
+      }
+      for (let m = 0; m < touched.length; m++) { const q = touched[m]; const s = phi[q] > 0 ? 1 : -1; phi[q] = s*Math.min(B, dist[q]); st[q] = 0; }
+    };
+  }
+
+  // effective arrival time of node q, valid for any view time <= S.t
+  function teff(S, q) {
+    const T = S.T[q]; if (T !== Infinity) return T;
+    const p = S.phi[q], h = S.Hr[q];
+    return S.t + (h > 1e-9 ? Math.max(0, p)/h : 1e9);
+  }
+
+  // ---------------------------------------------------------------- surface nets
+  // Silicon at view time tv: nodes with T > tv. Edge crossings: exact arrival times where both are known,
+  // otherwise a constant-speed interpolation between the arrival at the etched node and the current front.
+  function crossing(S, qa, qb, tv) {   // qa etched at tv, qb not; fraction from a towards b
+    const Ta = S.T[qa], Tb = S.T[qb];
+    if (Tb !== Infinity) return Math.min(1, Math.max(0, (tv - Ta)/Math.max(1e-9, Tb - Ta)));
+    const pa = S.phi[qa], pb = S.phi[qb];
+    const pend = pb > pa ? Math.min(1, Math.max(0, -pa/(pb - pa))) : 0.5;
+    const span = S.t - Ta;
+    return span > 1e-9 ? pend*Math.min(1, Math.max(0, (tv - Ta)/span)) : pend;
+  }
+  function extract(S, tv, opt = {}) {
+    const { Nx, Ny, Nz, NXY, dx } = S, X0 = S.cfg.X0, Y0 = S.cfg.Y0, T = S.T;
+    const PX = Nx + 2, PY = Ny + 2, PZ = Nz + 2, PXY = PX*PY;
+    const cutJ = opt.cutJ == null ? -1 : opt.cutJ, cutI = opt.cutI == null ? -1 : opt.cutI, live = tv >= S.t - 1e-6;
+    // padded state: 1 silicon, 0 etchant/air; qmap -> engine index (or -1 for pads and cut-away nodes)
+    const sil = new Uint8Array(PX*PY*PZ), qmap = new Int32Array(PX*PY*PZ).fill(-1);
+    for (let k = 0; k < Nz; k++) for (let j = 0; j < Ny; j++) {
+      if (cutJ >= 0 && j > cutJ) continue;
+      for (let i = 0; i < Nx; i++) {
+        if (cutI >= 0 && i > cutI) continue;
+        const q = k*NXY + j*Nx + i, p = (k+1)*PXY + (j+1)*PX + (i+1);
+        qmap[p] = q; sil[p] = (live ? S.phi[q] > 0 : T[q] > tv) ? 1 : 0;
+      }
+    }
+    const frac = (pa, pb) => {   // pa silicon, pb not: fraction from pa to pb where the surface sits
+      const qa = qmap[pa], qb = qmap[pb];
+      if (qa < 0 || qb < 0) return 0.5;
+      if (live) { const pa = S.phi[qa], pb = S.phi[qb]; return pa > pb ? Math.min(1, Math.max(0, pa/(pa - pb))) : 0.5; }
+      return 1 - crossing(S, qb, qa, tv);
+    };
+    const vid = new Int32Array(PX*PY*PZ).fill(-1), pos = [];
+    const C = [[0,0,0],[1,0,0],[0,1,0],[1,1,0],[0,0,1],[1,0,1],[0,1,1],[1,1,1]];
+    const E = [[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]];
+    const off = C.map(c => c[2]*PXY + c[1]*PX + c[0]);
+    for (let k = 0; k < PZ-1; k++) for (let j = 0; j < PY-1; j++) for (let i = 0; i < PX-1; i++) {
+      const p0 = k*PXY + j*PX + i; let m = 0;
+      for (let c = 0; c < 8; c++) if (sil[p0 + off[c]]) m |= 1 << c;
+      if (m === 0 || m === 255) continue;
+      let sx = 0, sy = 0, sz = 0, n = 0;
+      for (let e = 0; e < 12; e++) {
+        const a = E[e][0], b = E[e][1], ia = (m >> a) & 1, ib = (m >> b) & 1; if (ia === ib) continue;
+        const s = ia ? frac(p0 + off[a], p0 + off[b]) : 1 - frac(p0 + off[b], p0 + off[a]);
+        sx += C[a][0] + s*(C[b][0] - C[a][0]); sy += C[a][1] + s*(C[b][1] - C[a][1]); sz += C[a][2] + s*(C[b][2] - C[a][2]); n++;
+      }
+      vid[p0] = pos.length/3;
+      pos.push(X0 + (i + sx/n - 0.5)*dx, Y0 + (j + sy/n - 0.5)*dx, -(k + sz/n - 0.5)*dx);
+    }
+    const tri = [], tag = [];
+    const cube = (k, j, i) => (k < 0 || j < 0 || i < 0 || k >= PZ-1 || j >= PY-1 || i >= PX-1) ? -1 : vid[k*PXY + j*PX + i];
+    for (let k = 0; k < PZ; k++) for (let j = 0; j < PY; j++) for (let i = 0; i < PX; i++) {
+      const p = k*PXY + j*PX + i, v0 = sil[p];
+      for (let ax = 0; ax < 3; ax++) {
+        const i1 = i + (ax === 0), j1 = j + (ax === 1), k1 = k + (ax === 2);
+        if (i1 >= PX || j1 >= PY || k1 >= PZ) continue;
+        const p1 = k1*PXY + j1*PX + i1; if (v0 === sil[p1]) continue;
+        let a, b, c, d;
+        if (ax === 0) { a = cube(k, j, i); b = cube(k, j-1, i); c = cube(k-1, j-1, i); d = cube(k-1, j, i); }
+        else if (ax === 1) { a = cube(k, j, i); b = cube(k-1, j, i); c = cube(k-1, j, i-1); d = cube(k, j, i-1); }
+        else { a = cube(k, j, i); b = cube(k, j, i-1); c = cube(k, j-1, i-1); d = cube(k, j-1, i); }
+        if (a < 0 || b < 0 || c < 0 || d < 0) continue;
+        // z index grows downward, so the k-axis flips handedness
+        const flip = (v0 === 1) !== (ax === 2);
+        if (flip) tri.push(a, b, c, a, c, d); else tri.push(a, c, b, a, d, c);
+        const cap = (cutJ >= 0 && ax === 1 && j1 === cutJ + 2 && qmap[p] >= 0) || (cutI >= 0 && ax === 0 && i1 === cutI + 2 && qmap[p] >= 0);
+        tag.push(cap ? 1 : 0, cap ? 1 : 0);
+      }
+    }
+    return { pos: new Float32Array(pos), idx: new Uint32Array(tri), tag: new Uint8Array(tag) };
+  }
+
+  // 2D section of the arrival-time field in the plane j = const (axis "y") or i = const (axis "x")
+  function section(S, axis, index, tv) {
+    // returns silicon flags and per-edge crossing fractions along the row (a) and column (k) directions
+    const { Nx, Ny, Nz, NXY } = S, n = axis === "y" ? Nx : Ny;
+    const at = (k, a) => axis === "y" ? k*NXY + index*Nx + a : k*NXY + a*Nx + index;
+    const sil = new Uint8Array(n*Nz), fa = new Float32Array(n*Nz).fill(-1), fk = new Float32Array(n*Nz).fill(-1);
+    const live = tv >= S.t - 1e-6, cr = (qa, qb) => { if (live) { const pa = S.phi[qa], pb = S.phi[qb]; return pa < pb ? Math.min(1, Math.max(0, -pa/(pb - pa))) : 0.5; } return crossing(S, qa, qb, tv); };
+    for (let k = 0; k < Nz; k++) for (let a = 0; a < n; a++) sil[k*n + a] = (live ? S.phi[at(k, a)] > 0 : S.T[at(k, a)] > tv) ? 1 : 0;
+    for (let k = 0; k < Nz; k++) for (let a = 0; a < n; a++) {
+      const s0 = sil[k*n + a];
+      if (a + 1 < n && s0 !== sil[k*n + a + 1]) { const qa = at(k, a), qb = at(k, a + 1); fa[k*n + a] = s0 ? 1 - cr(qb, qa) : cr(qa, qb); }
+      if (k + 1 < Nz && s0 !== sil[(k+1)*n + a]) { const qa = at(k, a), qb = at(k + 1, a); fk[k*n + a] = s0 ? 1 - cr(qb, qa) : cr(qa, qb); }
+    }
+    const open = new Uint8Array(n); for (let a = 0; a < n; a++) open[a] = axis === "y" ? S.open[index*Nx + a] : S.open[a*Nx + index];
+    return { n, Nz, sil, fa, fk, open };
+  }
+
+  // ---------------------------------------------------------------- statistics at view time tv
+  function stats(S, tv) {
+    const { Nx, Ny, Nz, NXY, dx, T, sd } = S;
+    let depth = 0, under = 0, susp = 0, through = 0;
+    for (let q = 0; q < NXY; q++) {
+      // deepest etched node in this column (+ crossing to the next)
+      let kk = -1;
+      for (let k = 0; k < Nz; k++) { if (T[k*NXY + q] <= tv) kk = k; else break; }
+      if (kk >= 0) {
+        let d = (kk + 0.5)*dx;
+        if (kk + 1 < Nz) d += crossing(S, kk*NXY + q, (kk + 1)*NXY + q, tv)*dx; else { d = Nz*dx; through++; }
+        if (d > depth) depth = d;
+      }
+      if (sd[q] > 0 && T[q] <= tv) { susp++; if (sd[q] > under) under = sd[q]; }
+    }
+    // release of each "mask" shape: fraction of its masked area with no silicon under it (top node row)
+    const rel = (S.shapeMap || []).map(m => { let a = 0, b = 0; for (const q of m) { a++; if (T[q] <= tv) b++; } return a ? b/a : null; });
+    return { depth, under, susp: susp*dx*dx, through: through*dx*dx, rel };
+  }
+  function shapeMaps(S) {
+    const { Nx, Ny, dx, cfg } = S; S.shapeMap = cfg.shapes.map(() => []);
+    for (let j = 0; j < Ny; j++) for (let i = 0; i < Nx; i++) {
+      const x = cfg.X0 + (i + 0.5)*dx, y = cfg.Y0 + (j + 0.5)*dx, q = j*Nx + i;
+      if (S.open[q]) continue;
+      for (let s = cfg.shapes.length - 1; s >= 0; s--) if (inPoly(cfg.shapes[s].pts, x, y)) { if (cfg.shapes[s].op === "mask") S.shapeMap[s].push(q); break; }
+    }
+  }
+
+  // ---------------------------------------------------------------- message handler (worker or in-page)
+  function makeHandler(post) {
+    let S = null, job = 0;
+    const view = (tv, cut, cutMesh) => {
+      const opt = {}; if (cut && cutMesh) { if (cut.axis === "y") opt.cutJ = cut.index; else opt.cutI = cut.index; }
+      const m = extract(S, tv, opt);
+      const sec = cut ? section(S, cut.axis, cut.index, tv) : null;
+      const top = new Uint8Array(S.NXY); for (let q = 0; q < S.NXY; q++) top[q] = S.T[q] <= tv ? 1 : 0;
+      return { mesh: m, sec, top, st: stats(S, tv), t: S.t, tv };
+    };
+    const tr = r => { const a = [r.mesh.pos.buffer, r.mesh.idx.buffer, r.mesh.tag.buffer, r.top.buffer]; if (r.sec) a.push(r.sec.sil.buffer, r.sec.fa.buffer, r.sec.fk.buffer, r.sec.open.buffer); return a; };
+    return function (msg, tick) {
+      if (msg.cmd === "run") {
+        const my = ++job, t0 = Date.now();
+        try { S = create(msg.cfg); shapeMaps(S); } catch (e) { post({ type: "error", message: String(e && e.message || e) }); return; }
+        post({ type: "grid", id: msg.id, Nx: S.Nx, Ny: S.Ny, Nz: S.Nz, dx: S.dx, dt: S.dt0, al: S.al, rmax: S.rmax, tris: S.RT.tris });
+        let lastPost = Date.now();
+        const loop = () => {
+          if (my !== job) return;
+          step(S, msg.tEnd, 8);
+          const done = S.t >= msg.tEnd - 1e-9;
+          if (done || Date.now() - lastPost > 450) {
+            lastPost = Date.now();
+            const r = view(S.t, msg.cut, msg.cutMesh); r.type = done ? "done" : "progress"; r.id = msg.id; r.ms = Date.now() - t0; r.steps = S.steps;
+            post(r, tr(r));
+          }
+          if (!done) tick(loop);
+        };
+        tick(loop);
+      } else if (msg.cmd === "view") {
+        if (!S) return;
+        const r = view(Math.min(msg.tv, S.t), msg.cut, msg.cutMesh); r.type = "view"; r.id = msg.id; r.req = msg.req; post(r, tr(r));
+      } else if (msg.cmd === "stop") { job++; }
+    };
+  }
+
+  return { ORIENT, uvOf, makeRate, rateC, create, step, extract, section, teff, isOpen, stats, makeHandler };
+}
+</script>
+<script>
+(() => {
+const C = Core, V3 = THREE.Vector3;
+const T_WAFER = 525;
+const RATES = {
+  PAL30: { name: "KOH 30 wt%, 70 °C (Pal & Sato p. 87)", r: { "100": 0.797, "110": 1.455, "111": 0.005 } },
+  PAL40: { name: "KOH 40 wt%, 70 °C (Pal & Sato p. 87)", r: { "100": 0.599, "110": 1.293, "111": 0.009 } },
+  LEC:   { name: "KOH 42 wt%, 75 °C (Lec 4-1 p. 7)", r: { "100": 42/60, "110": 66/60, "111": 0.5/60 } },
+};
+// vertical-wall trench on (110): long edges along a vertical-wall trace (54.74° from the flat), as Example 8
+function trench110(W, L) {
+  const a = 35.2644/C.DEG, d1 = [Math.sin(a), Math.cos(a)], d2 = [-Math.sin(a), Math.cos(a)];
+  const n1 = [d1[1], -d1[0]], s2 = W/Math.abs(d2[0]*n1[0] + d2[1]*n1[1]);
+  const P0 = [-L/2*d1[0] - s2/2*d2[0], -L/2*d1[1] - s2/2*d2[1]];
+  return [P0, [P0[0] + L*d1[0], P0[1] + L*d1[1]], [P0[0] + L*d1[0] + s2*d2[0], P0[1] + L*d1[1] + s2*d2[1]], [P0[0] + s2*d2[0], P0[1] + s2*d2[1]]];
+}
+const OPENINGS = {
+  "100": [
+    { name: "Rectangle 400 × 200 µm, edges along the flat", o: C.rect(0, 0, 400, 200, 0), rate: "PAL30" },
+    { name: "Square 200 µm turned 45° (Example 2)", o: C.rect(0, 0, 200, 200, 45), rate: "PAL30" },
+    { name: "Rectangle 400 × 200 µm turned 5° (Example 3)", o: C.rect(0, 0, 400, 200, 5), rate: "PAL30" },
+    { name: "Circle Ø 200 µm (Example 4)", o: C.circle(100), rate: "PAL30" },
+  ],
+  "110": [
+    { name: "Circle Ø 300 µm", o: C.circle(150), rate: "PAL40" },
+    { name: "Circle Ø 400 µm (Example 7)", o: C.circle(200), rate: "PAL40" },
+    { name: "Vertical-wall trench 50 × 600 µm (Example 8)", o: trench110(50, 600), rate: "PAL40" },
+    { name: "Rectangle 400 × 60 µm along the flat (Example 9)", o: C.rect(0, 0, 400, 60, 0), rate: "PAL40" },
+  ],
+  "111": [
+    { name: "Circle Ø 80 µm, pre-etched 30 µm", o: C.circle(40), pre: 30, rate: "PAL30" },
+    { name: "Circle Ø 100 µm, pre-etched 20 µm (Example 10)", o: C.circle(50), pre: 20, rate: "PAL30" },
+  ],
+};
+const HOLD = {
+  "100": { title: "(100) wafer: a corner up", steps: [
+    "Hold the model with one corner pointing straight up. That corner is [001]; the opposite corner points into the wafer.",
+    "Turn it about the vertical axis until the four edges around the middle run parallel and perpendicular to the flat. Those edges lie along ⟨110⟩, and the [100] and [010] corners sit 45° to either side of the flat normal, as drawn in Lec 4-1 p. 6.",
+    "The wafer surface cuts the model through those four edges. The lower half is the pit for a very small opening: an inverted pyramid with four faces at 54.74°.",
+    "For a real opening, slide each lower face outward until it touches the opening (tutorial, Step 2)."] },
+  "110": { title: "(110) wafer: an edge up", steps: [
+    "Hold the model with one edge on top, horizontal. The midpoint of that edge points along [110], the wafer normal.",
+    "Turn it until the top edge is parallel to the flat. The top edge then runs along [1̄10].",
+    "The wafer surface cuts the model through its middle. Four faces hang straight down (vertical walls, traces at 54.74° to the flat); the two lower faces lean at 35.26° and meet in a trough under the bottom edge.",
+    "Slide each lower face outward until it touches the opening."] },
+  "111": { title: "(111) wafer: a face up", steps: [
+    "Lay the model on one face, so the opposite face is flat on top. Both are {111} planes parallel to the wafer.",
+    "Turn it until one edge of the top triangle is parallel to the flat (flat assumed along [1̄10]).",
+    "The wafer surface cuts the model in a hexagon. Three side faces lean inward and three overhang, all at 70.53°; the bottom face is the floor.",
+    "Because the top face is {111}, an opening does not etch down unless the hole is started first (pre-etch); the walls then undercut sideways."] },
+};
+
+// --------------------------------------------------------------------- helpers
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+let COL = {};
+function readColors() {
+  for (const k of ["scene-bg", "s-ink", "s-top", "s-side", "s-cut", "f111", "f100", "f110", "fhi", "m-up", "m-low", "disc", "mask", "ghost", "accent"])
+    COL[k] = new THREE.Color(css("--" + k) || "#888");
+}
+const fmtA = a => Math.abs(a - Math.round(a)) < 0.005 ? `${Math.round(a)}°` : `${a.toFixed(2)}°`;
+const um = x => `${x.toFixed(1)} µm`;
+function idxHTML(v, open = "(", close = ")") {
+  return open + v.map(x => x < 0 ? `<span class="ob">${-x}</span>` : `${x}`).join("") + close;
+}
+const famHTML = f => f === "surface" || f === "back" ? f : `{${f}}`;
+const LIGHT = C.unit([0.35, -0.6, 0.75]);
+function shadeColor(base, n) {
+  const k = 0.62 + 0.38*Math.max(0, C.dot(n, LIGHT));
+  return base.clone().multiplyScalar(k);
+}
+const famColor = f => f === "111" ? COL.f111 : f === "100" ? COL.f100 : f === "110" ? COL.f110 : COL["s-top"];
+const v3 = p => new V3(p[0], p[1], p[2]);
+
+// --------------------------------------------------------------------- renderer, camera
+const stage = document.getElementById("stage"), labelsEl = document.getElementById("labels"), tip = document.getElementById("tip");
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+renderer.localClippingEnabled = true;
+stage.insertBefore(renderer.domElement, labelsEl);
+const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 100);
+camera.up.set(0, 0, 1);
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = false;
+controls.addEventListener("change", () => { dirty = true; });
+let scene = new THREE.Scene(), dirty = true, radius = 1, labels = [];
+
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false);
+  const a = w/h, r = radius*1.08;
+  if (a >= 1) { camera.left = -r*a; camera.right = r*a; camera.top = r; camera.bottom = -r; }
+  else { camera.left = -r; camera.right = r; camera.top = r/a; camera.bottom = -r/a; }
+  camera.near = -radius*20; camera.far = radius*20;
+  camera.updateProjectionMatrix(); dirty = true;
+}
+new ResizeObserver(resize).observe(stage);
+
+const OBL = { "100": [30, -60], "110": [26, -34], "111": [28, -70] };
+const VIEWS = { oblique: [30, -60], back: [30, 120], top: [89.5, -90], flat: [0, -90], left: [0, 0], below: [-40, -60] };
+const dirOf = (e, a) => new V3(Math.cos(e/C.DEG)*Math.cos(a/C.DEG), Math.cos(e/C.DEG)*Math.sin(a/C.DEG), Math.sin(e/C.DEG));
+let anim = null;
+function setView(dir, target, instant = false) {
+  dir = dir.clone().normalize();
+  const tgt = target ? target.clone() : controls.target.clone();
+  if (instant) {
+    controls.target.copy(tgt); camera.position.copy(tgt).addScaledVector(dir, radius*4); camera.zoom = 1;
+    camera.updateProjectionMatrix(); controls.update(); dirty = true; return;
+  }
+  const d0 = camera.position.clone().sub(controls.target).normalize(), t0 = controls.target.clone(), z0 = camera.zoom;
+  anim = { d0, d1: dir, t0, t1: tgt, z0, start: performance.now(), dur: 500 };
+}
+function stepAnim(now) {
+  if (!anim) return;
+  let s = Math.min(1, (now - anim.start)/anim.dur); s = s < 0.5 ? 2*s*s : 1 - 2*(1 - s)*(1 - s);
+  const q = new THREE.Quaternion().setFromUnitVectors(anim.d0, anim.d1.clone().normalize());
+  const q1 = new THREE.Quaternion().slerp(q, s);
+  const d = anim.d0.clone().applyQuaternion(q1);
+  if (Math.abs(anim.d0.dot(anim.d1) + 1) < 1e-6) d.copy(anim.d0).lerp(anim.d1, s).normalize();
+  controls.target.lerpVectors(anim.t0, anim.t1, s);
+  camera.position.copy(controls.target).addScaledVector(d, radius*4);
+  camera.zoom = anim.z0 + (1 - anim.z0)*s; camera.updateProjectionMatrix();
+  controls.update(); dirty = true;
+  if (s >= 1) anim = null;
+}
+
+// --------------------------------------------------------------------- overlay labels
+function addLabel(pos, html, cls = "", show = null) {
+  const el = document.createElement("div"); el.innerHTML = html; if (cls) el.className = cls;
+  labelsEl.appendChild(el); labels.push({ el, pos: pos.clone(), show }); return el;
+}
+function clearLabels() { labels = []; labelsEl.innerHTML = ""; }
+function placeLabels() {
+  const w = stage.clientWidth, h = stage.clientHeight, camDir = camera.position.clone().sub(controls.target).normalize();
+  for (const L of labels) {
+    const vis = L.show ? L.show(camDir) : true;
+    if (!vis) { L.el.style.display = "none"; continue; }
+    const p = L.pos.clone().project(camera);
+    L.el.style.display = "";
+    L.el.style.left = `${(p.x + 1)/2*w}px`; L.el.style.top = `${(1 - p.y)/2*h}px`;
+  }
+}
+
+// --------------------------------------------------------------------- geometry builders
+function meshFromPolys(polys, colors, matOpts) {   // polys: arrays of [x,y,z] (convex), colors: THREE.Color per poly
+  const pos = [], col = [], tri2poly = [];
+  polys.forEach((P, k) => {
+    for (let i = 1; i + 1 < P.length; i++) {
+      for (const q of [P[0], P[i], P[i + 1]]) { pos.push(q[0], q[1], q[2]); col.push(colors[k].r, colors[k].g, colors[k].b); }
+      tri2poly.push(k);
+    }
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+  const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial(Object.assign({ vertexColors: true, side: THREE.DoubleSide }, matOpts || {})));
+  m.userData.tri2poly = tri2poly;
+  return m;
+}
+function linesFromLoops(loops, color, opts = {}) {
+  const pos = [];
+  for (const P of loops) for (let i = 0; i < P.length; i++) {
+    const a = P[i], b = P[(i + 1) % P.length]; pos.push(a[0], a[1], a[2], b[0], b[1], b[2]);
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  const mat = opts.dashed ? new THREE.LineDashedMaterial({ color, dashSize: opts.dash || 4, gapSize: opts.gap || 3, clippingPlanes: opts.clip || null, transparent: !!opts.opacity, opacity: opts.opacity || 1 })
+                          : new THREE.LineBasicMaterial({ color, clippingPlanes: opts.clip || null, transparent: !!opts.opacity, opacity: opts.opacity || 1 });
+  const L = new THREE.LineSegments(g, mat);
+  if (opts.dashed) L.computeLineDistances();
+  return L;
+}
+function ccw(P) {
+  let a = 0; for (let i = 0; i < P.length; i++) { const p = P[i], q = P[(i + 1) % P.length]; a += p[0]*q[1] - q[0]*p[1]; }
+  return a >= 0 ? P : P.slice().reverse();
+}
+// rectangle minus convex polygon O, as a list of convex (overlapping) pieces
+function rectMinus(rect, O) {
+  if (!O || O.length < 3) return [rect];
+  O = ccw(O); const out = [];
+  for (let i = 0; i < O.length; i++) {
+    const p = O[i], q = O[(i + 1) % O.length], a = [q[1] - p[1], -(q[0] - p[0])];
+    const piece = C.clip2(rect, [-a[0], -a[1]], -(a[0]*p[0] + a[1]*p[1]));
+    if (piece.length >= 3) out.push(piece);
+  }
+  return out;
+}
+
+// --------------------------------------------------------------------- state
+const S = { wf: "100", mode: "model", sel: null, open: 0, rate: "PAL30", t: 0, final: false, cut: false, block: true, ghost: true, mask: false,
+            corners: true, faces: false, upper: true, playing: false };
+
+// --------------------------------------------------------------------- MODEL scene
+const OCTA = [];   // faces: {hkl, verts(wafer)}
+function octaFaces(wf) {
+  const out = [];
+  for (const sx of [1, -1]) for (const sy of [1, -1]) for (const sz of [1, -1]) {
+    const hkl = [sx, sy, sz];
+    const V = [[sx, 0, 0], [0, sy, 0], [0, 0, sz]].map(v => C.toWafer(v, wf));
+    let n = C.toWafer(C.unit(hkl), wf);
+    // order counter-clockwise seen from outside
+    if (C.dot(C.cross(C.sub(V[1], V[0]), C.sub(V[2], V[0])), n) < 0) V.reverse();
+    out.push({ hkl, V, n });
+  }
+  return out;
+}
+const PL_UP = [new THREE.Plane(new V3(0, 0, 1), 0)], PL_LOW = [new THREE.Plane(new V3(0, 0, -1), 0)];
+let model = null;
+
+function buildModel() {
+  const wf = S.wf, F = octaFaces(wf);
+  scene = new THREE.Scene(); scene.background = COL["scene-bg"]; clearLabels();
+  radius = 1.6;
+  const g = new THREE.Group(); scene.add(g);
+  // upper half (translucent) and lower half (the pit), both from the same 8 triangles
+  const polys = F.map(f => f.V);
+  const up = meshFromPolys(polys, F.map(f => shadeColor(COL["m-up"], f.n)), { clippingPlanes: PL_UP, transparent: true, opacity: 0.55, depthWrite: false });
+  const low = meshFromPolys(polys, F.map(f => shadeColor(COL["m-low"], f.n)), { clippingPlanes: PL_LOW, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+  up.visible = S.upper; up.renderOrder = 3;
+  g.add(low, up);
+  const edges = [];
+  for (const f of F) for (let i = 0; i < 3; i++) edges.push([f.V[i], f.V[(i + 1) % 3]]);
+  const eLow = linesFromLoops(edges, COL["s-ink"], { clip: PL_LOW });
+  const eUp = linesFromLoops(edges, COL["s-ink"], { clip: PL_UP, opacity: 0.55 });
+  eUp.visible = S.upper;
+  g.add(eLow, eUp);
+  // wafer disc with the primary flat
+  const R = 1.7, YF = -1.45, xf = Math.sqrt(R*R - YF*YF), D = [];
+  const a0 = Math.atan2(YF, xf), a1 = Math.atan2(YF, -xf) + 2*Math.PI;
+  for (let i = 0; i <= 120; i++) { const a = a0 + (a1 - a0)*i/120; D.push([R*Math.cos(a), R*Math.sin(a), 0]); }
+  const discShape = new THREE.Shape(D.map(p => new THREE.Vector2(p[0], p[1])));
+  const disc = new THREE.Mesh(new THREE.ShapeGeometry(discShape), new THREE.MeshBasicMaterial({ color: COL.disc, transparent: true, opacity: 0.28, depthWrite: false, side: THREE.DoubleSide }));
+  disc.renderOrder = 2; g.add(disc);
+  g.add(linesFromLoops([D], COL["s-ink"], { opacity: 0.5 }));
+  const flat = linesFromLoops([[[-xf, YF, 0], [xf, YF, 0]]], COL.accent); g.add(flat);
+  // outline of the model at the surface (= pit outline for a point-like opening)
+  const H = F.map(f => ({ n: f.n, b: 1/Math.sqrt(3) }));
+  const O = C.outline(H, 0);
+  if (O.length >= 3) g.add(linesFromLoops([O.map(p => [p[0], p[1], 0.002])], COL.accent));
+  // axis arrows: e1 along the flat, e3 up
+  const e = C.FRAME_IDX[wf];
+  g.add(new THREE.ArrowHelper(new V3(1, 0, 0), new V3(0.1, YF + 0.16, 0), 0.6, COL["s-ink"].getHex(), 0.1, 0.06));
+  addLabel(new V3(0.92, YF + 0.16, 0), idxHTML(e[0], "[", "]"), "", camDir => Math.abs(camDir.x) < 0.9);
+  addLabel(new V3(-xf*0.45, YF - 0.14, 0), "primary flat", "acc");
+  g.add(new THREE.ArrowHelper(new V3(0, 0, 1), new V3(0, 0, 1.03), 0.4, COL["s-ink"].getHex(), 0.1, 0.06));
+  addLabel(new V3(0, 0, 1.6), idxHTML(e[2], "[", "]") + " up");
+  // corner labels (crystal directions of the six corners)
+  const cornerEls = [];
+  for (const [i, s] of [[0, 1], [0, -1], [1, 1], [1, -1], [2, 1], [2, -1]]) {
+    const c = [0, 0, 0]; c[i] = s; const p = C.toWafer(c, wf);
+    const el = addLabel(v3(p).multiplyScalar(1.13), idxHTML(c, "[", "]"), "", camDir => S.corners && !(p[2] < -0.5 && camDir.z > 0.9) && !(p[2] > 0.5 && camDir.z < -0.9));
+    cornerEls.push(el);
+  }
+  // face labels
+  for (const f of F) {
+    const c = f.V.reduce(C.add, [0, 0, 0]).map(x => x/3);
+    const nn = v3(f.n);
+    addLabel(v3(c).addScaledVector(nn, 0.06), idxHTML(f.hkl), "", camDir => S.faces && camDir.dot(nn) > 0.05);
+  }
+  model = { F, up, low, eUp, sel: new THREE.Group() };
+  scene.add(model.sel);
+  if (S.sel !== null) selectFace(S.sel, false);
+  resize();
+}
+
+function classify(f) {
+  const nz = f.n[2], zs = f.V.map(v => v[2]), zmin = Math.min(...zs), zmax = Math.max(...zs), eps = 1e-9;
+  if (nz > 1 - 1e-9) return "top face: parallel to the surface and above it, not part of the pit";
+  if (nz < -1 + 1e-9) return "floor of the pit: parallel to the surface";
+  if (zmin > -eps) return "upper half: above the wafer surface, not part of the pit";
+  if (Math.abs(nz) < 1e-9) return "vertical wall of the pit";
+  if (nz < 0) return "wall of the pit, leaning inward (the pit narrows with depth)";
+  return "overhanging wall of the pit (the pit widens with depth, undercut)";
+}
+
+function selectFace(k, moveCam = false) {
+  S.sel = k;
+  const sel = model.sel; while (sel.children.length) sel.remove(sel.children[0]);
+  labels = labels.filter(L => { if (L.sel) { L.el.remove(); return false; } return true; });
+  const fi = document.getElementById("faceInfo");
+  if (k === null) { document.getElementById("vAlong").disabled = true; dirty = true; return; }
+  const f = model.F[k], n = f.n, theta = C.angleToSurface(n);
+  // highlight
+  const hl = meshFromPolys([f.V.map(p => C.add(p, C.mul(n, 0.004)))], [COL.accent], { transparent: true, opacity: 0.45, depthWrite: false });
+  hl.renderOrder = 4; sel.add(hl);
+  sel.add(linesFromLoops([f.V.map(p => C.add(p, C.mul(n, 0.004)))], COL.accent));
+  let html = `<div class="face"><b>${idxHTML(f.hkl)}</b> face of the model<br>${classify(f)}.</div><dl class="kv" style="margin-top:8px">`;
+  html += `<dt>angle to surface</dt><dd>${fmtA(theta)}</dd>`;
+  const horiz = Math.hypot(n[0], n[1]) > 1e-9;
+  let along = false;
+  if (horiz) {
+    const u = C.unit(C.cross(n, [0, 0, 1]));
+    // midpoint of the trace: the part of the face at z = 0, or the closest point of the plane's trace line
+    const pts = [];
+    for (let i = 0; i < 3; i++) {
+      const a = f.V[i], b = f.V[(i + 1) % 3];
+      if (Math.abs(a[2]) < 1e-9) pts.push(a);
+      else if (a[2]*b[2] < 0) { const t = a[2]/(a[2] - b[2]); pts.push(C.add(a, C.mul(C.sub(b, a), t))); }
+    }
+    const nxy = [n[0], n[1], 0], s = (1/Math.sqrt(3))/C.dot(nxy, nxy), base = C.mul(nxy, s);
+    let M = pts.length ? C.mul(pts.reduce(C.add, [0, 0, 0]), 1/pts.length) : base;
+    M = C.add(base, C.mul(u, C.dot(C.sub(M, base), u))); M[2] = 0;
+    sel.add(linesFromLoops([[C.add(M, C.mul(u, -1.3)), C.add(M, C.mul(u, 1.3))]], COL.accent, { dashed: true, dash: 0.06, gap: 0.04 }));
+    // directions in the plane perpendicular to the line: hS (surface, acute side) and w (down the wall)
+    let w = C.unit(C.cross(u, n)); if (w[2] > 0) w = C.mul(w, -1);
+    let hS;
+    if (Math.abs(w[2] + 1) < 1e-9) hS = C.mul(C.unit(nxy), -1); else hS = C.unit([w[0], w[1], 0]);
+    const r = 0.5;
+    sel.add(linesFromLoops([[M, C.add(M, C.mul(hS, r*1.6))], [M, C.add(M, C.mul(w, r*1.6))]], COL["s-ink"]));
+    const arc = [];
+    const ang = Math.acos(Math.max(-1, Math.min(1, C.dot(hS, w))));
+    const kx = C.unit(C.cross(hS, w));
+    for (let i = 0; i <= 30; i++) { const t = ang*i/30; arc.push(C.add(M, C.add(C.mul(hS, r*Math.cos(t)), C.mul(C.cross(kx, hS), r*Math.sin(t))))); }
+    const arcLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(arc.map(v3)), new THREE.LineBasicMaterial({ color: COL.accent }));
+    sel.add(arcLine);
+    const mid = arc[15], lab = C.add(M, C.mul(C.sub(mid, M), 1.45));
+    labels.push(Object.assign({ el: addLabelEl(`θ = ${fmtA(theta)}`, "acc big"), pos: v3(lab), sel: true }));
+    // normals
+    const nw = n[2] >= 0 ? n : C.mul(n, -1), c0 = C.add(M, C.mul(u, 0.55));
+    sel.add(new THREE.ArrowHelper(new V3(0, 0, 1), v3(c0), 0.5, COL["s-ink"].getHex(), 0.08, 0.05));
+    sel.add(new THREE.ArrowHelper(v3(nw), v3(c0), 0.5, COL.accent.getHex(), 0.08, 0.05));
+    labels.push({ el: addLabelEl("n<sub>s</sub>", ""), pos: v3(C.add(c0, [0, 0, 0.6])), sel: true });
+    labels.push({ el: addLabelEl("n<sub>w</sub>", "acc"), pos: v3(C.add(c0, C.mul(nw, 0.62))), sel: true });
+    // pit / silicon wedge angles at the rim
+    const hout = C.unit(nxy), siAng = Math.acos(Math.max(-1, Math.min(1, C.dot(hout, w))))*C.DEG;
+    let uc = C.intDir(C.toCrystal(u, S.wf));
+    if (uc && uc.find(x => x !== 0) < 0) uc = uc.map(x => -x || 0);
+    let phi = Math.atan2(u[1], u[0])*C.DEG; phi = ((phi % 180) + 180) % 180; const toFlat = Math.min(phi, 180 - phi);
+    html += `<dt>angle between normals</dt><dd>${fmtA(Math.acos(Math.abs(n[2]))*C.DEG)}</dd>`;
+    html += `<dt>trace on surface</dt><dd>${uc ? idxHTML(uc, "[", "]") : "-"}</dd>`;
+    html += `<dt>trace to flat</dt><dd>${fmtA(toFlat)}</dd>`;
+    if (Math.min(...f.V.map(v => v[2])) < -1e-9 && Math.abs(n[2]) > 1e-9) {
+      html += `<dt>pit-side angle</dt><dd>${fmtA(180 - siAng)}</dd><dt>silicon-side angle</dt><dd>${fmtA(siAng)}</dd>`;
+    }
+    html += `</dl><p class="note" style="margin:8px 0 0">The angle between two planes is the angle between their normals, n<sub>s</sub> (surface) and n<sub>w</sub> (wall). It appears at true size only when you look along the line where the planes meet; from any other direction it looks smaller or larger.</p>`;
+    model.along = { dir: v3(u), M: v3(M) };
+    along = true;
+  } else {
+    html += `</dl><p class="note" style="margin:8px 0 0">This face is parallel to the wafer surface, so it does not meet it in a line.</p>`;
+    model.along = null;
+  }
+  fi.innerHTML = html;
+  document.getElementById("vAlong").disabled = !along;
+  sel.traverse(o => { if (o.material && o !== hl) { o.material.depthTest = false; o.renderOrder = 10; } });
+  dirty = true;
+}
+function addLabelEl(html, cls) { const el = document.createElement("div"); el.innerHTML = html; if (cls) el.className = cls; labelsEl.appendChild(el); return el; }
+
+// --------------------------------------------------------------------- PIT scene
+const PL_CUT = [new THREE.Plane(new V3(0, 1, 0), 0)];
+let pit = null;
+function prepPit() {
+  const op = OPENINGS[S.wf][S.open], R = RATES[S.rate].r, pre = op.pre || 0;
+  const fin = C.etch(S.wf, op.o, { T: T_WAFER, pre });
+  const vf = C.volume(fin);
+  let lo = 0, hi = 50;
+  while (C.volume(C.etch(S.wf, op.o, { t: hi, T: T_WAFER, pre, rates: R })) < 0.98*vf && hi < 1e5) hi *= 2;
+  for (let i = 0; i < 30; i++) { const m = (lo + hi)/2; if (C.volume(C.etch(S.wf, op.o, { t: m, T: T_WAFER, pre, rates: R })) < 0.98*vf) lo = m; else hi = m; }
+  const nice = x => { const p = Math.pow(10, Math.floor(Math.log10(x))); for (const k of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (k*p >= x) return k*p; return 10*p; };
+  const tmax = nice(1.15*hi);
+  const last = C.etch(S.wf, op.o, { t: tmax, T: T_WAFER, pre, rates: R });
+  let ext = [Infinity, -Infinity, Infinity, -Infinity];
+  for (const P of [C.outline(fin.H), C.outline(last.H), op.o]) for (const p of P) {
+    ext[0] = Math.min(ext[0], p[0]); ext[1] = Math.max(ext[1], p[0]); ext[2] = Math.min(ext[2], p[1]); ext[3] = Math.max(ext[3], p[1]);
+  }
+  const span = Math.max(ext[1] - ext[0], ext[3] - ext[2]), m = 0.18*span + 10;
+  const box = [ext[0] - m, ext[1] + m, ext[2] - m, ext[3] + m];
+  const dmax = Math.max(C.depth(fin), C.depth(last));
+  const zb = dmax > 0.75*T_WAFER ? T_WAFER : Math.min(T_WAFER, Math.ceil(1.3*dmax/10)*10);
+  pit = { op, R, pre, fin, tmax, box, zb };
+  document.getElementById("tMax").textContent = `${tmax.toFixed(0)} min`;
+}
+
+function buildPit() {
+  scene = new THREE.Scene(); scene.background = COL["scene-bg"]; clearLabels();
+  const { op, R, pre, fin, box, zb } = pit;
+  const t = S.t;
+  const cav = S.final ? fin : C.etch(S.wf, op.o, { t, T: T_WAFER, pre, rates: R });
+  pit.cav = cav;
+  const [x0, x1, y0, y1b] = box, yA = S.cut ? 0 : y0, yB = y1b;
+  const cx = (x0 + x1)/2, cy = (y0 + y1b)/2;
+  radius = 0.5*Math.hypot(x1 - x0, y1b - y0, zb)*0.92;
+  const clip = S.cut ? PL_CUT : null;
+  const g = new THREE.Group(); scene.add(g);
+  pit.pick = [];
+  // cavity walls
+  const walls = cav.faces.filter(f => S.block ? !(f.label === "surface" || f.label === "back") : true);
+  if (walls.length) {
+    const cols = walls.map(f => shadeColor(f.fam === "surface" || f.fam === "back" ? COL["s-top"] : famColor(f.fam), S.block ? C.mul(f.n, -1) : f.n));
+    const mesh = meshFromPolys(walls.map(f => f.poly), cols, { clippingPlanes: clip, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+    mesh.userData.faces = walls; g.add(mesh); pit.pick.push(mesh);
+    g.add(linesFromLoops(walls.map(f => f.poly), COL["s-ink"], { clip }));
+  }
+  // silicon block
+  if (S.block) {
+    const O = C.outline(cav.H, 0);
+    const top = rectMinus([[x0, yA], [x1, yA], [x1, yB], [x0, yB]], O.length >= 3 ? O : null);
+    const polys = [], cols = [];
+    for (const P of top) { polys.push(P.map(p => [p[0], p[1], 0])); cols.push(COL["s-top"]); }
+    const sides = [[[x1, yA], [x1, yB], [1, 0, 0]], [[x0, yB], [x0, yA], [-1, 0, 0]], [[x1, yB], [x0, yB], [0, 1, 0]]];
+    if (!S.cut) sides.push([[x0, yA], [x1, yA], [0, -1, 0]]);
+    for (const [a, b, n] of sides) { polys.push([[a[0], a[1], 0], [b[0], b[1], 0], [b[0], b[1], -zb], [a[0], a[1], -zb]]); cols.push(shadeColor(COL["s-side"], n)); }
+    const Ob = zb >= T_WAFER ? C.outline(cav.H, -zb + 1e-6) : [];
+    for (const P of rectMinus([[x0, yA], [x1, yA], [x1, yB], [x0, yB]], Ob.length >= 3 ? Ob : null)) { polys.push(P.map(p => [p[0], p[1], -zb])); cols.push(COL["s-side"]); }
+    if (S.cut) {
+      const sec = C.vsectionY(cav.H, 0);
+      for (const P of rectMinus([[x0, -zb], [x1, -zb], [x1, 0], [x0, 0]], sec.length >= 3 ? sec : null)) { polys.push(P.map(p => [p[0], 0, p[1]])); cols.push(COL["s-cut"]); }
+      if (sec.length >= 3) g.add(linesFromLoops([sec.map(p => [p[0], -0.002*zb, p[1]])], COL["s-ink"]));
+    }
+    const blk = meshFromPolys(polys, cols, { polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 });
+    blk.userData.block = true; g.add(blk); pit.pick.push(blk);
+    const yl = yB;
+    g.add(linesFromLoops([[[x0, yA, 0], [x1, yA, 0], [x1, yl, 0], [x0, yl, 0]], [[x0, yA, -zb], [x1, yA, -zb], [x1, yl, -zb], [x0, yl, -zb]]], COL["s-ink"], { opacity: 0.6 }));
+    g.add(linesFromLoops([[[x0, yA, 0], [x0, yA, -zb]], [[x1, yA, 0], [x1, yA, -zb]], [[x0, yl, 0], [x0, yl, -zb]], [[x1, yl, 0], [x1, yl, -zb]]], COL["s-ink"], { opacity: 0.6 }));
+    if (zb < T_WAFER) addLabel(new V3(x1, yA, -zb), `depth shown: ${zb.toFixed(0)} µm`, "", camDir => camDir.z > -0.2);
+    // mask
+    if (S.mask) {
+      const mp = rectMinus([[x0, yA], [x1, yA], [x1, yB], [x0, yB]], op.o).map(P => P.map(p => [p[0], p[1], 0.012*zb]));
+      const mm = meshFromPolys(mp, mp.map(() => COL.mask), { transparent: true, opacity: 0.22, depthWrite: false });
+      mm.renderOrder = 5; g.add(mm);
+    }
+  }
+  // mask opening outline
+  g.add(linesFromLoops([op.o.map(p => [p[0], p[1], 0.004*zb])], COL.mask, { clip, dashed: true, dash: radius*0.03, gap: radius*0.02 }));
+  // ghost: final {111} shape
+  if (S.ghost && !S.final) { const gh = linesFromLoops(fin.faces.filter(f => f.label !== "surface").map(f => f.poly), COL.ghost, { clip, opacity: 0.55 }); gh.material.depthTest = false; gh.renderOrder = 8; g.add(gh); }
+  // axes labels on the top surface
+  const e = C.FRAME_IDX[S.wf];
+  g.add(new THREE.ArrowHelper(new V3(1, 0, 0), new V3(x0, yA, 0), (x1 - x0)*0.18, COL.accent.getHex(), radius*0.05, radius*0.03));
+  addLabel(new V3(x0 + (x1 - x0)*0.25, yA, 0), idxHTML(e[0], "[", "]") + " along flat", "acc");
+  scene.userData.center = new V3(cx, cy, -zb/2);
+  updateReadout(cav);
+  resize();
+}
+
+function updateReadout(cav) {
+  const d = C.depth(cav), O = C.outline(cav.H, 0);
+  const xs = O.map(p => p[0]), ys = O.map(p => p[1]);
+  // largest distance of the outline outside the (convex) mask opening
+  const M = ccw(pit.op.o); let under = 0;
+  for (const p of O) {
+    let s = -Infinity;
+    for (let i = 0; i < M.length; i++) {
+      const a = M[i], b = M[(i + 1) % M.length], ex = b[0] - a[0], ey = b[1] - a[1], L = Math.hypot(ex, ey);
+      s = Math.max(s, (ey*(p[0] - a[0]) - ex*(p[1] - a[1]))/L);
+    }
+    under = Math.max(under, s);
+  }
+  const floor = cav.faces.find(f => f.label !== "surface" && f.n[2] < -1 + 1e-9 && f.label !== "back");
+  const through = cav.faces.some(f => f.label === "back");
+  const rows = [
+    ["time", S.final ? "long-etch limit" : `${S.t.toFixed(S.t < 10 ? 1 : 0)} min`],
+    ["depth", d > 0 ? um(d) : "-"],
+    ["outline along flat", O.length ? um(Math.max(...xs) - Math.min(...xs)) : "-"],
+    ["outline across flat", O.length ? um(Math.max(...ys) - Math.min(...ys)) : "-"],
+    ["beyond mask edge", O.length ? um(Math.max(0, under)) : "-"],
+    ["flat floor", through ? "etched through" : floor ? `yes, area ${(floor.area/1e3).toFixed(1)}×10³ µm²` : "no (walls meet)"],
+  ];
+  document.getElementById("readout").innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+  // walls grouped by family and angle
+  const groups = new Map();
+  for (const f of cav.faces) {
+    if (f.label === "surface" || f.label === "back") continue;
+    const a = C.angleToSurface(f.n), key = `${f.fam}|${a.toFixed(2)}|${f.n[2] > 1e-9 ? "o" : ""}`;
+    const g = groups.get(key) || { fam: f.fam, a, over: f.n[2] > 1e-9, n: 0 }; g.n++; groups.set(key, g);
+  }
+  const arr = [...groups.values()].sort((p, q) => (p.fam > q.fam) - (p.fam < q.fam) || p.a - q.a);
+  const sw = f => `<span class="sw" style="background:${"#" + famColor(f).getHexString()}"></span>`;
+  document.getElementById("walls").innerHTML = arr.length ? arr.map(g => `<tr><td>${sw(g.fam)}${famHTML(g.fam)}</td><td class="num">${g.a < 1e-6 ? "floor" : fmtA(g.a) + (g.over ? " ovh." : "")}</td><td class="num">× ${g.n}</td></tr>`).join("") : `<tr><td>no pit yet</td></tr>`;
+}
+
+// --------------------------------------------------------------------- picking
+const ray = new THREE.Raycaster(); ray.params.Line.threshold = 0;
+function pickAt(ev) {
+  const r = renderer.domElement.getBoundingClientRect();
+  const m = new THREE.Vector2(((ev.clientX - r.left)/r.width)*2 - 1, -((ev.clientY - r.top)/r.height)*2 + 1);
+  ray.setFromCamera(m, camera);
+  return m;
+}
+let downAt = null;
+renderer.domElement.addEventListener("pointerdown", ev => { downAt = [ev.clientX, ev.clientY]; });
+renderer.domElement.addEventListener("pointerup", ev => {
+  if (!downAt || Math.hypot(ev.clientX - downAt[0], ev.clientY - downAt[1]) > 5) return;
+  if (S.mode !== "model") return;
+  pickAt(ev);
+  const objs = [model.low]; if (S.upper) objs.push(model.up);
+  const hits = ray.intersectObjects(objs).filter(h => (h.object === model.low ? h.point.z <= 1e-6 : h.point.z >= -1e-6));
+  if (!hits.length) { selectFace(null); document.getElementById("faceInfo").innerHTML = '<span class="note">Click any face.</span>'; return; }
+  selectFace(hits[0].object.userData.tri2poly[hits[0].faceIndex]);
+  document.getElementById("hint").textContent = "Drag to turn; try \"Along the selected line\"";
+});
+renderer.domElement.addEventListener("pointermove", ev => {
+  if (S.mode === "sim" && !ev.buttons) { simHover(ev); return; }
+  if (S.mode !== "pit" || ev.buttons) { tip.style.display = "none"; return; }
+  pickAt(ev);
+  let hits = ray.intersectObjects(pit.pick || []);
+  if (S.cut) hits = hits.filter(h => h.object.userData.block || h.point.y >= -1e-6);
+  const h = hits[0];
+  if (!h || h.object.userData.block) { tip.style.display = "none"; return; }
+  const f = h.object.userData.faces[h.object.userData.tri2poly[h.faceIndex]];
+  if (!Array.isArray(f.label)) { tip.style.display = "none"; return; }
+  const a = C.angleToSurface(f.n);
+  const kind = a < 1e-6 ? "floor" : Math.abs(a - 90) < 1e-6 ? "vertical wall" : f.n[2] > 0 ? "overhanging wall" : "sloping wall";
+  tip.innerHTML = `<b>${idxHTML(f.label)}</b> &nbsp;${famHTML(f.fam)}<br>${kind}, ${fmtA(a)} to the surface`;
+  const r = stage.getBoundingClientRect();
+  tip.style.left = `${Math.min(ev.clientX - r.left + 14, r.width - 200)}px`; tip.style.top = `${ev.clientY - r.top + 12}px`; tip.style.display = "block";
+});
+renderer.domElement.addEventListener("pointerleave", () => { tip.style.display = "none"; });
+
+// --------------------------------------------------------------------- UI wiring
+const $ = id => document.getElementById(id);
+function pressed(seg, attr, val) { for (const b of seg.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset[attr] === val)); }
+function fillOpenings() {
+  $("selOpen").innerHTML = OPENINGS[S.wf].map((o, i) => `<option value="${i}">${o.name}</option>`).join("");
+  $("selOpen").value = String(S.open);
+}
+$("selRate").innerHTML = Object.entries(RATES).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join("");
+function setHold() {
+  $("holdTitle").textContent = HOLD[S.wf].title;
+  $("holdSteps").innerHTML = HOLD[S.wf].steps.map(s => `<li>${s}</li>`).join("");
+}
+function sliderToT() { return pit.tmax*Number($("tSlider").value)/1000; }
+function rebuild(resetView) {
+  if (S.mode === "model") {
+    buildModel();
+    $("panelModel").classList.remove("hidden"); $("panelPit").classList.add("hidden"); $("panelSim").classList.add("hidden"); $("simBelow").classList.add("hidden");
+    $("vAlong").classList.remove("hidden");
+    $("hint").textContent = S.sel === null ? "Click a face of the model" : "Drag to turn";
+    if (resetView) setView(dirOf(...OBL[S.wf]), new V3(0, 0, 0), true);
+  } else if (S.mode === "sim") {
+    $("panelSim").classList.remove("hidden"); $("simBelow").classList.remove("hidden"); $("panelPit").classList.add("hidden"); $("panelModel").classList.add("hidden");
+    $("vAlong").classList.add("hidden");
+    $("hint").textContent = "Hover a surface for its plane";
+    if (SIM.wfLoaded !== S.wf) { SIM.wfLoaded = S.wf; SIM.preset = 0; fillSimPresets(); loadPreset(S.wf, 0); simRun(); resetView = true; }
+    buildSim(resetView);
+  } else {
+    S.t = sliderToT();
+    buildPit();
+    $("panelPit").classList.remove("hidden"); $("panelModel").classList.add("hidden"); $("panelSim").classList.add("hidden"); $("simBelow").classList.add("hidden");
+    $("vAlong").classList.add("hidden");
+    $("hint").textContent = "Hover a wall for its plane";
+    if (resetView) setView(dirOf(...OBL[S.wf]), scene.userData.center, true);
+  }
+}
+function setWafer(w) {
+  S.wf = w; S.sel = null; S.open = 0; S.rate = OPENINGS[w][0].rate; $("selRate").value = S.rate;
+  pressed($("segW"), "w", w); setHold(); fillOpenings();
+  $("faceInfo").innerHTML = '<span class="note">Click any face. The page then draws where its plane cuts the wafer surface, the two normals and the angle between the planes.</span>';
+  prepPit(); rebuild(true);
+}
+$("segW").addEventListener("click", e => { const b = e.target.closest("button"); if (b) setWafer(b.dataset.w); });
+$("segM").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b || b.dataset.m === S.mode) return;
+  S.mode = b.dataset.m; pressed($("segM"), "m", S.mode); tip.style.display = "none"; rebuild(true);
+});
+$("views").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b || b.disabled) return;
+  const v = b.dataset.v;
+  if (v === "along") {
+    if (!model || !model.along) return;
+    const cur = camera.position.clone().sub(controls.target);
+    const d = model.along.dir.clone(); if (cur.dot(d) < 0) d.negate();
+    setView(d, model.along.M); return;
+  }
+  const tgt = S.mode === "model" ? new V3(0, 0, 0) : scene.userData.center;
+  setView(dirOf(...(v === "oblique" ? OBL[S.wf] : v === "back" ? [OBL[S.wf][0], OBL[S.wf][1] + 180] : VIEWS[v])), tgt);
+});
+$("selOpen").addEventListener("change", e => { S.open = Number(e.target.value); S.rate = OPENINGS[S.wf][S.open].rate; $("selRate").value = S.rate; prepPit(); rebuild(true); });
+$("selRate").addEventListener("change", e => { S.rate = e.target.value; prepPit(); rebuild(false); });
+$("tSlider").addEventListener("input", () => { S.t = sliderToT(); $("tNow").textContent = `${S.t.toFixed(S.t < 10 ? 1 : 0)} min`; if (S.final) { S.final = false; $("cFinal").checked = false; } buildPit(); });
+$("cFinal").addEventListener("change", e => { S.final = e.target.checked; buildPit(); });
+for (const [id, key] of [["cCut", "cut"], ["cBlock", "block"], ["cGhost", "ghost"], ["cMask", "mask"]])
+  $(id).addEventListener("change", e => { S[key] = e.target.checked; buildPit(); });
+$("cCorners").addEventListener("change", e => { S.corners = e.target.checked; dirty = true; });
+$("cFaces").addEventListener("change", e => { S.faces = e.target.checked; dirty = true; });
+$("cUpper").addEventListener("change", e => { S.upper = e.target.checked; model.up.visible = model.eUp.visible = S.upper; dirty = true; });
+let lastPlay = 0;
+$("bPlay").addEventListener("click", () => {
+  S.playing = !S.playing; $("bPlay").textContent = S.playing ? "Pause" : "Play";
+  if (S.playing && Number($("tSlider").value) >= 1000) $("tSlider").value = 0;
+  if (S.playing) { S.final = false; $("cFinal").checked = false; }
+  lastPlay = performance.now();
+});
+function stepPlay(now) {
+  if (!S.playing || S.mode !== "pit") return;
+  if (now - lastPlay < 50) return;
+  lastPlay = now;
+  const v = Math.min(1000, Number($("tSlider").value) + 6);
+  $("tSlider").value = v; S.t = sliderToT(); $("tNow").textContent = `${S.t.toFixed(S.t < 10 ? 1 : 0)} min`; buildPit();
+  if (v >= 1000) { S.playing = false; $("bPlay").textContent = "Play"; }
+}
+
+// --------------------------------------------------------------------- ETCH SIMULATOR scene
+const EE = etchEngineFactory();
+const SQ2 = Math.SQRT1_2, SQ3 = 1/Math.sqrt(3), SQ6 = 1/Math.sqrt(6);
+const SFR = {   // wafer frames for the simulator: e1 along the flat, e2 in-plane (flat on the -e2 side), e3 = normal
+  "100":  { wf: "100", e: [[-SQ2, SQ2, 0], [-SQ2, -SQ2, 0], [0, 0, 1]], idx: [[-1,1,0],[-1,-1,0],[0,0,1]],
+            name: "(100), flat along ⟨110⟩", src: "Lec 4-1 p. 6; Rev 1 frame: x = [1̄10] along the flat, y = [1̄1̄0]" },
+  "110f": { wf: "110", e: [[-SQ2, SQ2, 0], [0, 0, 1], [SQ2, SQ2, 0]], idx: [[-1,1,0],[0,0,1],[1,1,0]],
+            name: "(110), flat along ⟨110⟩ (Lec 4-1 p. 6)", src: "Lec 4-1 p. 6: flat edge along [1̄10], flat normal [001̄]" },
+  "110a": { wf: "110", e: [[SQ6, -SQ6, -2*SQ6], [-SQ3, SQ3, -SQ3], [SQ2, SQ2, 0]], idx: [[1,-1,-2],[-1,1,-1],[1,1,0]], arrow: [1,-1,1],
+            name: "(110), ⟨111⟩ arrow = flat normal (Lec 4-1 p. 11, HW2 P5)", src: "Lec 4-1 p. 11 and HW2 P5: the ⟨111⟩ arrow [11̄1] is the outward flat normal; flat edge along [11̄2̄] (Flat and Arrow Note)" },
+  "111":  { wf: "111", e: [[SQ2, -SQ2, 0], [SQ6, SQ6, -2*SQ6], [SQ3, SQ3, SQ3]], idx: [[1,-1,0],[1,1,-2],[1,1,1]],
+            name: "(111), flat along [11̄0] (assumed)", src: "assumption: Lec 4-1 p. 6 labels the (111) flat ⟨111⟩, which cannot lie in a (111) surface; Pal & Sato p. 31 draw ⟨110⟩" },
+};
+const PAL = {   // Pal & Sato, Table 4.1, p. 87: KOH, 70 °C, µm/min
+  30: { "100": 0.797, "110": 1.455, "210": 1.561, "211": 1.319, "221": 0.714, "310": 1.456, "311": 1.436, "320": 1.543, "331": 1.160, "530": 1.556, "540": 1.512, "111": 0.005 },
+  40: { "100": 0.599, "110": 1.293, "210": 1.233, "211": 0.950, "221": 0.544, "310": 1.088, "311": 1.067, "320": 1.287, "331": 0.800, "530": 1.280, "540": 1.287, "111": 0.009 },
+  50: { "100": 0.539, "110": 0.870, "210": 0.959, "211": 0.631, "221": 0.322, "310": 0.757, "311": 0.746, "320": 1.013, "331": 0.489, "530": 1.033, "540": 0.914, "111": 0.009 },
+};
+const LEC42 = (() => {   // Lec 4-1 p. 7 gives {100}, {110}, {111} only; the rest: Pal 40 wt% scaled by R100(Lec)/R100(Pal 40) (assumption)
+  const k = (42/60)/PAL[40]["100"], r = {};
+  for (const [h, v] of Object.entries(PAL[40])) r[h] = v*k;
+  r["100"] = 42/60; r["110"] = 66/60; r["111"] = 0.5/60; return r;
+})();
+const SRATES = {
+  PAL30: { name: "KOH 30 wt%, 70 °C", r: PAL[30], src: "Pal & Sato Table 4.1, p. 87 (12 orientations)", sio2: null },
+  PAL40: { name: "KOH 40 wt%, 70 °C", r: PAL[40], src: "Pal & Sato Table 4.1, p. 87 (12 orientations)", sio2: null },
+  PAL50: { name: "KOH 50 wt%, 70 °C", r: PAL[50], src: "Pal & Sato Table 4.1, p. 87 (12 orientations)", sio2: null },
+  LEC42: { name: "KOH 42 wt%, 75 °C (Lec 4-1)", r: LEC42, src: "Lec 4-1 p. 7 for {100}, {110}, {111}; other orientations scaled from Pal & Sato 40 wt% (assumption)", sio2: 0.34/60 },
+};
+const T_WAFER_SIM = 525;   // Pal & Sato Table 2.1, p. 30: 100 mm wafer
+
+// in-plane angle (deg, from the flat, 0..180) of the traces of vertical {111} planes in a frame
+function vTraces(fk) {
+  const [e1, e2, e3] = SFR[fk].e, out = [];
+  for (const m of EE.ORIENT["111"] ? [[1,1,1],[1,1,-1],[1,-1,1],[-1,1,1]] : []) {
+    const n = [m[0]*SQ3, m[1]*SQ3, m[2]*SQ3], nz = n[0]*e3[0] + n[1]*e3[1] + n[2]*e3[2];
+    if (Math.abs(nz) > 1e-6) continue;
+    const nx = n[0]*e1[0] + n[1]*e1[1] + n[2]*e1[2], ny = n[0]*e2[0] + n[1]*e2[1] + n[2]*e2[2];
+    let a = Math.atan2(nx, -ny)*C.DEG; a = ((a % 180) + 180) % 180; out.push(a);   // trace direction is perpendicular to (nx, ny)
+  }
+  return out.sort((p, q) => p - q);
+}
+// shape helpers (all in µm, wafer frame)
+const shp = (type, op, cx, cy, w, h, ang, extra) => Object.assign({ type, op, cx, cy, w, h: h == null ? w : h, ang: ang || 0 }, extra || {});
+function shapePts(s) {
+  const c = Math.cos(s.ang/C.DEG), sn = Math.sin(s.ang/C.DEG);
+  let P;
+  if (s.type === "rect") P = [[-s.w/2, -s.h/2], [s.w/2, -s.h/2], [s.w/2, s.h/2], [-s.w/2, s.h/2]];
+  else if (s.type === "circle") { P = []; for (let i = 0; i < 64; i++) { const a = 2*Math.PI*i/64; P.push([s.w/2*Math.cos(a), s.w/2*Math.sin(a)]); } }
+  else if (s.type === "tri") { const r = s.w/Math.sqrt(3); P = [0, 1, 2].map(i => { const a = Math.PI/2 + 2*Math.PI*i/3; return [r*Math.cos(a), r*Math.sin(a)]; }); }
+  else if (s.type === "para") {   // parallelogram: side w along angle a1 (deg), side h along angle a2, relative to the flat
+    const u = [Math.cos(s.a1/C.DEG), Math.sin(s.a1/C.DEG)], v = [Math.cos(s.a2/C.DEG), Math.sin(s.a2/C.DEG)];
+    P = [[-1,-1],[1,-1],[1,1],[-1,1]].map(([p, q]) => [p*s.w/2*u[0] + q*s.h/2*v[0], p*s.w/2*u[1] + q*s.h/2*v[1]]);
+    return P.map(([x, y]) => [s.cx + x, s.cy + y]);
+  }
+  return P.map(([x, y]) => [s.cx + x*c - y*sn, s.cy + x*sn + y*c]);
+}
+// presets: wafer frame key, shapes, domain half-sizes, etchant, time, pre-etch, note
+function makePresets() {
+  const P = { "100": [], "110": [], "111": [] };
+  const t110 = vTraces("110f"), t110a = vTraces("110a");
+  P["100"].push(
+    { name: "Cantilever along ⟨110⟩: released by convex-corner undercut", fk: "100", rate: "PAL30", t: 100, hx: 200, hy: 130,
+      shapes: [shp("rect", "open", 0, 0, 300, 180), shp("rect", "mask", -57.5, 0, 185, 50, 0, { name: "cantilever" })],
+      note: "The beam edges run along ⟨110⟩, so {111} walls protect them; only the two convex corners at the free end are attacked by fast planes, and the undercut runs back along the beam until it is free (Lec 4-1 p. 8, Fig. 5c and 5d). Compare the next preset." },
+    { name: "Cantilever along ⟨100⟩: released from its long edges", fk: "100", rate: "PAL30", t: 60, hx: 200, hy: 160,
+      shapes: [shp("rect", "open", 0, 0, 300, 220), shp("rect", "mask", -70, -36, 170, 50, 45, { name: "cantilever" })],
+      note: "Edges along ⟨100⟩ have no {111} plane through them. In KOH they are undercut by near-vertical {100} planes at about R(100) (Pal & Sato pp. 246-248, condition c), so the beam is freed from the sides much sooner than the ⟨110⟩ beam." },
+    { name: "Bridges: ⟨110⟩ bridge stays on a ridge, 45° bridge is released", fk: "100", rate: "PAL30", t: 70, hx: 280, hy: 140,
+      shapes: [shp("rect", "open", -130, 0, 170, 180), shp("rect", "mask", -130, 0, 40, 200, 0, { name: "⟨110⟩ bridge" }),
+               shp("rect", "open", 130, 0, 190, 180), shp("rect", "mask", 130, 0, 40, 260, 45, { name: "45° bridge" })],
+      note: "A bridge along ⟨110⟩ has {111} walls on both edges and keeps a silicon ridge under it (Lec 4-1 p. 14 draws bridges over pits). The 45° (⟨100⟩) bridge has convex corners and ⟨100⟩ edges, so it is undercut and freed." },
+    { name: "Mesa: convex-corner attack (no compensation)", fk: "100", rate: "PAL30", t: 60, hx: 180, hy: 180,
+      shapes: [shp("rect", "open", 0, 0, 1000, 1000), shp("rect", "mask", 0, 0, 200, 200, 0, { name: "mesa mask" })],
+      note: "Concave corners show the slowest plane, convex corners the fastest (Lec 4-1 p. 8). Read the undercut l and depth d from the readout: Ur = l/d is the input for compensation design (Pal & Sato p. 237). Pal & Sato report that a 90° convex corner in KOH turns into a 150 ± 2° corner (p. 235)." },
+    { name: "Mesa with ⟨110⟩-beam compensation", fk: "100", rate: "PAL30", t: 60, hx: 230, hy: 230,
+      shapes: [shp("rect", "open", 0, 0, 1000, 1000), shp("rect", "mask", 0, 0, 200, 200, 0, { name: "mesa mask" }),
+               ...[[1, 1], [-1, 1], [-1, -1], [1, -1]].map(([sx, sy]) => shp("rect", "mask", sx*(100 + 55), sy*(100 - 20), 110, 40))],
+      note: "A beam along ⟨110⟩ is added at each convex corner (Lec 4-1 p. 9, Fig. 4.63; Pal & Sato pp. 243-245). Its length sets the depth at which the corner is reached: d = (0.5 W cos α + L sin α)/Ur (Pal & Sato p. 244). W = 40 µm and L = 110 µm here are design choices." },
+    { name: "Mesa with ⟨100⟩-beam compensation (W = 2d)", fk: "100", rate: "PAL30", t: 50, hx: 330, hy: 330,
+      shapes: [shp("rect", "open", 0, 0, 1200, 1200), shp("rect", "mask", 0, 0, 300, 300, 0, { name: "mesa mask" }),
+               ...[[1, 1], [-1, 1], [-1, -1], [1, -1]].map(([sx, sy]) => shp("rect", "mask", sx*(150 + 50), sy*(150 + 50), 180, 80, sx*sy > 0 ? 45 : -45))],
+      note: "A beam along ⟨100⟩ at each corner (Lec 4-1 p. 9, Fig. 4.64). Pal & Sato p. 249: the beam width should be twice the required etch depth, W = 2d; here W = 80 µm for d ≈ 40 µm (50 min at 0.797 µm/min). Beam length 180 µm is a design choice." },
+    { name: "Mesa with square compensation", fk: "100", rate: "PAL30", t: 60, hx: 220, hy: 220,
+      shapes: [shp("rect", "open", 0, 0, 1000, 1000), shp("rect", "mask", 0, 0, 200, 200, 0, { name: "mesa mask" }),
+               ...[[1, 1], [-1, 1], [-1, -1], [1, -1]].map(([sx, sy]) => shp("rect", "mask", sx*100, sy*100, 90, 90))],
+      note: "Squares centred on the convex corners (Pal & Sato pp. 241-243, Fig. 6.27). Pal & Sato report that the corners still bevel in KOH with this design. Square size 90 µm is a design choice." },
+    { name: "Windows of different size and shape merging", fk: "100", rate: "PAL30", t: 80, hx: 240, hy: 175,
+      shapes: [shp("rect", "open", -100, 0, 140, 140), shp("rect", "open", 20, 75, 100, 100, 45), shp("circle", "open", 30, -30, 80),
+               shp("rect", "open", 160, -60, 40, 40)],
+      note: "Each window grows to the ⟨110⟩ rectangle that bounds it (Lec 4-1 p. 8, Fig. 5e). The small square stops as a V-pit (self-limited at w/√2); where the bounding rectangles overlap, the mask strip between windows is undercut and the cavities merge." },
+    { name: "Cross-shaped window: concave and convex corners", fk: "100", rate: "PAL30", t: 70, hx: 190, hy: 190,
+      shapes: [shp("rect", "open", 0, 0, 280, 70), shp("rect", "open", 0, 0, 70, 280)],
+      note: "The four inner corners of the cross are convex silicon corners and are undercut; the outer corners are concave and stay sharp. Given enough time the cavity becomes the bounding square (Lec 4-1 p. 8, Fig. 5e)." },
+  );
+  P["110"].push(
+    { name: "Parallelogram window: vertical {111} walls (Lec 4-1 p. 12, Fig. 24)", fk: "110f", rate: "PAL30", t: 90, hx: 260, hy: 200,
+      shapes: [shp("para", "open", 0, 0, 300, 160, 0, { a1: t110[0], a2: t110[1] })],
+      note: "Window edges along the two vertical-{111} traces (54.74° and 125.26° to a ⟨110⟩ flat). The four long walls are vertical {111}; inclined {111} at 35.26° appear at the acute corners (Lec 4-1 p. 12)." },
+    { name: "Parallel trenches with thin walls (Lec 4-1 p. 12, Fig. 25)", fk: "110f", rate: "PAL30", t: 60, hx: 260, hy: 165, dxMax: 5,
+      shapes: [-120, 0, 120].map(o => shp("para", "open", o, 0, 300, 60, 0, { a1: t110[0], a2: 0 })),
+      note: "Line patterns along a vertical-{111} trace give deep trenches with vertical walls; the silicon walls between them stay (Lec 4-1 p. 12, Fig. 25 a, b). The trench ends lie along the flat, so inclined {111} planes close them and limit the depth. Design choice: the walls here are 60 µm wide along the flat (49 µm normal to the wall); the grid is capped at 5 µm because the first-order scheme slowly thins walls narrower than about 8 grid cells (numerical, not physical)." },
+    { name: "Line along the flat: shallow V-groove (Lec 4-1 p. 12, Fig. 25)", fk: "110f", rate: "PAL40", t: 60, hx: 260, hy: 120,
+      shapes: [shp("rect", "open", 0, 0, 400, 60)],
+      note: "Lines parallel to the inclined {111} traces give shallow V-grooves with walls at 35.26° (Lec 4-1 p. 12, Fig. 25 caption)." },
+    { name: "Circle window, ⟨111⟩ arrow convention (HW2 P5)", fk: "110a", rate: "PAL40", t: 80, hx: 220, hy: 200,
+      shapes: [shp("circle", "open", 0, 0, 200)],
+      note: "Frame of HW2 P5: the ⟨111⟩ arrow is the outward flat normal, so vertical {111} traces lie parallel to the flat and at 70.53° to it (Flat and Arrow Note, Table 1)." },
+    { name: "Cantilever on (110): convex-corner undercut", fk: "110f", rate: "PAL30", t: 60, hx: 240, hy: 200,
+      shapes: [shp("para", "open", 0, 0, 340, 200, 0, { a1: t110[0], a2: t110[1] }),
+               shp("para", "mask", -60*Math.cos(t110[0]/C.DEG), -60*Math.sin(t110[0]/C.DEG), 240, 50, 0, { a1: t110[0], a2: t110[1], name: "cantilever" })],
+      note: "A beam with edges along the vertical-{111} traces keeps vertical walls on its sides; it is released from its free end, where the convex corners expose fast planes." },
+  );
+  P["111"].push(
+    { name: "Pre-etched holes: lateral undercut merges under the mask", fk: "111", rate: "PAL30", t: 60, hx: 170, hy: 110, pre: 50,
+      shapes: [-75, 0, 75].map(x => shp("circle", "open", x, 0, 40)),
+      note: "(111) itself barely etches (R(111) = 0.005 µm/min, Pal & Sato p. 87), so the holes are first etched straight down (pre-etch depth is an assumption, e.g. by deep RIE, Lec 4-1 p. 16). KOH then undercuts sideways until inclined {111} planes stop it; neighbouring cavities merge." },
+    { name: "Triangle window, pre-etched 30 µm", fk: "111", rate: "PAL30", t: 60, hx: 150, hy: 150, pre: 30,
+      shapes: [shp("tri", "open", 0, 0, 160)],
+      note: "Three walls slope inward and three are undercut, all {111} (Lec 4-1 p. 13, Fig. 7b); the inclined {111} planes make 70.53° with the (111) surface (derived: angle between two {111} normals). Pre-etch depth is an assumption." },
+  );
+  return P;
+}
+const SPRESETS = makePresets();
+
+const SIM = { fk: "100", rate: "PAL30", t: 60, thick: T_WAFER_SIM, pre: 0, quality: "normal", hx: 200, hy: 130, shapes: [], preset: 0,
+              tv: 0, tSim: 0, tEnd: 0, res: null, running: false, cutOn: false, cutAxis: "y", cutPos: 0, showMask: true, sel: -1,
+              grid: null, id: 0, dirty: false, playing: false, viewBusy: false, viewWant: null, worker: null };
+function simFrame() { return SFR[SIM.fk]; }
+
+// ---- worker (with an in-page fallback when workers are blocked)
+function startWorker() {
+  if (SIM.worker) return;
+  const onMsg = m => simMessage(m);
+  try {
+    const src = `${etchEngineFactory.toString()}\nconst E = etchEngineFactory();\nconst h = E.makeHandler((m, t) => postMessage(m, t || []));\nonmessage = e => h(e.data, f => setTimeout(f, 0));`;
+    const url = URL.createObjectURL(new Blob([src], { type: "text/javascript" }));
+    const w = new Worker(url);
+    w.onmessage = e => onMsg(e.data);
+    w.onerror = () => { w.terminate(); SIM.worker = null; inPage(); };
+    SIM.worker = { post: m => w.postMessage(m), kind: "worker" };
+  } catch (e) { inPage(); }
+  function inPage() {
+    const h = EE.makeHandler(m => setTimeout(() => onMsg(m), 0));
+    SIM.worker = { post: m => h(m, f => setTimeout(f, 0)), kind: "page" };
+    if (SIM.pendingRun) SIM.worker.post(SIM.pendingRun);
+  }
+}
+
+// ---- configuration from the UI state
+function simConfig() {
+  const F = simFrame(), R = SRATES[SIM.rate].r;
+  const shapes = SIM.shapes.map(s => ({ pts: shapePts(s), op: s.op }));
+  const X0 = -SIM.hx, X1 = SIM.hx, Y0 = -SIM.hy, Y1 = SIM.hy;
+  const vert = EE.rateC(EE.makeRate(R), F.e[2][0], F.e[2][1], F.e[2][2]);   // R of the wafer normal (crystal components of e3)
+  const target = { draft: 1.2e5, normal: 3e5, fine: 8e5 }[SIM.quality];
+  let dx = 1, Lz = 0;
+  for (let it = 0; it < 4; it++) {
+    Lz = Math.min(SIM.thick, vert*SIM.t*1.06 + (SIM.pre || 0) + 6*dx + 4);
+    dx = Math.max(1, Math.ceil(Math.cbrt((X1 - X0)*(Y1 - Y0)*Lz/target)*2)/2);
+    if (SIM.dxMax) dx = Math.min(dx, SIM.dxMax);   // preset with thin walls: keep them at least ~8 cells thick
+  }
+  Lz = Math.min(SIM.thick, Math.max(3*dx, Lz));
+  return { frame: F.e.map(v => v.slice()), rates: R, shapes, X0, X1, Y0, Y1, depth: Lz, dx, pre: SIM.pre || 0 };
+}
+function cutSpec() {
+  if (!SIM.grid) return null;
+  const g = SIM.grid;
+  if (SIM.cutAxis === "y") return { axis: "y", index: Math.max(0, Math.min(g.Ny - 1, Math.round((SIM.cutPos + SIM.hy)/g.dx - 0.5))) };
+  return { axis: "x", index: Math.max(0, Math.min(g.Nx - 1, Math.round((SIM.cutPos + SIM.hx)/g.dx - 0.5))) };
+}
+
+function simRun() {
+  startWorker();
+  const cfg = simConfig();
+  SIM.id++; SIM.rtab = EE.makeRate(cfg.rates); SIM.tEnd = SIM.t; SIM.tSim = 0; SIM.running = true; SIM.res = null; SIM.cfg = cfg;
+  SIM.grid = { Nx: Math.round((cfg.X1 - cfg.X0)/cfg.dx), Ny: Math.round((cfg.Y1 - cfg.Y0)/cfg.dx), Nz: Math.max(3, Math.round(cfg.depth/cfg.dx)), dx: cfg.dx, depth: cfg.depth };
+  const msg = { cmd: "run", cfg, tEnd: SIM.t, id: SIM.id, cut: cutSpec(), cutMesh: SIM.cutOn };
+  SIM.pendingRun = msg;
+  SIM.worker.post(msg);
+  $("simStatus").textContent = `Grid ${SIM.grid.Nx} × ${SIM.grid.Ny} × ${SIM.grid.Nz}, cell ${cfg.dx} µm, depth simulated ${cfg.depth.toFixed(0)} µm. Etching…`;
+  $("simBar").style.width = "0%";
+  $("bSimRun").textContent = "Restart";
+  SIM.dirty = false; updateDirtyNote();
+}
+function simMessage(m) {
+  if (m.type === "error") { $("simStatus").textContent = "Error: " + m.message; SIM.running = false; return; }
+  if (m.id !== SIM.id) return;
+  if (m.type === "grid") { SIM.grid = { Nx: m.Nx, Ny: m.Ny, Nz: m.Nz, dx: m.dx, depth: SIM.cfg.depth }; SIM.engineInfo = m; return; }
+  if (m.type === "progress" || m.type === "done") {
+    SIM.tSim = m.t; SIM.res = m;
+    $("simBar").style.width = `${(100*m.t/SIM.tEnd).toFixed(1)}%`;
+    if (m.type === "done") {
+      SIM.running = false;
+      $("simStatus").textContent = `Done: ${m.steps} time steps in ${(m.ms/1000).toFixed(1)} s on a ${SIM.grid.Nx} × ${SIM.grid.Ny} × ${SIM.grid.Nz} grid (cell ${SIM.grid.dx} µm).`;
+    } else $("simStatus").textContent = `Etching… ${m.t.toFixed(0)} of ${SIM.tEnd} min`;
+    $("simT").max = String(SIM.tSim); $("simT").value = String(SIM.tSim); SIM.tv = SIM.tSim;
+    $("simTnow").textContent = `${SIM.tv.toFixed(0)} min`; $("simTmax").textContent = `${SIM.tSim.toFixed(0)} min simulated`;
+    if (S.mode === "sim") buildSim(false);
+    return;
+  }
+  if (m.type === "view") {
+    SIM.viewBusy = false; SIM.res = m;
+    if (S.mode === "sim") buildSim(false);
+    if (SIM.viewWant) { const w = SIM.viewWant; SIM.viewWant = null; requestView(w); }
+  }
+}
+function requestView(tv) {
+  if (!SIM.worker || !SIM.res) return;
+  if (SIM.viewBusy) { SIM.viewWant = tv; return; }
+  SIM.viewBusy = true;
+  SIM.worker.post({ cmd: "view", tv, cut: cutSpec(), cutMesh: SIM.cutOn, id: SIM.id });
+}
+
+// ---- plane classification for colours and the tooltip
+const FAMS = ["100", "110", "111", "311", "211", "221", "331", "210", "310", "320", "411", "511", "321"].map(k => {
+  const v = k.split("").map(Number), n = Math.hypot(...v); return { k, v: v.map(x => x/n).sort((a, b) => b - a), raw: v };
+});
+function classifyN(nw) {   // nw: wafer-frame unit normal -> {fam, hkl, ang}
+  const [e1, e2, e3] = simFrame().e;
+  const c = [0, 1, 2].map(i => e1[i]*nw[0] + e2[i]*nw[1] + e3[i]*nw[2]);
+  const order = [0, 1, 2].sort((a, b) => Math.abs(c[b]) - Math.abs(c[a]));
+  const s = order.map(i => Math.abs(c[i]));
+  let best = null, ba = 1e9;
+  for (const f of FAMS) { const d = f.v[0]*s[0] + f.v[1]*s[1] + f.v[2]*s[2]; const a = Math.acos(Math.min(1, d))*C.DEG; if (a < ba) { ba = a; best = f; } }
+  const sortedRaw = best.raw.slice().sort((a, b) => b - a), hkl = [0, 0, 0];
+  order.forEach((ci, r) => { hkl[ci] = Math.sign(c[ci] || 1)*sortedRaw[r]; });
+  return { fam: best.k, hkl, ang: ba };
+}
+function famCol(f, ang) {
+  if (ang > 4) return COL["s-side"];
+  return f === "111" ? COL.f111 : f === "100" ? COL.f100 : f === "110" ? COL.f110 : COL.fhi;
+}
+
+// ---- 3D scene
+let simScene = null;
+function buildSim(resetView) {
+  scene = new THREE.Scene(); scene.background = COL["scene-bg"]; clearLabels();
+  const X0 = -SIM.hx, X1 = SIM.hx, Y0 = -SIM.hy, Y1 = SIM.hy, zb = SIM.grid ? SIM.grid.Nz*SIM.grid.dx : 100;
+  radius = 0.5*Math.hypot(X1 - X0, Y1 - Y0, zb)*0.85;
+  const g = new THREE.Group(); scene.add(g);
+  simScene = { pick: null, triInfo: null };
+  const r = SIM.res;
+  const cut = SIM.cutOn ? cutSpec() : null;
+  let clip = null;
+  if (cut && SIM.grid) {
+    const d = SIM.grid.dx;
+    clip = cut.axis === "y" ? [new THREE.Plane(new V3(0, -1, 0), Y0 + (cut.index + 1)*d)] : [new THREE.Plane(new V3(-1, 0, 0), X0 + (cut.index + 1)*d)];
+  }
+  if (r && r.mesh && r.mesh.idx.length) {
+    const { pos, idx, tag } = r.mesh, nt = idx.length/3, nv = pos.length/3;
+    const P = new Float32Array(nt*9), Cc = new Float32Array(nt*9), info = new Array(nt), VN = new Float32Array(nv*3), FN = new Float32Array(nt*3);
+    for (let t = 0; t < nt; t++) {   // face normals (area weighted) accumulated on vertices: smooths the grid staircase
+      const a = idx[3*t], b = idx[3*t+1], c = idx[3*t+2];
+      const ux = pos[3*b] - pos[3*a], uy = pos[3*b+1] - pos[3*a+1], uz = pos[3*b+2] - pos[3*a+2], vx = pos[3*c] - pos[3*a], vy = pos[3*c+1] - pos[3*a+1], vz = pos[3*c+2] - pos[3*a+2];
+      const nx = uy*vz - uz*vy, ny = uz*vx - ux*vz, nz = ux*vy - uy*vx;
+      FN[3*t] = nx; FN[3*t+1] = ny; FN[3*t+2] = nz;
+      if (tag[t]) continue;
+      for (const v of [a, b, c]) { VN[3*v] += nx; VN[3*v+1] += ny; VN[3*v+2] += nz; }
+    }
+    for (let pass = 0; pass < 2; pass++) {   // two more smoothing rings (vertex -> face -> vertex)
+      const V2 = new Float32Array(nv*3);
+      for (let t = 0; t < nt; t++) {
+        if (tag[t]) continue;
+        const a = idx[3*t], b = idx[3*t+1], c = idx[3*t+2];
+        let sx = VN[3*a] + VN[3*b] + VN[3*c], sy = VN[3*a+1] + VN[3*b+1] + VN[3*c+1], sz = VN[3*a+2] + VN[3*b+2] + VN[3*c+2];
+        const L = Math.hypot(sx, sy, sz) || 1; sx /= L; sy /= L; sz /= L;
+        for (const v of [a, b, c]) { V2[3*v] += sx; V2[3*v+1] += sy; V2[3*v+2] += sz; }
+      }
+      VN.set(V2);
+    }
+    const gx1 = X0 + SIM.grid.Nx*SIM.grid.dx, gy1 = Y0 + SIM.grid.Ny*SIM.grid.dx;
+    const d = SIM.grid.dx*0.05, onB = v => Math.abs(pos[3*v] - X0) < d || Math.abs(pos[3*v] - gx1) < d || Math.abs(pos[3*v+1] - Y0) < d || Math.abs(pos[3*v+1] - gy1) < d || Math.abs(pos[3*v+2] + zb) < d;
+    for (let t = 0; t < nt; t++) {
+      const a = idx[3*t], b = idx[3*t+1], c = idx[3*t+2];
+      P.set([pos[3*a], pos[3*a+1], pos[3*a+2], pos[3*b], pos[3*b+1], pos[3*b+2], pos[3*c], pos[3*c+1], pos[3*c+2]], 9*t);
+      const L = Math.hypot(FN[3*t], FN[3*t+1], FN[3*t+2]) || 1, fn = [FN[3*t]/L, FN[3*t+1]/L, FN[3*t+2]/L];
+      let qn = [VN[3*a] + VN[3*b] + VN[3*c], VN[3*a+1] + VN[3*b+1] + VN[3*c+1], VN[3*a+2] + VN[3*b+2] + VN[3*c+2]];
+      const Q = Math.hypot(...qn); qn = Q > 0 ? qn.map(v => v/Q) : fn;
+      let col, cls = null, kind = 0;
+      if (tag[t]) { col = shadeColor(COL["s-cut"], fn); kind = 1; }
+      else if (onB(a) && onB(b) && onB(c)) { col = shadeColor(COL["s-side"], fn); kind = 2; }
+      else if (pos[3*a+2] > -d && pos[3*b+2] > -d && pos[3*c+2] > -d && fn[2] > 0.9) { col = shadeColor(COL["s-top"], fn); kind = 3; }
+      else { cls = classifyN(qn); col = shadeColor(famCol(cls.fam, cls.ang), qn); }
+      info[t] = { qn: kind ? fn : qn, cls, cap: kind === 1, kind };
+      for (let k = 0; k < 3; k++) { Cc[9*t + 3*k] = col.r; Cc[9*t + 3*k + 1] = col.g; Cc[9*t + 3*k + 2] = col.b; }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(P, 3)); geo.setAttribute("color", new THREE.BufferAttribute(Cc, 3));
+    const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }));
+    g.add(mesh); simScene.pick = mesh; simScene.triInfo = info;
+  }
+  // domain box edges
+  const zbb = -zb;
+  g.add(linesFromLoops([[[X0, Y0, 0], [X1, Y0, 0], [X1, Y1, 0], [X0, Y1, 0]], [[X0, Y0, zbb], [X1, Y0, zbb], [X1, Y1, zbb], [X0, Y1, zbb]]], COL["s-ink"], { opacity: 0.35, clip }));
+  g.add(linesFromLoops([[[X0, Y0, 0], [X0, Y0, zbb]], [[X1, Y0, 0], [X1, Y0, zbb]], [[X0, Y1, 0], [X0, Y1, zbb]], [[X1, Y1, 0], [X1, Y1, zbb]]], COL["s-ink"], { opacity: 0.35, clip }));
+  // mask layer with suspended parts tinted
+  if (SIM.showMask) {
+    const tex = maskTexture(r);
+    const pg = new THREE.PlaneGeometry(X1 - X0, Y1 - Y0); pg.translate((X0 + X1)/2, (Y0 + Y1)/2, Math.max(0.6, 0.004*radius));
+    const mm = new THREE.Mesh(pg, new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, depthWrite: false, alphaTest: 0.02, clippingPlanes: clip }));
+    mm.renderOrder = 5; g.add(mm);
+  }
+  // mask outlines
+  const clipRect = P => {   // Sutherland-Hodgman clip of a mask loop to the simulated domain
+    for (const [ax, sg, lim] of [[0, 1, X0], [0, -1, X1], [1, 1, Y0], [1, -1, Y1]]) {
+      const Q = [];
+      for (let i = 0; i < P.length; i++) {
+        const A = P[i], B = P[(i + 1) % P.length], da = sg*(A[ax] - lim), db = sg*(B[ax] - lim);
+        if (da >= 0) Q.push(A);
+        if ((da >= 0) !== (db >= 0)) { const u = da/(da - db); Q.push([A[0] + u*(B[0] - A[0]), A[1] + u*(B[1] - A[1])]); }
+      }
+      P = Q; if (P.length < 3) return [];
+    }
+    const onEdge = P.every(p => Math.min(Math.abs(p[0] - X0), Math.abs(p[0] - X1), Math.abs(p[1] - Y0), Math.abs(p[1] - Y1)) < 1e-6);
+    return onEdge ? [] : P;   // a shape covering the whole domain draws no outline
+  };
+  const loops = SIM.shapes.map(s => clipRect(shapePts(s))).filter(P => P.length).map(P => P.map(p => [p[0], p[1], Math.max(0.8, 0.005*radius)]));
+  if (loops.length) g.add(linesFromLoops(loops, COL.mask, { clip, opacity: 0.8 }));
+  // flat and frame labels
+  const F = simFrame();
+  g.add(new THREE.ArrowHelper(new V3(1, 0, 0), new V3(X0, Y0, 0), (X1 - X0)*0.22, COL.accent.getHex(), radius*0.05, radius*0.03));
+  addLabel(new V3(X0 + (X1 - X0)*0.13, Y0 - radius*0.06, 0), idxHTML(F.idx[0], "[", "]") + " along flat", "acc");
+  if (F.arrow) {
+    g.add(new THREE.ArrowHelper(new V3(0, -1, 0), new V3(X1 - (X1 - X0)*0.08, Y0, 0), radius*0.25, COL.accent.getHex(), radius*0.05, radius*0.03));
+    addLabel(new V3(X1 - (X1 - X0)*0.08, Y0 - radius*0.32, 0), "⟨111⟩ " + idxHTML(F.arrow, "[", "]") + " flat normal", "acc");
+  }
+  addLabel(new V3(X1, Y1, 0), idxHTML(F.idx[2], "(", ")") + " surface", "", camDir => camDir.z > 0.1);
+  scene.userData.center = new V3((X0 + X1)/2, (Y0 + Y1)/2, -zb/2);
+  if (resetView) setView(dirOf(30, -62), scene.userData.center, true);
+  updateSimReadout(); drawSection(); drawMaskEditor();
+  resize();
+}
+function maskTexture(r) {
+  const X0 = -SIM.hx, Y0 = -SIM.hy, W = 2*SIM.hx, H = 2*SIM.hy, s = Math.min(4, 1400/Math.max(W, H));
+  const cv = document.createElement("canvas"); cv.width = Math.max(2, Math.round(W*s)); cv.height = Math.max(2, Math.round(H*s));
+  const ctx = cv.getContext("2d");
+  paintMask(ctx, s, X0, Y0, H, "#" + COL.mask.getHexString(), 0.5);
+  // mask with no silicon under it (released or undercut): darker
+  if (r && r.top && SIM.grid && SIM.cfg) {
+    const g = SIM.grid, dx = g.dx, ov = document.createElement("canvas"); ov.width = cv.width; ov.height = cv.height;
+    const o = ov.getContext("2d"); o.setTransform(s, 0, 0, -s, -X0*s, (Y0 + H)*s); o.fillStyle = "#" + COL.mask.getHexString();
+    for (let j = 0; j < g.Ny; j++) for (let i = 0; i < g.Nx; i++) if (r.top[j*g.Nx + i]) o.fillRect(X0 + i*dx - 0.3, Y0 + j*dx - 0.3, dx + 0.6, dx + 0.6);
+    o.setTransform(1, 0, 0, 1, 0, 0); o.globalCompositeOperation = "destination-in"; o.drawImage(cv, 0, 0);
+    ctx.globalAlpha = 1; ctx.drawImage(ov, 0, 0); ctx.drawImage(ov, 0, 0);
+  }
+  const t = new THREE.CanvasTexture(cv); t.anisotropy = 4; return t;
+}
+function paintMask(ctx, s, X0, Y0, H, color, alpha) {
+  const W = ctx.canvas.width/s;
+  ctx.save();
+  ctx.setTransform(s, 0, 0, -s, -X0*s, (Y0 + H)*s);   // world (x, y) -> canvas, y up
+  ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.fillRect(X0, Y0, W, H);
+  for (const sh of SIM.shapes) {
+    const P = shapePts(sh);
+    ctx.beginPath(); P.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath();
+    if (sh.op === "open") { ctx.globalCompositeOperation = "destination-out"; ctx.globalAlpha = 1; ctx.fill(); }
+    else { ctx.globalCompositeOperation = "destination-out"; ctx.globalAlpha = 1; ctx.fill(); ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = alpha; ctx.fill(); }
+  }
+  ctx.restore();
+}
+
+// ---- readout
+function updateSimReadout() {
+  const r = SIM.res, rows = [];
+  rows.push(["view time", r ? `${r.tv.toFixed(0)} min` : "-"]);
+  if (r && r.st) {
+    const st = r.st, d = st.depth;
+    rows.push(["max depth", d > 0 ? um(d) : "-"]);
+    rows.push(["max undercut under mask", st.under > 0 ? um(st.under) : "none"]);
+    if (d > 0 && st.under > 0) rows.push(["undercut / depth", (st.under/d).toFixed(2)]);
+    rows.push(["mask with no Si under it", `${(st.susp/1e3).toFixed(1)}×10³ µm²`]);
+    if (st.through > 0) rows.push(SIM.cfg && SIM.cfg.depth >= SIM.thick - 1e-6 ? ["etched through the wafer", `${(st.through/1e3).toFixed(1)}×10³ µm²`] : ["reached the simulated depth", `${SIM.cfg.depth.toFixed(0)} µm (raise it only by a longer time)`]);
+    SIM.shapes.forEach((s, i) => { if (s.name && st.rel[i] != null) rows.push([`${s.name} free`, `${(100*st.rel[i]).toFixed(0)} %${st.rel[i] > 0.995 ? " (released)" : ""}`]); });
+    const ox = SRATES[SIM.rate].sio2;
+    rows.push(["SiO₂ mask consumed", ox ? `${(ox*r.tv).toFixed(2)} µm (Lec 4-1 p. 7)` : "rate not in the course files"]);
+  }
+  $("simReadout").innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+}
+
+// ---- 2D section
+function drawSection() {
+  const cv = $("secCanvas"), ctx = cv.getContext("2d");
+  const wcss = cv.clientWidth || 600, r = SIM.res;
+  const sec = r && r.sec, g = SIM.grid;
+  const along = SIM.cutAxis === "y" ? 2*SIM.hx : 2*SIM.hy, a0 = SIM.cutAxis === "y" ? -SIM.hx : -SIM.hy;
+  const zd = g ? g.Nz*g.dx : 100;
+  const pad = 34, sc = (wcss - 2*pad)/along, hcss = Math.min(420, Math.max(120, zd*sc + 2*pad));
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = Math.round(wcss*dpr); cv.height = Math.round(hcss*dpr); cv.style.height = `${hcss}px`;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, wcss, hcss);
+  const X = a => pad + (a - a0)*sc, Z = z => pad - z*sc;    // z <= 0 downward
+  const ink = "#" + COL["s-ink"].getHexString(), si = "#" + COL["s-top"].getHexString(), maskc = "#" + COL.mask.getHexString();
+  ctx.font = "11px IBM Plex Mono, monospace"; ctx.fillStyle = ink; ctx.strokeStyle = ink;
+  if (!sec || !g) { ctx.fillText("Run the simulation to see the section.", pad, pad + 14); return; }
+  const n = sec.n, Nz = sec.Nz, dx = g.dx;
+  const ax = a => a0 + (a + 0.5)*dx, zk = k => -(k + 0.5)*dx;
+  ctx.fillStyle = si; ctx.beginPath();
+  // marching squares on the node lattice, extended by half a cell to the block faces and the surface
+  const S2 = (k, a) => (k < 0 || a < 0 || a >= n || k >= Nz) ? 0 : sec.sil[k*n + a];
+  const pt = (a, k) => [X(ax(a)), Z(zk(k))];
+  for (let k = -1; k < Nz; k++) for (let a = -1; a < n; a++) {
+    const cs = [[a, k], [a + 1, k], [a + 1, k + 1], [a, k + 1]];
+    const v = cs.map(([aa, kk]) => S2(kk, aa));
+    if (!v.some(x => x)) continue;
+    const poly = [];
+    for (let e = 0; e < 4; e++) {
+      const [pa, pk] = cs[e], [qa, qk] = cs[(e + 1) % 4], va = v[e], vb = v[(e + 1) % 4];
+      if (va) poly.push(pt(pa, pk));
+      if (va !== vb) {
+        let f = 0.5;
+        const inside = (aa, kk) => aa >= 0 && aa < n && kk >= 0 && kk < Nz;
+        if (inside(pa, pk) && inside(qa, qk)) {
+          if (pk === qk) { const lo = Math.min(pa, qa), fr = sec.fa[pk*n + lo]; if (fr >= 0) f = pa < qa ? fr : 1 - fr; }
+          else { const lo = Math.min(pk, qk), fr = sec.fk[lo*n + pa]; if (fr >= 0) f = pk < qk ? fr : 1 - fr; }
+        }
+        const A = pt(pa, pk), B = pt(qa, qk); poly.push([A[0] + f*(B[0] - A[0]), A[1] + f*(B[1] - A[1])]);
+      }
+    }
+    if (poly.length >= 3) { ctx.moveTo(poly[0][0], poly[0][1]); for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i][0], poly[i][1]); ctx.closePath(); }
+  }
+  ctx.fill();
+  // mask on top
+  ctx.fillStyle = maskc;
+  for (let a = 0; a < n; a++) if (!sec.open[a]) ctx.fillRect(X(a0 + a*dx), Z(0) - 3, dx*sc + 0.6, 3);
+  // axes
+  ctx.fillStyle = ink; ctx.globalAlpha = 0.8;
+  ctx.beginPath(); ctx.moveTo(X(a0), Z(0)); ctx.lineTo(X(a0 + along), Z(0)); ctx.lineWidth = 0.5; ctx.stroke();
+  const step = niceStep(along/6);
+  for (let v = Math.ceil(a0/step)*step; v <= a0 + along + 1e-6; v += step) { ctx.fillRect(X(v), Z(0) + 1, 0.8, 4); ctx.fillText(`${v.toFixed(0)}`, X(v) - 8, Z(0) - 7); }
+  const zs = niceStep(zd/4);
+  for (let v = 0; v <= zd + 1e-6; v += zs) { ctx.fillRect(X(a0) - 5, Z(-v), 4, 0.8); ctx.fillText(`${v.toFixed(0)}`, 2, Z(-v) + 4); }
+  ctx.globalAlpha = 1;
+  const ci = cutSpec().index, lab = SIM.cutAxis === "y" ? `section along x at y = ${(-SIM.hy + (ci + 0.5)*dx).toFixed(0)} µm` : `section along y at x = ${(-SIM.hx + (ci + 0.5)*dx).toFixed(0)} µm`;
+  ctx.fillText(lab + "  (µm, true scale; mask drawn on top)", pad, hcss - 8);
+}
+function niceStep(x) { const p = Math.pow(10, Math.floor(Math.log10(x))); for (const k of [1, 2, 2.5, 5, 10]) if (k*p >= x) return k*p; return 10*p; }
+
+// ---- mask editor
+function drawMaskEditor() {
+  const cv = $("maskCanvas"), ctx = cv.getContext("2d");
+  const wcss = cv.clientWidth || 300, W = 2*SIM.hx, H = 2*SIM.hy, s = (wcss - 20)/W, hcss = H*s + 34;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = Math.round(wcss*dpr); cv.height = Math.round(hcss*dpr); cv.style.height = `${hcss}px`;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, wcss, hcss);
+  SIM.ed = { s, ox: 10 + SIM.hx*s, oy: 10 + SIM.hy*s };
+  const tmp = document.createElement("canvas"); tmp.width = Math.round(W*s*dpr); tmp.height = Math.round(H*s*dpr);
+  paintMask(tmp.getContext("2d"), s*dpr, -SIM.hx, -SIM.hy, H, "#" + COL.mask.getHexString(), 0.55);
+  ctx.fillStyle = "#" + COL["scene-bg"].getHexString(); ctx.fillRect(10, 10, W*s, H*s);
+  ctx.drawImage(tmp, 10, 10, W*s, H*s);
+  ctx.strokeStyle = "#" + COL["s-ink"].getHexString(); ctx.lineWidth = 1; ctx.strokeRect(10, 10, W*s, H*s);
+  const toC = p => [SIM.ed.ox + p[0]*s, SIM.ed.oy - p[1]*s];
+  SIM.shapes.forEach((sh, i) => {
+    const P = shapePts(sh).map(toC);
+    ctx.beginPath(); P.forEach((p, k) => k ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath();
+    ctx.setLineDash(sh.op === "open" ? [] : [4, 3]); ctx.lineWidth = i === SIM.sel ? 2.2 : 1;
+    ctx.strokeStyle = i === SIM.sel ? "#" + COL.accent.getHexString() : "#" + COL["s-ink"].getHexString(); ctx.stroke();
+  });
+  ctx.setLineDash([]);
+  // section line
+  ctx.strokeStyle = "#" + COL.ghost.getHexString(); ctx.setLineDash([6, 4]); ctx.lineWidth = 1.2; ctx.beginPath();
+  if (SIM.cutAxis === "y") { const y = SIM.ed.oy - SIM.cutPos*s; ctx.moveTo(10, y); ctx.lineTo(10 + W*s, y); }
+  else { const x = SIM.ed.ox + SIM.cutPos*s; ctx.moveTo(x, 10); ctx.lineTo(x, 10 + H*s); }
+  ctx.stroke(); ctx.setLineDash([]);
+  // flat at the bottom edge
+  ctx.fillStyle = "#" + COL.accent.getHexString(); ctx.fillRect(10, 10 + H*s + 2, W*s, 3);
+  ctx.font = "11px IBM Plex Sans, sans-serif";
+  ctx.fillText(`primary flat side; x along ${plainIdx(simFrame().idx[0])}`, 12, 10 + H*s + 18);
+}
+const plainIdx = v => "[" + v.map(x => x < 0 ? `${-x}̅` : `${x}`).join("") + "]";
+function renderShapeList() {
+  const rows = SIM.shapes.map((s, i) => {
+    const f = (k, v, st = 5) => `<input type="number" step="${st}" data-i="${i}" data-k="${k}" value="${+(+v).toFixed(1)}">`;
+    const dims = s.type === "circle" ? `${f("w", s.w)}` : s.type === "tri" ? `${f("w", s.w)}` : `${f("w", s.w)}${f("h", s.h)}`;
+    const ang = s.type === "para" ? "" : f("ang", s.ang, 1);
+    return `<tr class="${i === SIM.sel ? "sel" : ""}" data-row="${i}"><td><select data-i="${i}" data-k="op"><option value="open"${s.op === "open" ? " selected" : ""}>open</option><option value="mask"${s.op === "mask" ? " selected" : ""}>mask</option></select></td>
+      <td class="ty">${{ rect: "rect", circle: "circle", tri: "triangle", para: "parallelogram" }[s.type]}</td><td>${f("cx", s.cx)}${f("cy", s.cy)}</td><td>${dims}</td><td>${ang}</td><td><button class="x" data-del="${i}" title="remove">×</button></td></tr>`;
+  }).join("");
+  $("shapeList").innerHTML = `<tr class="hd"><td>layer</td><td>shape</td><td>centre x, y</td><td>size</td><td>angle°</td><td></td></tr>` + rows;
+}
+function markDirty() { SIM.dirty = true; updateDirtyNote(); renderShapeList(); if (S.mode === "sim") buildSim(false); }
+function updateDirtyNote() { $("simDirty").classList.toggle("hidden", !SIM.dirty); }
+
+function loadPreset(wf, i) {
+  const p = SPRESETS[wf][i]; SIM.preset = i;
+  SIM.fk = p.fk; SIM.rate = p.rate; SIM.t = p.t; SIM.pre = p.pre || 0; SIM.hx = p.hx; SIM.hy = p.hy; SIM.dxMax = p.dxMax || 0;
+  SIM.shapes = p.shapes.map(s => Object.assign({}, s)); SIM.sel = -1; SIM.cutPos = 0; SIM.cutAxis = "y";
+  $("simNote").innerHTML = p.note;
+  syncSimInputs(); renderShapeList();
+}
+function syncSimInputs() {
+  $("simFrame").value = SIM.fk; $("simFrameRow").classList.toggle("hidden", SFR[SIM.fk].wf !== "110");
+  $("simRate").value = SIM.rate; $("simTime").value = SIM.t; $("simPre").value = SIM.pre; $("simThick").value = SIM.thick;
+  $("simHx").value = 2*SIM.hx; $("simHy").value = 2*SIM.hy; $("simQual").value = SIM.quality;
+  pressed($("segCut"), "a", SIM.cutAxis); syncCutSlider();
+  $("simFrameSrc").textContent = SFR[SIM.fk].src;
+  $("simRateSrc").textContent = SRATES[SIM.rate].src;
+}
+function syncCutSlider() {
+  const h = SIM.cutAxis === "y" ? SIM.hy : SIM.hx; $("simCutPos").min = String(-h); $("simCutPos").max = String(h); $("simCutPos").value = String(SIM.cutPos);
+  $("simCutLbl").textContent = `${SIM.cutAxis === "y" ? "y" : "x"} = ${(+SIM.cutPos).toFixed(0)} µm`;
+}
+function fillSimPresets() {
+  $("simPreset").innerHTML = SPRESETS[S.wf].map((p, i) => `<option value="${i}">${p.name}</option>`).join("") + `<option value="-1">Custom (keep the current mask)</option>`;
+  $("simPreset").value = String(SIM.preset);
+}
+
+// ---- wiring
+$("simRate").innerHTML = Object.entries(SRATES).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join("");
+$("simPreset").addEventListener("change", e => { const i = Number(e.target.value); if (i < 0) return; loadPreset(S.wf, i); simRun(); buildSim(true); });
+$("bSimRun").addEventListener("click", () => { simRun(); buildSim(false); });
+$("simFrame").addEventListener("change", e => { SIM.fk = e.target.value; $("simFrameSrc").textContent = SFR[SIM.fk].src; markDirty(); });
+$("simRate").addEventListener("change", e => { SIM.rate = e.target.value; $("simRateSrc").textContent = SRATES[SIM.rate].src; markDirty(); });
+for (const [id, key, mul] of [["simTime", "t", 1], ["simPre", "pre", 1], ["simThick", "thick", 1], ["simHx", "hx", 0.5], ["simHy", "hy", 0.5]])
+  $(id).addEventListener("change", e => { const v = Number(e.target.value); if (!(v >= 0)) return; SIM[key] = v*mul; if (key === "hx" || key === "hy") syncCutSlider(); markDirty(); });
+$("simQual").addEventListener("change", e => { SIM.quality = e.target.value; markDirty(); });
+$("simT").addEventListener("input", e => { SIM.tv = Number(e.target.value); $("simTnow").textContent = `${SIM.tv.toFixed(0)} min`; requestView(SIM.tv); });
+$("bSimPlay").addEventListener("click", () => {
+  SIM.playing = !SIM.playing; $("bSimPlay").textContent = SIM.playing ? "Pause" : "Play";
+  if (SIM.playing && SIM.tv >= SIM.tSim - 1e-6) { SIM.tv = 0; }
+});
+function stepSimPlay(now) {
+  if (!SIM.playing || S.mode !== "sim" || SIM.viewBusy || SIM.running) return;
+  if (now - (SIM.lastPlay || 0) < 60) return;
+  SIM.lastPlay = now;
+  SIM.tv = Math.min(SIM.tSim, SIM.tv + SIM.tSim/80);
+  $("simT").value = String(SIM.tv); $("simTnow").textContent = `${SIM.tv.toFixed(0)} min`; requestView(SIM.tv);
+  if (SIM.tv >= SIM.tSim - 1e-9) { SIM.playing = false; $("bSimPlay").textContent = "Play"; }
+}
+$("cSimMask").addEventListener("change", e => { SIM.showMask = e.target.checked; buildSim(false); });
+$("cSimCut").addEventListener("change", e => { SIM.cutOn = e.target.checked; requestView(SIM.tv); });
+$("segCut").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; SIM.cutAxis = b.dataset.a; SIM.cutPos = 0; pressed($("segCut"), "a", SIM.cutAxis); syncCutSlider(); drawMaskEditor(); requestView(SIM.tv); });
+$("simCutPos").addEventListener("input", e => { SIM.cutPos = Number(e.target.value); syncCutSlider(); drawMaskEditor(); requestView(SIM.tv); });
+$("shapeList").addEventListener("change", e => {
+  const el = e.target, i = Number(el.dataset.i), k = el.dataset.k; if (!(i >= 0) || !k) return;
+  SIM.shapes[i][k] = k === "op" ? el.value : Number(el.value); markDirty();
+});
+$("shapeList").addEventListener("click", e => {
+  const d = e.target.closest("[data-del]"); if (d) { SIM.shapes.splice(Number(d.dataset.del), 1); SIM.sel = -1; markDirty(); return; }
+  const r = e.target.closest("tr[data-row]"); if (r && e.target.tagName !== "INPUT" && e.target.tagName !== "SELECT") { SIM.sel = Number(r.dataset.row); drawMaskEditor(); renderShapeList(); }
+});
+for (const [id, type] of [["bAddRect", "rect"], ["bAddCirc", "circle"], ["bAddTri", "tri"]])
+  $(id).addEventListener("click", () => { SIM.shapes.push(shp(type, "open", 0, 0, type === "rect" ? 100 : 80, type === "rect" ? 60 : null)); SIM.sel = SIM.shapes.length - 1; $("simPreset").value = "-1"; markDirty(); });
+// drag shapes in the editor
+(() => {
+  const cv = $("maskCanvas"); let drag = null;
+  const world = ev => { const r = cv.getBoundingClientRect(); return [(ev.clientX - r.left - SIM.ed.ox)/SIM.ed.s, -(ev.clientY - r.top - SIM.ed.oy)/SIM.ed.s]; };
+  cv.addEventListener("pointerdown", ev => {
+    const [x, y] = world(ev);
+    for (let i = SIM.shapes.length - 1; i >= 0; i--) if (EE.isOpen([{ pts: shapePts(SIM.shapes[i]), op: "open" }], x, y)) {
+      SIM.sel = i; drag = { i, x0: x, y0: y, cx: SIM.shapes[i].cx, cy: SIM.shapes[i].cy, moved: false }; cv.setPointerCapture(ev.pointerId); drawMaskEditor(); renderShapeList(); return;
+    }
+    SIM.sel = -1; drawMaskEditor(); renderShapeList();
+  });
+  cv.addEventListener("pointermove", ev => {
+    if (!drag) return; const [x, y] = world(ev);
+    const sh = SIM.shapes[drag.i]; sh.cx = Math.round((drag.cx + x - drag.x0)/5)*5; sh.cy = Math.round((drag.cy + y - drag.y0)/5)*5; drag.moved = true; drawMaskEditor();
+  });
+  cv.addEventListener("pointerup", () => { if (drag && drag.moved) { $("simPreset").value = "-1"; markDirty(); } drag = null; });
+})();
+// hover on the 3D surface
+function simHover(ev) {
+  if (!simScene || !simScene.pick) { tip.style.display = "none"; return; }
+  pickAt(ev);
+  const h = ray.intersectObject(simScene.pick)[0];
+  if (!h) { tip.style.display = "none"; return; }
+  const inf = simScene.triInfo[h.faceIndex];
+  if (!inf || inf.cap || inf.kind === 2) { tip.innerHTML = `${inf && inf.kind === 2 ? "edge of the simulated block" : "section face (cut)"}<br>z = ${(-h.point.z).toFixed(1)} µm deep`; }
+  else if (inf.kind === 3) { tip.innerHTML = `original wafer surface under the mask<br>${idxHTML(simFrame().idx[2])}`; }
+  else {
+    const n = inf.qn, a = Math.acos(Math.min(1, Math.abs(n[2])))*C.DEG, c = inf.cls;
+    const kind = a < 3 ? (n[2] > 0 ? "floor or top face" : "underside (faces down)") : a > 87 ? "vertical wall" : n[2] < 0 ? "overhanging wall (faces down)" : "sloping wall";
+    const [e1, e2, e3] = simFrame().e, cc = [0, 1, 2].map(i => e1[i]*n[0] + e2[i]*n[1] + e3[i]*n[2]);
+    if (!SIM.rtab) SIM.rtab = EE.makeRate(SRATES[SIM.rate].r);
+    const R = EE.rateC(SIM.rtab, cc[0], cc[1], cc[2]);
+    tip.innerHTML = c.ang <= 4 ? `<b>${idxHTML(c.hkl)}</b> &nbsp;{${c.fam}} (within ${c.ang.toFixed(1)}°)<br>${kind}, ${a.toFixed(1)}° to the surface<br>model rate ${R.toFixed(3)} µm/min`
+                               : `no low-index plane within 4° (nearest {${c.fam}}, ${c.ang.toFixed(1)}° off)<br>${kind}, ${a.toFixed(1)}° to the surface<br>model rate ${R.toFixed(3)} µm/min`;
+  }
+  const r = stage.getBoundingClientRect();
+  tip.style.left = `${Math.min(ev.clientX - r.left + 14, r.width - 220)}px`; tip.style.top = `${ev.clientY - r.top + 12}px`; tip.style.display = "block";
+}
+
+// theme changes: re-read colours and rebuild
+function onTheme() { readColors(); rebuild(false); }
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", onTheme);
+new MutationObserver(onTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+function loop(now) {
+  stepAnim(now); stepPlay(now); stepSimPlay(now);
+  if (dirty) { renderer.render(scene, camera); placeLabels(); dirty = false; }
+  requestAnimationFrame(loop);
+}
+readColors(); setHold(); fillOpenings(); $("selRate").value = S.rate;
+prepPit(); $("tNow").textContent = `${sliderToT().toFixed(0)} min`;
+rebuild(true);
+requestAnimationFrame(loop);
+window.__o3d = { get simScene() { return simScene; }, COL, S, C, get pit() { return pit; }, get model() { return model; }, setView, dirOf, VIEWS, selectFace, setWafer, SIM, EE, SPRESETS, loadPreset, simRun, buildSim, classifyN, vTraces };
+})();
+
+</script>
+</body>
+</html>

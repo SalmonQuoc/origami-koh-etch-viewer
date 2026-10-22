@@ -1,0 +1,14 @@
+{
+  "name": "origami-koh-etch-viewer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "3D viewer of the {111} octahedron on (100), (110) and (111) silicon wafers, with an anisotropic KOH wet-etch simulator.",
+  "scripts": {
+    "validate": "node tools/etch-engine-tests/validate-cases.js",
+    "test:browser": "node tools/etch-engine-tests/browser-presets.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.47.0",
+    "three": "0.128.0"
+  }
+}
