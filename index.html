@@ -141,6 +141,15 @@ section.refs h2 { font: 600 17px/1.3 "Source Serif 4", Georgia, serif; color: va
 section.refs ol { margin: 0; padding-left: 26px; }
 section.refs li { margin: 3px 0; }
 section.refs a { color: var(--accent); }
+.cards { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.card { border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; cursor: pointer; }
+.card.sel { border-color: var(--accent); background: var(--chip); }
+.card .top { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+.card .top b { font-weight: 600; }
+.card .fl { display: flex; flex-wrap: wrap; gap: 2px 8px; margin-top: 2px; }
+.card .fl label { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; color: var(--muted); }
+.card input { width: 56px; font: 12px "IBM Plex Mono", monospace; padding: 2px 3px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--ink); }
+.card button.x { border: 0; background: none; color: var(--muted); font-size: 16px; cursor: pointer; padding: 0 4px; }
 .kbd { font-family: "IBM Plex Mono", monospace; font-size: 12px; border: 1px solid var(--line); border-radius: 3px; padding: 0 3px; }
 </style>
 </head>
@@ -205,22 +214,17 @@ section.refs a { color: var(--accent); }
 
   <aside class="panel hidden" id="panelPit">
     <h2>Etch</h2>
-    <h3>Mask opening</h3>
-    <select id="selOpen"></select>
-    <details class="custom" id="pitCustom"><summary>Add your own openings</summary>
-      <div class="fields">
-        <label>shape <span><select id="pcType"></select></span></label>
-        <label>size w × h <span><input type="number" id="pcW" value="200" min="5" step="10"> × <input type="number" id="pcH" value="120" min="5" step="10"> µm</span></label>
-        <label id="pcTl">arm width t <span><input type="number" id="pcT" value="40" min="1" step="5"> µm</span></label>
-        <label id="pcNl">sides / points <span><input type="number" id="pcN" value="6" min="3" step="1"></span></label>
-        <label>centre x, y <span><input type="number" id="pcX" value="0" step="10"> <input type="number" id="pcY" value="0" step="10"> µm</span></label>
-        <label>angle to the flat <span><input type="number" id="pcA" value="0" step="5"> °</span></label>
-        <label>pre-etch depth <span><input type="number" id="pcPre" value="0" min="0" step="5"> µm</span></label>
-      </div>
-      <div class="addrow"><button class="btn primary" id="pcAdd">Add opening</button><button class="btn" id="pcClear">Clear</button><button class="btn" id="pcToSim">Open in etch simulator</button></div>
-      <div class="tblwrap"><table class="shapes" id="pcList"></table></div>
-      <p class="note" style="margin:4px 0 0">A non-convex shape (L, U, cross, frame, ring, star) is split here into overlapping convex pieces; each piece etches as a convex opening and the cavity shown is their union. Concave corners therefore stop at {111} as they should, but convex mask corners (the inside corner of an L or U, the tips of a star) are <b>not</b> undercut here, although they are in real KOH etching (Kovacs et al. 1998, Fig. 1c; Pal et al. 2007, Sec. 2). Use “Open in etch simulator” to see that undercut.</p>
-      <p class="warn hidden" id="pcWarn"></p>
+    <h3>Mask</h3>
+    <div class="row"><span class="lbl">Start from</span><select id="selOpen" style="flex:1;min-width:0"></select></div>
+    <p class="note" style="margin:4px 0 6px"><b>Drag</b> a shape to move it, <b>click</b> to select it, <b>double-click</b> an empty spot to add the chosen shape there. With the editor focused, the <span class="kbd">←</span><span class="kbd">→</span><span class="kbd">↑</span><span class="kbd">↓</span> keys move the selected shape by 5 µm (with Shift, 25 µm) and <span class="kbd">Delete</span> removes it. The 3D view updates when you let go.</p>
+    <canvas id="pitCanvas" class="maskcv" tabindex="0" aria-label="Mask editor for the etched pit"></canvas>
+    <div class="legend" style="margin-top:4px"><span><i class="sw" style="background:var(--mask)"></i>mask</span><span><i class="sw" style="background:var(--scene-bg);border:1px solid var(--s-ink)"></i>opening</span><span><i class="sw" style="background:var(--ghost)"></i>cavity edge at the surface now</span></div>
+    <div class="addrow"><select id="pcType" aria-label="shape to add"></select><button class="btn primary" id="pcAdd">Add shape</button><button class="btn" id="pcDup">Duplicate</button><button class="btn" id="pcDel">Delete</button><button class="btn" id="pcClear">Clear all</button></div>
+    <div id="pcList" class="cards"></div>
+    <p class="warn hidden" id="pcWarn"></p>
+    <div class="row" style="margin-top:6px"><button class="btn" id="pcToSim">Open this mask in the etch simulator</button></div>
+    <details class="srcs"><summary>How this scene etches a shape</summary>
+      <p class="note">Each wall is a crystal plane that moves out from the opening at its own rate (n·x ≤ h + R·t). A non-convex shape (L, U, cross, frame, ring, star) is split into overlapping convex pieces; each piece etches as a convex opening and the cavity shown is their union. Concave corners therefore stop at {111} as they should, but convex mask corners (the inside corner of an L or U, the tips of a star) are <b>not</b> undercut here, although they are in real KOH etching (Kovacs et al. 1998, Fig. 1(c); Pal et al. 2007, Sec. 2). Openings that grow into each other are overlaid, not merged. The etch simulator handles both.</p>
     </details>
     <h3>Etchant</h3>
     <select id="selRate"></select>
@@ -280,7 +284,7 @@ section.refs a { color: var(--accent); }
     <select id="simColor"><option value="plane">crystal plane family</option><option value="depth">depth below the surface</option><option value="rate">local etch rate R(n)</option><option value="time">time the etch front reached the surface</option></select>
     <div class="legend" id="simPlaneLegend" style="margin-top:6px"><span><i class="sw" style="background:var(--f111)"></i>{111}</span><span><i class="sw" style="background:var(--f100)"></i>{100}</span><span><i class="sw" style="background:var(--f110)"></i>{110}</span><span><i class="sw" style="background:var(--fhi)"></i>higher index ({311}, {211}, {411} …)</span><span><i class="sw" style="background:var(--s-side)"></i>no plane within 4°</span><span><i class="sw" style="background:var(--s-cut)"></i>cut face</span></div>
     <h3>Mask editor</h3>
-    <p class="note" style="margin:0 0 4px">Shapes are applied top to bottom: “open” removes the mask, “mask” puts it back. Drag a shape to move it. Solid outline: open; dashed: mask.</p>
+    <p class="note" style="margin:0 0 4px">Shapes are applied top to bottom: “open” removes the mask, “mask” puts it back (solid outline: open; dashed: mask). <b>Drag</b> a shape to move it, <b>double-click</b> an empty spot to add the chosen shape there; with the editor focused, the arrow keys move the selected shape by 5 µm (Shift: 25 µm) and <span class="kbd">Delete</span> removes it. Press Run to etch the new mask.</p>
     <canvas id="maskCanvas" class="maskcv"></canvas>
     <div class="addrow"><select id="addType"></select><select id="addOp"><option value="open">as opening</option><option value="mask">as mask</option></select><button class="btn" id="bAddShape">Add shape</button><button class="btn" id="bDupShape">Duplicate selected</button></div>
     <p class="note" style="margin:4px 0 0">Columns: w, h = size; t = arm width (L, U, cross, frame) or inner size (ring, star); n = sides or points; array = copies nx × ny at pitch px, py (µm).</p>
@@ -303,7 +307,7 @@ section.refs a { color: var(--accent); }
 </div>
 
 <footer>
-  Scenes 1 and 2 (model and pit): each wall is a crystal plane that moves outward at its own rate from the mask opening (n·x ≤ h + R·t over the {100}, {110} and {111} planes); the long-etch limit keeps only {111} planes with R = 0. This is the construction used in the origami tutorial; non-convex openings are not modelled there, use the etch simulator (its model and sources are listed in its panel).
+  Scenes 1 and 2 (model and pit): each wall is a crystal plane that moves outward at its own rate from the mask opening (n·x ≤ h + R·t over the {100}, {110} and {111} planes); the long-etch limit keeps only {111} planes with R = 0. This is the construction used in the origami tutorial; non-convex openings are split there into overlapping convex pieces whose cavities are joined, and convex mask corners are not undercut; use the etch simulator for that (its model and sources are listed in its panel).
   Rates: Pal &amp; Sato, p. 87 (KOH 30 wt% and 40 wt%, 70 °C); Lec 4-1, p. 7 (KOH 42 wt%, 75 °C). Primary flat ⟨110⟩ for (100) and (110): Lec 4-1, p. 6. For (111) the flat is assumed along [1<span class="ob">1</span>0]. Wafer thickness 525 µm (assumption). x runs along the flat, z is the wafer normal.
 </footer>
 <section class="refs" id="references">
@@ -1191,7 +1195,7 @@ function rectMinus(rect, O) {
 }
 
 // --------------------------------------------------------------------- state
-const S = { pitColor: "plane", customOps: [], wf: "100", mode: "model", sel: null, open: 0, rate: "PAL30", t: 0, final: false, cut: false, block: true, ghost: true, mask: true,
+const S = { pitColor: "plane", pitShapes: [], pitSel: -1, wf: "100", mode: "model", sel: null, open: 0, rate: "PAL30", t: 0, final: false, cut: false, block: true, ghost: true, mask: true,
             corners: true, faces: false, upper: true, playing: false };
 
 // --------------------------------------------------------------------- MODEL scene
@@ -1356,10 +1360,13 @@ let pit = null;
 // openings of the current etch: one preset, or the user's list. Each opening is cut into convex pieces (g = which opening);
 // each piece is etched on its own and the cavity drawn is the union of the pieces' cavities.
 function pitItems() {
-  if (S.open === "custom") return S.customOps.flatMap((c, g) => c.pieces.map(o => ({ o, pre: c.pre, g })));
+  if (S.open === "custom") return S.pitShapes.flatMap((sh, g) => shapePieces(sh).map(o => ({ o, pre: sh.pre || 0, g })));
   const op = OPENINGS[S.wf][S.open]; return [{ o: op.o, pre: op.pre || 0, g: 0 }];
 }
-const pitLoops = () => S.open === "custom" ? S.customOps.flatMap(c => c.loops) : [OPENINGS[S.wf][S.open].o];
+const pitLoops = () => S.open === "custom" ? S.pitShapes.flatMap(shapeLoops) : [OPENINGS[S.wf][S.open].o];
+// the shapes the pit editor shows: the user's list, or the chosen example as one polygon
+const presetShape = () => { const op = OPENINGS[S.wf][S.open]; return shp("pts", "open", 0, 0, 0, 0, 0, { pts: op.o.map(p => p.slice()), pre: op.pre || 0 }); };
+const pitShapesNow = () => S.open === "custom" ? S.pitShapes : [presetShape()];
 // largest distance of an outline O outside the union of convex openings os
 function beyondAll(O, os) {
   let under = 0;
@@ -1459,6 +1466,10 @@ function beyondEdge(O, o) {
 }
 function prepPit() {
   const items = pitItems(), R = RATES[S.rate].r;
+  if (!items.length) {   // empty mask: plain wafer
+    pit = { items, R, fins: [], tmax: 100, box: [-250, 250, -250, 250], zb: 100, dmax: 1, hist: null };
+    document.getElementById("tMax").textContent = "100 min"; document.getElementById("pcWarn").classList.add("hidden"); return;
+  }
   const nice = x => { const p = Math.pow(10, Math.floor(Math.log10(x))); for (const k of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (k*p >= x) return k*p; return 10*p; };
   const fins = items.map(it => C.etch(S.wf, it.o, { T: T_WAFER, pre: it.pre }));
   let hiAll = 1;
@@ -1639,7 +1650,7 @@ function buildPit() {
   addLabel(new V3(x0 + (x1 - x0)*0.25, yA, 0), idxHTML(e[0], "[", "]") + " along flat", "acc");
   scene.userData.center = new V3(cx, cy, -zb/2);
   updateReadout(cavs);
-  drawPitGraph();
+  drawPitGraph(); drawPitEditor();
   resize();
 }
 function drawPitGraph() {
@@ -1680,7 +1691,8 @@ function updateReadout(cavs) {
   for (const f of (pit.walls || [])) {
     if (f.label === "surface" || f.label === "back") continue;
     const a = C.angleToSurface(f.n), key = `${f.fam}|${a.toFixed(2)}|${f.n[2] > 1e-9 ? "o" : ""}`;
-    const g = groups.get(key) || { fam: f.fam, a, over: f.n[2] > 1e-9, n: 0 }; g.n++; groups.set(key, g);
+    const g = groups.get(key) || { fam: f.fam, a, over: f.n[2] > 1e-9, n: 0, ids: new Set() };
+    const id = `${f.cav}|${f.label}`; if (!g.ids.has(id)) { g.ids.add(id); g.n++; } groups.set(key, g);   // a wall cut into parts counts once
   }
   const arr = [...groups.values()].sort((p, q) => (p.fam > q.fam) - (p.fam < q.fam) || p.a - q.a);
   const sw = f => `<span class="sw" style="background:${"#" + famColor(f).getHexString()}"></span>`;
@@ -1729,8 +1741,8 @@ renderer.domElement.addEventListener("pointerleave", () => { tip.style.display =
 const $ = id => document.getElementById(id);
 function pressed(seg, attr, val) { for (const b of seg.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset[attr] === val)); }
 function fillOpenings() {
-  $("selOpen").innerHTML = OPENINGS[S.wf].map((o, i) => `<option value="${i}">${o.name}</option>`).join("") +
-    (S.customOps.length ? `<option value="custom">Your openings (${S.customOps.length})</option>` : "");
+  $("selOpen").innerHTML = OPENINGS[S.wf].map((o, i) => `<option value="${i}">Example: ${o.name}</option>`).join("") +
+    `<option value="custom">Your own mask (${S.pitShapes.length} shape${S.pitShapes.length === 1 ? "" : "s"})</option>`;
   $("selOpen").value = String(S.open);
 }
 $("selRate").innerHTML = Object.entries(RATES).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join("");
@@ -1762,7 +1774,7 @@ function rebuild(resetView) {
   }
 }
 function setWafer(w) {
-  S.wf = w; S.sel = null; S.open = 0; S.customOps = []; renderCustomList(); S.rate = OPENINGS[w][0].rate; $("selRate").value = S.rate;
+  S.wf = w; S.sel = null; S.open = 0; S.pitShapes = []; S.pitSel = -1; renderCustomList(); S.rate = OPENINGS[w][0].rate; $("selRate").value = S.rate;
   pressed($("segW"), "w", w); setHold(); fillOpenings();
   $("faceInfo").innerHTML = '<span class="note">Click any face. The page then draws where its plane cuts the wafer surface, the two normals and the angle between the planes.</span>';
   prepPit(); rebuild(true);
@@ -1785,50 +1797,152 @@ $("views").addEventListener("click", e => {
   setView(dirOf(...(v === "oblique" ? OBL[S.wf] : v === "back" ? [OBL[S.wf][0], OBL[S.wf][1] + 180] : VIEWS[v])), tgt);
 });
 $("selOpen").addEventListener("change", e => {
-  S.open = e.target.value === "custom" ? "custom" : Number(e.target.value);
+  S.open = e.target.value === "custom" ? "custom" : Number(e.target.value); S.pitSel = -1;
   if (S.open !== "custom") { S.rate = OPENINGS[S.wf][S.open].rate; $("selRate").value = S.rate; }
-  prepPit(); rebuild(true);
+  renderCustomList(); prepPit(); rebuild(true);
 });
 $("pitColor").addEventListener("change", e => { S.pitColor = e.target.value; buildPit(); });
-// ---- the user's own openings in the Etched pit scene
-function fillPcTypes() { $("pcType").innerHTML = Object.entries(SHAPE_TYPES).filter(([, v]) => !v.noAdd).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join(""); pcFields(true); }
-// show the size fields that the chosen shape uses, with its default sizes (scaled up for the pit scene)
-function pcFields(defaults) {
-  const type = $("pcType").value, T = SHAPE_TYPES[type], d = T.d;
-  const has = k => T.f.includes(k);
-  $("pcH").disabled = !has("h"); $("pcTl").classList.toggle("hidden", !has("t")); $("pcNl").classList.toggle("hidden", !has("n"));
-  $("pcTl").firstChild.textContent = type === "ring" || type === "star" ? "inner size t " : "arm width t ";
-  if (defaults) { $("pcW").value = 2*d.w; $("pcH").value = 2*(d.h || d.w); if (d.t) $("pcT").value = 2*d.t; if (d.n) $("pcN").value = d.n; }
+// ---- the pit mask editor: the same handling as the simulator's (add, select, drag, edit in the table)
+function fillPcTypes() { $("pcType").innerHTML = Object.entries(SHAPE_TYPES).filter(([, v]) => !v.noAdd).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join(""); }
+// any edit of an example turns it into the user's own mask, starting from the example
+function toCustom() {
+  if (S.open === "custom") return;
+  S.pitShapes = [presetShape()]; S.open = "custom"; fillOpenings();
 }
-$("pcType").addEventListener("change", () => pcFields(true));
-function pcShape() {
-  const type = $("pcType").value, T = SHAPE_TYPES[type], d = T.d;
-  const w = Number($("pcW").value) || 100, h = T.f.includes("h") ? Number($("pcH").value) || w : w;
-  return Object.assign(shp(type, "open", Number($("pcX").value) || 0, Number($("pcY").value) || 0, w, h, Number($("pcA").value) || 0),
-    { n: Number($("pcN").value) || d.n || 6, t: Number($("pcT").value) || d.t || 0.3*Math.min(w, h) });
+function newPitShape(type, x, y) {
+  const d = SHAPE_TYPES[type].d;   // the simulator defaults, doubled: pit openings are usually larger
+  const o = { w: 2*d.w, h: 2*(d.h || d.w) }; if (d.t) o.t = 2*d.t; if (d.n) o.n = d.n;
+  return Object.assign(shp(type, "open", Math.round(x/5)*5, Math.round(y/5)*5, o.w, o.h), d, o, { pre: 0 });
+}
+let pitBusy = 0;
+function pitChanged(resetView) {   // after an edit: rebuild the pit (deferred so the editor redraws first)
+  fillOpenings(); renderCustomList(); drawPitEditor(true);
+  $("hint").textContent = "Updating the 3D view…";
+  clearTimeout(pitBusy);
+  pitBusy = setTimeout(() => { prepPit(); rebuild(!!resetView); drawPitEditor(); }, 30);
 }
 function renderCustomList() {
-  $("pcList").innerHTML = S.customOps.length ? `<tr class="hd"><td>#</td><td>opening</td><td>pre-etch</td><td></td></tr>` +
-    S.customOps.map((c, i) => `<tr><td>${i + 1}</td><td class="ty">${c.label}</td><td>${c.pre} µm</td><td><button class="x" data-pcdel="${i}" title="remove">×</button></td></tr>`).join("") : "";
+  const list = pitShapesNow();
+  const f = (i, k, v, lbl, st = 5) => `<label>${lbl}<input type="number" step="${st}" data-i="${i}" data-k="${k}" aria-label="${lbl}" value="${+(+(v == null ? 0 : v)).toFixed(1)}"></label>`;
+  const cards = list.map((sh, i) => {
+    const T = SHAPE_TYPES[sh.type] || SHAPE_TYPES.rect;
+    const lab = { w: "w", h: "h", t: sh.type === "ring" || sh.type === "star" ? "inner" : "arm t", n: sh.type === "star" ? "points" : "sides" };
+    const dims = T.f.map(k => f(i, k, sh[k], lab[k], k === "n" ? 1 : 5)).join("");
+    return `<div class="card${i === S.pitSel ? " sel" : ""}" data-row="${i}">
+      <div class="top"><span><b>${i + 1}. ${T.name}</b>${S.open === "custom" ? "" : ' <span class="note">(the example; editing it makes it your own mask)</span>'}</span><button class="x" data-pcdel="${i}" title="remove" aria-label="remove">×</button></div>
+      <div class="fl">${f(i, "cx", sh.cx, "x")}${f(i, "cy", sh.cy, "y")}${f(i, "ang", sh.ang, "angle°", 1)}${f(i, "pre", sh.pre || 0, "pre-etch")}</div>
+      ${dims ? `<div class="fl">${dims}<span class="note">µm</span></div>` : ""}</div>`;
+  }).join("");
+  $("pcList").innerHTML = list.length ? cards : `<p class="note">No openings. Pick a shape and press “Add shape”, or double-click in the editor.</p>`;
+  $("pcDup").disabled = $("pcDel").disabled = !(S.pitSel >= 0 && S.pitSel < list.length);
 }
-function useCustom() {
-  fillOpenings();
-  if (S.customOps.length) { S.open = "custom"; $("selOpen").value = "custom"; }
-  else if (S.open === "custom") { S.open = 0; $("selOpen").value = "0"; }
-  renderCustomList(); prepPit(); rebuild(true);
+// 2D editor of the pit mask: openings over the mask, with the cavity edge at the surface at the current time
+function drawPitEditor(keepExtent) {
+  const cv = $("pitCanvas"); if (!cv || !pit) return;
+  const ctx = cv.getContext("2d"), list = pitShapesNow();
+  if (!keepExtent || !S.pitEd) {
+    // fit the shapes and the cavity at the current time, with a margin
+    const pts = list.flatMap(shapeLoops).flat().concat((pit.cavs || []).flatMap(c => C.outline(c.H, 0)));
+    const ax = pts.length ? Math.max(...pts.map(p => Math.abs(p[0]))) : 200, ay = pts.length ? Math.max(...pts.map(p => Math.abs(p[1]))) : 200;
+    const r50 = v => Math.max(100, Math.ceil(v/50)*50), m = 0.2*Math.max(ax, ay) + 30;
+    S.pitEd = { hx: r50(ax + m), hy: r50(Math.max(ay + m, 0.35*(ax + m))) };
+  }
+  const { hx, hy } = S.pitEd, wcss = cv.clientWidth || 300, s = (wcss - 20)/(2*hx), hcss = 2*hy*s + 34;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = Math.round(wcss*dpr); cv.height = Math.round(hcss*dpr); cv.style.height = `${hcss}px`;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, wcss, hcss);
+  Object.assign(S.pitEd, { s, ox: 10 + hx*s, oy: 10 + hy*s });
+  const toC = p => [S.pitEd.ox + p[0]*s, S.pitEd.oy - p[1]*s], col = c => "#" + COL[c].getHexString();
+  const path = (c, P) => { P.map(toC).forEach((q, k) => k ? c.lineTo(q[0], q[1]) : c.moveTo(q[0], q[1])); c.closePath(); };
+  ctx.fillStyle = col("scene-bg"); ctx.fillRect(10, 10, 2*hx*s, 2*hy*s);
+  // grid
+  const g = niceStep(2*hx/8); ctx.strokeStyle = col("s-ink"); ctx.globalAlpha = 0.08; ctx.lineWidth = 1; ctx.beginPath();
+  for (let x = -Math.floor(hx/g)*g; x <= hx; x += g) { const [a] = toC([x, 0]); ctx.moveTo(a, 10); ctx.lineTo(a, 10 + 2*hy*s); }
+  for (let y = -Math.floor(hy/g)*g; y <= hy; y += g) { const [, b] = toC([0, y]); ctx.moveTo(10, b); ctx.lineTo(10 + 2*hx*s, b); }
+  ctx.stroke(); ctx.globalAlpha = 1;
+  // mask with the openings cut out
+  const tmp = document.createElement("canvas"); tmp.width = cv.width; tmp.height = cv.height;
+  const t = tmp.getContext("2d"); t.setTransform(dpr, 0, 0, dpr, 0, 0);
+  t.globalAlpha = 0.6; t.fillStyle = col("mask"); t.fillRect(10, 10, 2*hx*s, 2*hy*s); t.globalAlpha = 1;
+  t.globalCompositeOperation = "destination-out"; t.beginPath();
+  for (const sh of list) for (const P of shapePieces(sh)) path(t, P);
+  t.fill();
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(tmp, 0, 0); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // cavity edge at the surface (not while dragging: it is from before the move)
+  if (!keepExtent && pit.cavs && pit.cavs.length) {
+    const outs = pit.cavs.map(c => C.outline(c.H, 0)).filter(O => O.length >= 3);
+    ctx.strokeStyle = col("ghost"); ctx.lineWidth = 1.4; ctx.setLineDash([5, 3]); ctx.beginPath();
+    for (const [a, b] of unionEdges2(outs, 1e-6)) { const A = toC(a), B = toC(b); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); }
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+  // shape outlines
+  list.forEach((sh, i) => {
+    ctx.beginPath(); for (const P of shapeLoops(sh)) path(ctx, P);
+    ctx.lineWidth = i === S.pitSel ? 2.4 : 1.1; ctx.strokeStyle = i === S.pitSel ? col("accent") : col("s-ink"); ctx.stroke();
+    if (i === S.pitSel) { const [a, b] = toC([sh.cx, sh.cy]); ctx.fillStyle = col("accent"); ctx.fillRect(a - 3, b - 3, 6, 6); }
+  });
+  ctx.strokeStyle = col("s-ink"); ctx.lineWidth = 1; ctx.strokeRect(10, 10, 2*hx*s, 2*hy*s);
+  ctx.fillStyle = col("accent"); ctx.fillRect(10, 10 + 2*hy*s + 2, 2*hx*s, 3);
+  ctx.font = "11px IBM Plex Sans, sans-serif";
+  ctx.fillText(`primary flat side; x along ${plainIdx(C.FRAME_IDX[S.wf][0])}; grid ${g} µm`, 12, 10 + 2*hy*s + 18);
 }
+(() => {
+  const cv = $("pitCanvas"); let drag = null;
+  const world = ev => { const r = cv.getBoundingClientRect(); return [(ev.clientX - r.left - S.pitEd.ox)/S.pitEd.s, -(ev.clientY - r.top - S.pitEd.oy)/S.pitEd.s]; };
+  const hit = (x, y) => { const list = pitShapesNow(); for (let i = list.length - 1; i >= 0; i--) if (shapePieces(list[i]).some(P => EE.isOpen([{ pts: P, op: "open" }], x, y))) return i; return -1; };
+  cv.addEventListener("pointerdown", ev => {
+    if (!S.pitEd) return;
+    const [x, y] = world(ev), i = hit(x, y);
+    S.pitSel = i; renderCustomList();
+    if (i >= 0) { const sh = pitShapesNow()[i]; drag = { i, x0: x, y0: y, cx: sh.cx, cy: sh.cy, moved: false }; cv.setPointerCapture(ev.pointerId); cv.style.cursor = "grabbing"; }
+    drawPitEditor(true);
+  });
+  cv.addEventListener("pointermove", ev => {
+    if (!drag || !S.pitEd) return; const [x, y] = world(ev);
+    if (!drag.moved) { toCustom(); drag.moved = true; }
+    const sh = S.pitShapes[drag.i]; sh.cx = Math.round((drag.cx + x - drag.x0)/5)*5; sh.cy = Math.round((drag.cy + y - drag.y0)/5)*5;
+    drawPitEditor(true); $("hint").textContent = `Moving to (${sh.cx}, ${sh.cy}) µm; let go to update the 3D view`;
+  });
+  const end = () => { cv.style.cursor = ""; if (drag && drag.moved) pitChanged(false); else drawPitEditor(); drag = null; };
+  cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);
+  cv.addEventListener("dblclick", ev => {
+    const [x, y] = world(ev); if (hit(x, y) >= 0) return;
+    toCustom(); S.pitShapes.push(newPitShape($("pcType").value, x, y)); S.pitSel = S.pitShapes.length - 1; pitChanged(false);
+  });
+  cv.addEventListener("keydown", ev => {
+    if (!(S.pitSel >= 0)) return;
+    const st = ev.shiftKey ? 25 : 5, mv = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, st], ArrowDown: [0, -st] }[ev.key];
+    if (mv) { ev.preventDefault(); toCustom(); const sh = S.pitShapes[S.pitSel]; sh.cx += mv[0]; sh.cy += mv[1]; pitChanged(false); }
+    else if (ev.key === "Delete" || ev.key === "Backspace") { ev.preventDefault(); $("pcDel").click(); }
+  });
+})();
 $("pcAdd").addEventListener("click", () => {
-  const sh = pcShape(), pieces = shapePieces(sh), loops = shapeLoops(sh);
-  const T = SHAPE_TYPES[sh.type];
-  S.customOps.push({ pieces, loops, pre: Math.max(0, Number($("pcPre").value) || 0), shape: sh,
-    label: `${T.name} ${sh.w}${T.f.includes("h") ? " × " + sh.h : ""} µm${T.f.includes("t") ? `, t ${sh.t} µm` : ""}${T.f.includes("n") ? `, n ${sh.n}` : ""}, at (${sh.cx}, ${sh.cy}), ${sh.ang}°` });
-  useCustom();
+  toCustom();
+  // place the new shape beside the others so it does not land on top of them
+  const n = S.pitShapes.length, x = n ? Math.max(...S.pitShapes.flatMap(shapeLoops).flat().map(p => p[0])) + 2*SHAPE_TYPES[$("pcType").value].d.w/2 + 40 : 0;
+  S.pitShapes.push(newPitShape($("pcType").value, x, 0)); S.pitSel = S.pitShapes.length - 1; pitChanged(true);
 });
-$("pcClear").addEventListener("click", () => { S.customOps = []; useCustom(); });
-$("pcList").addEventListener("click", e => { const d = e.target.closest("[data-pcdel]"); if (!d) return; S.customOps.splice(Number(d.dataset.pcdel), 1); useCustom(); });
+$("pcDup").addEventListener("click", () => {
+  if (!(S.pitSel >= 0)) return; toCustom();
+  const c = JSON.parse(JSON.stringify(S.pitShapes[S.pitSel])); c.cx += 40; c.cy -= 40;
+  S.pitShapes.push(c); S.pitSel = S.pitShapes.length - 1; pitChanged(false);
+});
+$("pcDel").addEventListener("click", () => {
+  if (!(S.pitSel >= 0)) return; toCustom();
+  S.pitShapes.splice(S.pitSel, 1); S.pitSel = -1; pitChanged(false);
+});
+$("pcClear").addEventListener("click", () => { S.open = "custom"; S.pitShapes = []; S.pitSel = -1; pitChanged(false); });
+$("pcList").addEventListener("change", e => {
+  const el = e.target, i = Number(el.dataset.i), k = el.dataset.k; if (!(i >= 0) || !k) return;
+  toCustom(); S.pitShapes[i][k] = Number(el.value); S.pitSel = i; pitChanged(false);
+});
+$("pcList").addEventListener("click", e => {
+  const d = e.target.closest("[data-pcdel]"); if (d) { S.pitSel = Number(d.dataset.pcdel); $("pcDel").click(); return; }
+  const r = e.target.closest("[data-row]"); if (r && e.target.tagName !== "INPUT" && e.target.tagName !== "LABEL") { S.pitSel = Number(r.dataset.row); renderCustomList(); drawPitEditor(); }
+});
 $("pcToSim").addEventListener("click", () => {
   // the current openings, as they are (not their hulls), go to the etch simulator
-  const shapes = S.open === "custom" ? S.customOps.map(c => Object.assign({}, c.shape)) : [shp("pts", "open", 0, 0, 0, 0, 0, { pts: OPENINGS[S.wf][S.open].o.map(p => p.slice()) })];
+  const shapes = pitShapesNow().map(sh => JSON.parse(JSON.stringify(sh)));
   const [x0, x1, y0, y1] = pit.box, hx = Math.ceil(Math.max(Math.abs(x0), Math.abs(x1))/10)*10, hy = Math.ceil(Math.max(Math.abs(y0), Math.abs(y1))/10)*10;
   SIM.fk = { "100": "100", "110": "110f", "111": "111" }[S.wf]; SIM.rate = { PAL30: "PAL30", PAL40: "PAL40", LEC: "LEC42" }[S.rate];
   SIM.t = Math.max(5, Math.round(S.final ? pit.tmax : S.t)); SIM.pre = Math.max(0, ...pit.items.map(it => it.pre)); SIM.hx = hx; SIM.hy = hy; SIM.dxMax = 0;
@@ -1920,7 +2034,7 @@ const SHAPE_TYPES = {   // name, which size fields the editor shows, defaults fo
   ring:    { name: "ring",            f: ["w", "t"],      d: { w: 140, t: 80 } },
   star:    { name: "star",            f: ["w", "t", "n"], d: { w: 140, t: 60, n: 5 } },
   para:    { name: "parallelogram",   f: ["w", "h"],      d: { w: 120, h: 60, a1: 54.74, a2: 125.26 }, noAdd: true },
-  pts:     { name: "polygon",         f: [],              d: {}, noAdd: true },
+  pts:     { name: "example outline",         f: [],              d: {}, noAdd: true },
 };
 const ngon = (r, n, a0 = 0) => Array.from({ length: n }, (_, i) => { const a = a0 + 2*Math.PI*i/n; return [r*Math.cos(a), r*Math.sin(a)]; });
 // polygon with a hole as one loop: outer (counter-clockwise), a zero-width slit along +x, inner reversed
@@ -2578,6 +2692,20 @@ $("bDupShape").addEventListener("click", () => {
     const sh = SIM.shapes[drag.i]; sh.cx = Math.round((drag.cx + x - drag.x0)/5)*5; sh.cy = Math.round((drag.cy + y - drag.y0)/5)*5; drag.moved = true; drawMaskEditor();
   });
   cv.addEventListener("pointerup", () => { if (drag && drag.moved) { $("simPreset").value = "-1"; markDirty(); } drag = null; });
+  cv.setAttribute("tabindex", "0");
+  cv.addEventListener("dblclick", ev => {   // double-click an empty spot: add the chosen shape there
+    const [x, y] = world(ev);
+    if (SIM.shapes.some(sh => EE.isOpen([Object.assign(engineShape(sh), { op: "open" })], x, y))) return;
+    const type = $("addType").value, d = SHAPE_TYPES[type].d;
+    SIM.shapes.push(Object.assign(shp(type, $("addOp").value, Math.round(x/5)*5, Math.round(y/5)*5, d.w, d.h == null ? d.w : d.h), d, { nx: 1, ny: 1, px: 0, py: 0 }));
+    SIM.sel = SIM.shapes.length - 1; $("simPreset").value = "-1"; markDirty();
+  });
+  cv.addEventListener("keydown", ev => {   // arrow keys move the selected shape, Delete removes it
+    const sh = SIM.shapes[SIM.sel]; if (!sh) return;
+    const st = ev.shiftKey ? 25 : 5, mv = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, st], ArrowDown: [0, -st] }[ev.key];
+    if (mv) { ev.preventDefault(); sh.cx += mv[0]; sh.cy += mv[1]; $("simPreset").value = "-1"; markDirty(); }
+    else if (ev.key === "Delete" || ev.key === "Backspace") { ev.preventDefault(); SIM.shapes.splice(SIM.sel, 1); SIM.sel = -1; markDirty(); }
+  });
 })();
 // hover on the 3D surface
 function simHover(ev) {
@@ -2607,7 +2735,7 @@ function setTheater(on) {
   document.body.classList.toggle("theater", on); $("bTheater").setAttribute("aria-pressed", String(on));
   $("bTheater").textContent = on ? "Exit theater view" : "Theater view";
   try { localStorage.setItem("o3d-theater", on ? "1" : "0"); } catch (e) {}
-  requestAnimationFrame(() => { resize(); if (S.mode === "sim") { drawSection(); drawMaskEditor(); drawSimGraph(); } else if (S.mode === "pit") drawPitGraph(); });
+  requestAnimationFrame(() => { resize(); if (S.mode === "sim") { drawSection(); drawMaskEditor(); drawSimGraph(); } else if (S.mode === "pit") { drawPitGraph(); drawPitEditor(); } });
 }
 $("bTheater").addEventListener("click", () => setTheater(!document.body.classList.contains("theater")));
 document.addEventListener("keydown", e => {
@@ -2633,7 +2761,7 @@ function loop(now) {
   if (dirty) { renderer.render(scene, camera); placeLabels(); dirty = false; }
   requestAnimationFrame(loop);
 }
-readColors(); setHold(); fillOpenings(); fillPcTypes(); $("selRate").value = S.rate;
+readColors(); setHold(); fillOpenings(); fillPcTypes(); renderCustomList(); $("selRate").value = S.rate;
 prepPit(); $("tNow").textContent = `${sliderToT().toFixed(0)} min`;
 rebuild(true);
 requestAnimationFrame(loop);
