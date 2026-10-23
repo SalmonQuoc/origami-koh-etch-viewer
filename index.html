@@ -13,7 +13,7 @@
   --accent: #b5481d; --accent-ink: #ffffff;
   --scene-bg: #fbfaf7; --s-ink: #222222; --s-top: #d9d7d0; --s-side: #b9b6ad; --s-cut: #e3d3b4;
   --f111: #9a9a9a; --f100: #8fb3cf; --f110: #d7b072; --m-up: #e8e6df; --m-low: #8d8b85;
-  --disc: #8c8a84; --mask: #b5481d; --ghost: #2f6f9f;
+  --disc: #8c8a84; --mask: #6b4fa3; --ghost: #2f6f9f;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -22,7 +22,7 @@
     --accent: #f08a5d; --accent-ink: #1a1a18;
     --scene-bg: #1a1a19; --s-ink: #e6e4dc; --s-top: #5b5a55; --s-side: #484743; --s-cut: #75654a;
     --f111: #8e8d88; --f100: #5f8db3; --f110: #b78d4c; --m-up: #66655f; --m-low: #96948c;
-    --disc: #a19f97; --mask: #f08a5d; --ghost: #7fb6e0;
+    --disc: #a19f97; --mask: #a88be0; --ghost: #7fb6e0;
     color-scheme: dark;
   }
 }
@@ -31,7 +31,7 @@
   --accent: #f08a5d; --accent-ink: #1a1a18;
   --scene-bg: #1a1a19; --s-ink: #e6e4dc; --s-top: #5b5a55; --s-side: #484743; --s-cut: #75654a;
   --f111: #8e8d88; --f100: #5f8db3; --f110: #b78d4c; --m-up: #66655f; --m-low: #96948c;
-  --disc: #a19f97; --mask: #f08a5d; --ghost: #7fb6e0;
+  --disc: #a19f97; --mask: #a88be0; --ghost: #7fb6e0;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -211,14 +211,15 @@ section.refs a { color: var(--accent); }
       <div class="fields">
         <label>shape <span><select id="pcType"></select></span></label>
         <label>size w × h <span><input type="number" id="pcW" value="200" min="5" step="10"> × <input type="number" id="pcH" value="120" min="5" step="10"> µm</span></label>
-        <label>sides / points / arm <span><input type="number" id="pcN" value="6" min="3" step="1"></span></label>
+        <label id="pcTl">arm width t <span><input type="number" id="pcT" value="40" min="1" step="5"> µm</span></label>
+        <label id="pcNl">sides / points <span><input type="number" id="pcN" value="6" min="3" step="1"></span></label>
         <label>centre x, y <span><input type="number" id="pcX" value="0" step="10"> <input type="number" id="pcY" value="0" step="10"> µm</span></label>
         <label>angle to the flat <span><input type="number" id="pcA" value="0" step="5"> °</span></label>
         <label>pre-etch depth <span><input type="number" id="pcPre" value="0" min="0" step="5"> µm</span></label>
       </div>
       <div class="addrow"><button class="btn primary" id="pcAdd">Add opening</button><button class="btn" id="pcClear">Clear</button><button class="btn" id="pcToSim">Open in etch simulator</button></div>
       <div class="tblwrap"><table class="shapes" id="pcList"></table></div>
-      <p class="note" style="margin:4px 0 0">This scene moves the planes of each convex opening on its own. A non-convex shape (L, U, cross, star, ring) is replaced by its convex hull here; the etch simulator handles the real shape and merging cavities.</p>
+      <p class="note" style="margin:4px 0 0">A non-convex shape (L, U, cross, frame, ring, star) is split here into overlapping convex pieces; each piece etches as a convex opening and the cavity shown is their union. Concave corners therefore stop at {111} as they should, but convex mask corners (the inside corner of an L or U, the tips of a star) are <b>not</b> undercut here, although they are in real KOH etching (Kovacs et al. 1998, Fig. 1c; Pal et al. 2007, Sec. 2). Use “Open in etch simulator” to see that undercut.</p>
       <p class="warn hidden" id="pcWarn"></p>
     </details>
     <h3>Etchant</h3>
@@ -232,7 +233,8 @@ section.refs a { color: var(--accent); }
     <div class="row"><label><input type="checkbox" id="cCut"> cut open along the x axis (y = 0)</label></div>
     <div class="row"><label><input type="checkbox" id="cBlock" checked> silicon block (off: cast of the pit)</label></div>
     <div class="row"><label><input type="checkbox" id="cGhost" checked> final {111} shape (wire)</label></div>
-    <div class="row"><label><input type="checkbox" id="cMask"> mask layer</label></div>
+    <div class="row"><label><input type="checkbox" id="cMask" checked> mask layer</label></div>
+    <div class="legend"><span><i class="sw" style="background:var(--mask)"></i>mask film (SiO₂ or Si₃N₄; drawn thicker than real)</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span></div>
     <div class="row"><span class="lbl">Colour</span><select id="pitColor" style="width:auto"><option value="plane">crystal plane family</option><option value="depth">depth below the surface</option><option value="rate">etch rate of the wall</option></select></div>
     <h3>Now</h3>
     <dl class="kv" id="readout"></dl>
@@ -268,6 +270,7 @@ section.refs a { color: var(--accent); }
     <div class="row"><button class="btn" id="bSimPlay">Play</button>
       <label><input type="checkbox" id="cSimMask" checked> mask layer</label>
       <label><input type="checkbox" id="cSimCut"> cut away at the section</label></div>
+    <div class="legend"><span><i class="sw" style="background:var(--mask)"></i>mask film (drawn thicker than real)</span><span><i class="sw" style="background:var(--mask);filter:brightness(.55)"></i>mask with no silicon under it</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span></div>
     <h3>Section line</h3>
     <div class="row"><span class="seg" id="segCut"><button data-a="y" aria-pressed="true">along x</button><button data-a="x" aria-pressed="false">along y</button></span><span class="note" id="simCutLbl"></span></div>
     <input type="range" id="simCutPos" min="-100" max="100" step="1" value="0">
@@ -310,6 +313,8 @@ section.refs a { color: var(--accent); }
     <li>P. Pal and K. Sato, <i>Silicon Wet Bulk Micromachining for MEMS</i>, 1st ed. Singapore: Jenny Stanford Publishing, 2017, doi: <a href="https://doi.org/10.1201/9781315364926" target="_blank" rel="noopener">10.1201/9781315364926</a>. Pages used: Table 2.1 p. 30 (wafer thickness); Table 4.1 p. 87 (KOH rates of 12 orientations); p. 104 (vicinal (111)); pp. 235–249 (convex corners and compensation).</li>
     <li>F.-G. Tseng, “HW #2,” ESS5850 Micro System Design, National Tsing Hua University, fall 2026 (octahedron net p. 3; problem 5, (110) wafer with the ⟨111⟩ arrow).</li>
     <li>N. Paul, S. Bonam, S. R. K. Vanjari, and S. G. Singh, “Silicon membranes for microbolometers: simulation and fabrication using frontend bulk micromachining,” in <i>2024 IEEE Int. Conf. Electron Devices Society Kolkata Chapter (EDKCON)</i>, Kolkata, India, 2024, pp. 623–628, doi: <a href="https://doi.org/10.1109/EDKCON62339.2024.10870751" target="_blank" rel="noopener">10.1109/EDKCON62339.2024.10870751</a>. Used for the 45° (⟨100⟩-aligned) mask examples: Fig. 1, Sec. II–III.</li>
+    <li>G. T. A. Kovacs, N. I. Maluf, and K. E. Petersen, “Bulk micromachining of silicon,” <i>Proceedings of the IEEE</i>, vol. 86, no. 8, pp. 1536–1551, Aug. 1998. Used for: concave and convex corners of a (100) cavity and the undercut cantilever (Fig. 1(b), 1(c), p. 1537); comparison of wet etchants (Table 1, p. 1538).</li>
+    <li>P. Pal, K. Sato, and S. Chandra, “Fabrication techniques of convex corners in a (1 0 0)-silicon wafer using bulk micromachining: a review,” <i>Journal of Micromechanics and Microengineering</i>, vol. 17, no. 10, pp. R111–R133, 2007, doi: <a href="https://doi.org/10.1088/0960-1317/17/10/R01" target="_blank" rel="noopener">10.1088/0960-1317/17/10/R01</a>. Used for: undercut at convex corners (Sec. 2, p. R112) and corner compensation (Sec. 3.1, from p. R113).</li>
     <li>H. Q. A. Nguyen, “Origami tutorial: the {111} octahedron on (100), (110) and (111) wafers,” ESS5850 study notes, Rev. 1, Oct. 2026 (frames, sliding-plane construction).</li>
     <li>Source code: <a href="https://github.com/SalmonQuoc/origami-koh-etch-viewer" target="_blank" rel="noopener">github.com/SalmonQuoc/origami-koh-etch-viewer</a>. 3D rendering: three.js r128.</li>
   </ol>
@@ -1186,7 +1191,7 @@ function rectMinus(rect, O) {
 }
 
 // --------------------------------------------------------------------- state
-const S = { pitColor: "plane", customOps: [], wf: "100", mode: "model", sel: null, open: 0, rate: "PAL30", t: 0, final: false, cut: false, block: true, ghost: true, mask: false,
+const S = { pitColor: "plane", customOps: [], wf: "100", mode: "model", sel: null, open: 0, rate: "PAL30", t: 0, final: false, cut: false, block: true, ghost: true, mask: true,
             corners: true, faces: false, upper: true, playing: false };
 
 // --------------------------------------------------------------------- MODEL scene
@@ -1348,10 +1353,96 @@ function addLabelEl(html, cls) { const el = document.createElement("div"); el.in
 // --------------------------------------------------------------------- PIT scene
 const PL_CUT = [new THREE.Plane(new V3(0, 1, 0), 0)];
 let pit = null;
-// openings of the current etch: one preset, or the user's list (each convex; etched on its own)
+// openings of the current etch: one preset, or the user's list. Each opening is cut into convex pieces (g = which opening);
+// each piece is etched on its own and the cavity drawn is the union of the pieces' cavities.
 function pitItems() {
-  if (S.open === "custom") return S.customOps.map(c => ({ o: c.o, pre: c.pre }));
-  const op = OPENINGS[S.wf][S.open]; return [{ o: op.o, pre: op.pre || 0 }];
+  if (S.open === "custom") return S.customOps.flatMap((c, g) => c.pieces.map(o => ({ o, pre: c.pre, g })));
+  const op = OPENINGS[S.wf][S.open]; return [{ o: op.o, pre: op.pre || 0, g: 0 }];
+}
+const pitLoops = () => S.open === "custom" ? S.customOps.flatMap(c => c.loops) : [OPENINGS[S.wf][S.open].o];
+// largest distance of an outline O outside the union of convex openings os
+function beyondAll(O, os) {
+  let under = 0;
+  for (const p of O) { let s = Infinity; for (const o of os) s = Math.min(s, beyondEdge([p], o)); under = Math.max(under, s); }
+  return under;
+}
+// 3D: part of convex polygon P outside the convex cavity H (list of {n, b}, inside = n.x <= b), as convex pieces
+function clip3(P, n, b) {   // keep n.x <= b
+  const out = [];
+  for (let i = 0; i < P.length; i++) {
+    const p = P[i], q = P[(i + 1) % P.length], fp = C.dot(n, p) - b, fq = C.dot(n, q) - b;
+    if (fp <= 0) out.push(p);
+    if ((fp < 0 && fq > 0) || (fp > 0 && fq < 0)) { const u = fp/(fp - fq); out.push([p[0] + u*(q[0] - p[0]), p[1] + u*(q[1] - p[1]), p[2] + u*(q[2] - p[2])]); }
+  }
+  return out;
+}
+function minusCavity(P, H, eps) {   // eps > 0: a polygon lying on the cavity's surface is kept; eps < 0: it is removed
+  const out = []; let Rm = P;
+  for (const h of H) {
+    const o = clip3(Rm, C.mul(h.n, -1), -(h.b - eps));   // n.x >= b - eps: outside this plane
+    if (o.length >= 3) out.push(o);
+    Rm = clip3(Rm, h.n, h.b - eps);
+    if (Rm.length < 3) return out;
+  }
+  return out;   // the rest is inside the cavity: dropped
+}
+const inCavity = (q, H, eps) => H.every(h => C.dot(h.n, q) <= h.b + eps);
+// walls of every cavity minus the inside of the other cavities. Where two cavities share a plane (a common floor), the
+// earlier cavity keeps it. An edge is drawn unless the face just across it lies in the same plane (a seam inside one flat face).
+function unionWalls(cavs, keep, eps) {
+  const faces = [];
+  const bb = V => { const b = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity]; for (const v of V) for (let i = 0; i < 3; i++) { b[i] = Math.min(b[i], v[i]); b[i + 3] = Math.max(b[i + 3], v[i]); } return b; };
+  const meet = (a, b) => [0, 1, 2].every(i => a[i] <= b[i + 3] + 10*eps && b[i] <= a[i + 3] + 10*eps);
+  const cb = cavs.map(c => bb(c.verts));
+  cavs.forEach((cav, k) => {
+    for (const f of cav.faces) {
+      if (!keep(f)) continue;
+      let parts = [f.poly];
+      const fb = bb(f.poly);
+      cavs.forEach((o, j) => { if (j !== k && o.faces.length && meet(fb, cb[j])) parts = parts.flatMap(P => minusCavity(P, o.H, j < k ? -eps : eps)); });
+      for (const P of parts) faces.push(Object.assign({}, f, { poly: P, cav: k }));
+    }
+  });
+  const onFace = (q, F) => {
+    if (Math.abs(C.dot(F.n, q) - F.b) > 10*eps) return false;
+    const P = F.poly; let A = [0, 0, 0];
+    for (let i = 0; i < P.length; i++) A = C.add(A, C.cross(P[i], P[(i + 1) % P.length]));
+    const sg = C.dot(A, F.n) >= 0 ? 1 : -1;
+    return P.every((a, i) => sg*C.dot(C.cross(C.sub(P[(i + 1) % P.length], a), C.sub(q, a)), F.n) >= -eps*C.norm(C.sub(P[(i + 1) % P.length], a)));
+  };
+  const byPlane = new Map(), pk = F => F.n.map(v => Math.round(v*1e6)).join(",") + "|" + Math.round(F.b/(1e3*eps));
+  for (const F of faces) { const k = pk(F); if (!byPlane.has(k)) byPlane.set(k, []); byPlane.get(k).push(F); }
+  const edges = [];
+  for (const F of faces) {
+    const same = byPlane.get(pk(F));
+    const P = F.poly, c = C.mul(P.reduce(C.add, [0, 0, 0]), 1/P.length);
+    for (let i = 0; i < P.length; i++) {
+      const a = P[i], b = P[(i + 1) % P.length], ab = C.sub(b, a), L = C.norm(ab);
+      if (L < 10*eps) continue;
+      const m = C.mul(C.add(a, b), 0.5);
+      let d = C.cross(F.n, C.mul(ab, 1/L)); if (C.dot(d, C.sub(m, c)) < 0) d = C.mul(d, -1);   // in-plane, pointing out of this piece
+      const q = C.add(m, C.mul(d, Math.max(20*eps, 1e-3*L)));
+      if (same.length < 2 || !same.some(G => G !== F && onFace(q, G))) edges.push([a, b]);
+    }
+  }
+  // each shared crease is found from both sides: keep one copy
+  const seen = new Set(), key = p => p.map(v => Math.round(v/(100*eps))).join(","), out = [];
+  for (const [a, b] of edges) { const k1 = key(a) + "|" + key(b), k2 = key(b) + "|" + key(a); if (seen.has(k1) || seen.has(k2)) continue; seen.add(k1); out.push([a, b]); }
+  return { faces, edges: out };
+}
+// 2D: edges of convex polygons minus the inside of the other polygons (for section outlines)
+function unionEdges2(polys, eps) {
+  const Ps = polys.map(ccw), out = [];
+  const inside = (q, P) => P.every((a, i) => { const b = P[(i + 1) % P.length]; return (b[0] - a[0])*(q[1] - a[1]) - (b[1] - a[1])*(q[0] - a[0]) > eps*Math.hypot(b[0] - a[0], b[1] - a[1]); });
+  Ps.forEach((P, k) => P.forEach((a, i) => {
+    const b = P[(i + 1) % P.length], ns = 24;
+    for (let s = 0; s < ns; s++) {
+      const p = [a[0] + (b[0] - a[0])*s/ns, a[1] + (b[1] - a[1])*s/ns], q = [a[0] + (b[0] - a[0])*(s + 1)/ns, a[1] + (b[1] - a[1])*(s + 1)/ns];
+      const m = [(p[0] + q[0])/2, (p[1] + q[1])/2];
+      if (!Ps.some((O, j) => j !== k && inside(m, O))) out.push([p, q]);
+    }
+  }));
+  return out;
 }
 // largest distance of an outline O outside the (convex) mask opening o
 function beyondEdge(O, o) {
@@ -1391,7 +1482,7 @@ function prepPit() {
   const hist = { t: [], depth: [], under: [] }, nh = 40;
   for (let i = 0; i <= nh; i++) {
     const t = tmax*i/nh; let d = 0, u = 0;
-    items.forEach(it => { const c = C.etch(S.wf, it.o, { t, T: T_WAFER, pre: it.pre, rates: R }); d = Math.max(d, C.depth(c)); const O = C.outline(c.H, 0); if (O.length) u = Math.max(u, beyondEdge(O, it.o)); });
+    items.forEach(it => { const c = C.etch(S.wf, it.o, { t, T: T_WAFER, pre: it.pre, rates: R }); d = Math.max(d, C.depth(c)); const O = C.outline(c.H, 0); if (O.length) u = Math.max(u, beyondAll(O, items.filter(o => o.g === it.g).map(o => o.o))); });
     hist.t.push(t); hist.depth.push(d); hist.under.push(u);
   }
   pit = { items, R, fins, tmax, box, zb, dmax: Math.max(1, Math.min(zb, dmax)), hist };
@@ -1399,13 +1490,15 @@ function prepPit() {
   // overlapping cavities are not merged by this model
   const outs = lasts.map(c => C.outline(c.H, 0)), ov = [];
   for (let i = 0; i < outs.length; i++) for (let j = i + 1; j < outs.length; j++) {
+    if (items[i].g === items[j].g) continue;   // pieces of one opening are meant to merge
     let P = outs[i]; const Q = ccw(outs[j]);
     for (let k = 0; k < Q.length && P.length; k++) { const a = Q[k], b = Q[(k + 1) % Q.length], n = [b[1] - a[1], -(b[0] - a[0])]; P = C.clip2(P, n, n[0]*a[0] + n[1]*a[1]); }
-    if (P.length >= 3) ov.push(`${i + 1} and ${j + 1}`);
+    const pair = `${items[i].g + 1} and ${items[j].g + 1}`;
+    if (P.length >= 3 && !ov.includes(pair)) ov.push(pair);
   }
   const w = document.getElementById("pcWarn");
   w.classList.toggle("hidden", !ov.length);
-  w.textContent = ov.length ? `Openings ${ov.join(", ")} grow into each other before ${tmax.toFixed(0)} min. This scene cannot merge cavities; use “Open in etch simulator”.` : "";
+  w.textContent = ov.length ? `Openings ${ov.join(", ")} grow into each other before ${tmax.toFixed(0)} min. Here their cavities are simply overlaid: the mask strip between them is not undercut. Use “Open in etch simulator” for the real merge.` : "";
 }
 
 // rectangle (or any rectangle in a plane) minus polygons, painted on a canvas texture: robust for many and overlapping holes
@@ -1441,6 +1534,31 @@ function meshFromPolysV(polys, vcol, matOpts) {   // per-vertex colours: vcol(po
   m.userData.tri2poly = tri2poly; return m;
 }
 
+// drawn mask thickness (µm): exaggerated so the film reads as a separate layer
+const maskThick = () => Math.max(1, 0.012*radius);
+// side faces of the mask film along the opening edges: only where one side of the edge is open and the other is masked
+function maskRim(loops, isOpenAt, tm, clip, box) {
+  const pos = [], col = [], ln = [], dark = COL.mask.clone().multiplyScalar(0.62);
+  for (const P of loops) for (let i = 0; i < P.length; i++) {
+    const a = P[i], b = P[(i + 1) % P.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (L < 1e-9) continue;
+    const nx = (b[1] - a[1])/L, ny = -(b[0] - a[0])/L, ns = Math.max(1, Math.ceil(L/4)), d = 0.4;
+    for (let k = 0; k < ns; k++) {
+      const p = [a[0] + (b[0] - a[0])*k/ns, a[1] + (b[1] - a[1])*k/ns], q = [a[0] + (b[0] - a[0])*(k + 1)/ns, a[1] + (b[1] - a[1])*(k + 1)/ns];
+      const m = [(p[0] + q[0])/2, (p[1] + q[1])/2];
+      if (box && (m[0] < box[0] || m[0] > box[1] || m[1] < box[2] || m[1] > box[3])) continue;
+      if (isOpenAt(m[0] + d*nx, m[1] + d*ny) === isOpenAt(m[0] - d*nx, m[1] - d*ny)) continue;
+      for (const v of [[p, 0], [q, 0], [q, tm], [p, 0], [q, tm], [p, tm]]) { pos.push(v[0][0], v[0][1], v[1]); col.push(dark.r, dark.g, dark.b); }
+      ln.push(p[0], p[1], tm, q[0], q[1], tm);
+    }
+  }
+  const grp = new THREE.Group();
+  const gq = new THREE.BufferGeometry(); gq.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); gq.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+  grp.add(new THREE.Mesh(gq, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, clippingPlanes: clip || null })));
+  const gl = new THREE.BufferGeometry(); gl.setAttribute("position", new THREE.Float32BufferAttribute(ln, 3));
+  grp.add(new THREE.LineSegments(gl, new THREE.LineBasicMaterial({ color: COL["s-ink"], clippingPlanes: clip || null })));
+  return grp;
+}
 function buildPit() {
   scene = new THREE.Scene(); scene.background = COL["scene-bg"]; clearLabels();
   const { items, R, fins, box, zb } = pit;
@@ -1454,10 +1572,12 @@ function buildPit() {
   const g = new THREE.Group(); scene.add(g);
   pit.pick = [];
   const rmax = Math.max(...Object.values(R)), mode = S.pitColor;
-  // cavity walls
-  for (const cav of cavs) {
-    const walls = cav.faces.filter(f => S.block ? !(f.label === "surface" || f.label === "back") : true);
-    if (!walls.length) continue;
+  // cavity walls: union of the cavities of all pieces (walls inside another piece's cavity are removed)
+  const eps = 1e-6*Math.max(1, radius);
+  const U = unionWalls(cavs.filter(c => c.faces.length), f => S.block ? !(f.label === "surface" || f.label === "back") : true, eps);
+  pit.walls = U.faces;
+  {
+    const walls = U.faces;
     const nOf = f => S.block ? C.mul(f.n, -1) : f.n, other = f => f.fam === "surface" || f.fam === "back";
     let mesh;
     if (mode === "plane") {
@@ -1470,8 +1590,8 @@ function buildPit() {
         return shadeColor(cmap(mode === "depth" ? -q[2]/pit.dmax : rateOf(f)/rmax), nOf(f));
       }, { clippingPlanes: clip, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
     }
-    mesh.userData.faces = walls; g.add(mesh); pit.pick.push(mesh);
-    g.add(linesFromLoops(walls.map(f => f.poly), COL["s-ink"], { clip }));
+    if (walls.length) { mesh.userData.faces = walls; g.add(mesh); pit.pick.push(mesh); }
+    if (U.edges.length) g.add(linesFromLoops(U.edges, COL["s-ink"], { clip }));
   }
   if (mode === "depth") showCbar("depth below the surface", 0, pit.dmax, "µm");
   else if (mode === "rate") showCbar(S.final ? "etch rate (long-etch limit: {111} only)" : "etch rate of the wall plane", 0, rmax, "µm/min");
@@ -1494,22 +1614,25 @@ function buildPit() {
       const secs = cavs.map(c => C.vsectionY(c.H, 0)).filter(P => P.length >= 3);
       const cutp = holePlane(x0, x1, -zb, 0, secs, COL["s-cut"], m => { m.rotation.x = Math.PI/2; });   // (x, z) plane at y = 0
       cutp.userData.block = true; g.add(cutp); pit.pick.push(cutp);
-      if (secs.length) g.add(linesFromLoops(secs.map(sec => sec.map(p => [p[0], -0.002*zb, p[1]])), COL["s-ink"]));
+      if (secs.length) g.add(linesFromLoops(unionEdges2(secs, 1e-6).map(([a, b]) => [[a[0], -0.002*zb, a[1]], [b[0], -0.002*zb, b[1]]]), COL["s-ink"]));
     }
     const yl = yB;
     g.add(linesFromLoops([[[x0, yA, 0], [x1, yA, 0], [x1, yl, 0], [x0, yl, 0]], [[x0, yA, -zb], [x1, yA, -zb], [x1, yl, -zb], [x0, yl, -zb]]], COL["s-ink"], { opacity: 0.6 }));
     g.add(linesFromLoops([[[x0, yA, 0], [x0, yA, -zb]], [[x1, yA, 0], [x1, yA, -zb]], [[x0, yl, 0], [x0, yl, -zb]], [[x1, yl, 0], [x1, yl, -zb]]], COL["s-ink"], { opacity: 0.6 }));
     if (zb < T_WAFER) addLabel(new V3(x1, yA, -zb), `depth shown: ${zb.toFixed(0)} µm`, "", camDir => camDir.z > -0.2);
     // mask
-    if (S.mask) {
-      const mm = holePlane(x0, x1, yA, yB, items.map(it => it.o), COL.mask, m => { m.position.z = 0.012*zb; }, { opacity: 0.22, depthWrite: false, alphaTest: 0.01 });
+    if (S.mask) {   // mask film on top of the silicon, thickness exaggerated; it overhangs where the silicon is undercut
+      const tm = maskThick(), opens = items.map(it => it.o);
+      const mm = holePlane(x0, x1, yA, yB, opens, COL.mask, m => { m.position.z = tm; }, { opacity: 0.88, alphaTest: 0.01 });
       mm.renderOrder = 5; g.add(mm);
+      const os = opens.map(o => ({ pts: o, op: "open" })), inOpen = (x, y) => EE.isOpen(os, x, y);
+      g.add(maskRim(pitLoops(), inOpen, tm, clip, [x0, x1, yA, yB]));
     }
   }
   // mask opening outlines
-  g.add(linesFromLoops(items.map(it => it.o.map(p => [p[0], p[1], 0.004*zb])), COL.mask, { clip, dashed: true, dash: radius*0.03, gap: radius*0.02 }));
+  g.add(linesFromLoops(pitLoops().map(P => P.map(p => [p[0], p[1], (S.mask && S.block ? maskThick() : 0) + 0.004*zb])), COL.mask, S.mask && S.block ? { clip } : { clip, dashed: true, dash: radius*0.03, gap: radius*0.02 }));
   // ghost: final {111} shape
-  if (S.ghost && !S.final) { const gh = linesFromLoops(fins.flatMap(fin => fin.faces.filter(f => f.label !== "surface").map(f => f.poly)), COL.ghost, { clip, opacity: 0.55 }); gh.material.depthTest = false; gh.renderOrder = 8; g.add(gh); }
+  if (S.ghost && !S.final) { const gh = linesFromLoops(unionWalls(fins.filter(c => c.faces.length), f => f.label !== "surface", eps).edges, COL.ghost, { clip, opacity: 0.55 }); gh.material.depthTest = false; gh.renderOrder = 8; g.add(gh); }
   // axes labels on the top surface
   const e = C.FRAME_IDX[S.wf];
   g.add(new THREE.ArrowHelper(new V3(1, 0, 0), new V3(x0, yA, 0), (x1 - x0)*0.18, COL.accent.getHex(), radius*0.05, radius*0.03));
@@ -1528,31 +1651,33 @@ function drawPitGraph() {
   graphLegend($("pitGraphLeg"), series, vals, tv);
 }
 
+const polyArea3 = P => { let A = [0, 0, 0]; for (let i = 0; i < P.length; i++) A = C.add(A, C.cross(P[i], P[(i + 1) % P.length])); return 0.5*C.norm(A); };
 function updateReadout(cavs) {
   let d = 0, under = 0, xs = [], ys = [], floors = 0, through = false;
   cavs.forEach((cav, k) => {
     d = Math.max(d, C.depth(cav));
     const O = C.outline(cav.H, 0);
     for (const p of O) { xs.push(p[0]); ys.push(p[1]); }
-    if (O.length) under = Math.max(under, beyondEdge(O, pit.items[k].o));
+    if (O.length) under = Math.max(under, beyondAll(O, pit.items.filter(o => o.g === pit.items[k].g).map(o => o.o)));
     if (cav.faces.find(f => f.label !== "surface" && f.n[2] < -1 + 1e-9 && f.label !== "back")) floors++;
     if (cav.faces.some(f => f.label === "back")) through = true;
   });
+  const ng = new Set(pit.items.map(it => it.g)).size, nf = (pit.walls || []).filter(f => f.label !== "surface" && f.label !== "back" && f.n[2] < -1 + 1e-9);
   const floor = cavs.length === 1 ? cavs[0].faces.find(f => f.label !== "surface" && f.n[2] < -1 + 1e-9 && f.label !== "back") : null;
   const rows = [
     ["time", S.final ? "long-etch limit" : `${S.t.toFixed(S.t < 10 ? 1 : 0)} min`],
-    ["openings", String(cavs.length)],
+    ["openings", ng > 1 || cavs.length > 1 ? `${ng}${cavs.length > ng ? ` (${cavs.length} convex pieces)` : ""}` : "1"],
     ["depth", d > 0 ? um(d) : "-"],
     ["outline along flat", xs.length ? um(Math.max(...xs) - Math.min(...xs)) : "-"],
     ["outline across flat", ys.length ? um(Math.max(...ys) - Math.min(...ys)) : "-"],
     ["beyond mask edge", xs.length ? um(Math.max(0, under)) : "-"],
-    ["flat floor", through ? "etched through" : cavs.length === 1 ? (floor ? `yes, area ${(floor.area/1e3).toFixed(1)}×10³ µm²` : "no (walls meet)") : `${floors} of ${cavs.length} cavities`],
+    ["flat floor", through ? "etched through" : cavs.length === 1 ? (floor ? `yes, area ${(floor.area/1e3).toFixed(1)}×10³ µm²` : "no (walls meet)") : (nf.length ? `yes, area ${(nf.reduce((a, f) => a + polyArea3(f.poly), 0)/1e3).toFixed(1)}×10³ µm² (all pieces)` : "no (walls meet)")],
   ];
   if (cavs.length === 1) rows.splice(1, 1);
   document.getElementById("readout").innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
   // walls grouped by family and angle
   const groups = new Map();
-  for (const cav of cavs) for (const f of cav.faces) {
+  for (const f of (pit.walls || [])) {
     if (f.label === "surface" || f.label === "back") continue;
     const a = C.angleToSurface(f.n), key = `${f.fam}|${a.toFixed(2)}|${f.n[2] > 1e-9 ? "o" : ""}`;
     const g = groups.get(key) || { fam: f.fam, a, over: f.n[2] > 1e-9, n: 0 }; g.n++; groups.set(key, g);
@@ -1666,12 +1791,21 @@ $("selOpen").addEventListener("change", e => {
 });
 $("pitColor").addEventListener("change", e => { S.pitColor = e.target.value; buildPit(); });
 // ---- the user's own openings in the Etched pit scene
-function fillPcTypes() { $("pcType").innerHTML = Object.entries(SHAPE_TYPES).filter(([, v]) => !v.noAdd).map(([k, v]) => `<option value="${k}">${v.name}${isConvexType(k) ? "" : " (convex hull here)"}</option>`).join(""); }
+function fillPcTypes() { $("pcType").innerHTML = Object.entries(SHAPE_TYPES).filter(([, v]) => !v.noAdd).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join(""); pcFields(true); }
+// show the size fields that the chosen shape uses, with its default sizes (scaled up for the pit scene)
+function pcFields(defaults) {
+  const type = $("pcType").value, T = SHAPE_TYPES[type], d = T.d;
+  const has = k => T.f.includes(k);
+  $("pcH").disabled = !has("h"); $("pcTl").classList.toggle("hidden", !has("t")); $("pcNl").classList.toggle("hidden", !has("n"));
+  $("pcTl").firstChild.textContent = type === "ring" || type === "star" ? "inner size t " : "arm width t ";
+  if (defaults) { $("pcW").value = 2*d.w; $("pcH").value = 2*(d.h || d.w); if (d.t) $("pcT").value = 2*d.t; if (d.n) $("pcN").value = d.n; }
+}
+$("pcType").addEventListener("change", () => pcFields(true));
 function pcShape() {
-  const type = $("pcType").value, d = SHAPE_TYPES[type].d, n = Number($("pcN").value) || d.n || 6;
-  const w = Number($("pcW").value) || 100, h = Number($("pcH").value) || w;
+  const type = $("pcType").value, T = SHAPE_TYPES[type], d = T.d;
+  const w = Number($("pcW").value) || 100, h = T.f.includes("h") ? Number($("pcH").value) || w : w;
   return Object.assign(shp(type, "open", Number($("pcX").value) || 0, Number($("pcY").value) || 0, w, h, Number($("pcA").value) || 0),
-    { n, t: type === "ring" || type === "star" ? h : Math.min(w, h)*0.3 });
+    { n: Number($("pcN").value) || d.n || 6, t: Number($("pcT").value) || d.t || 0.3*Math.min(w, h) });
 }
 function renderCustomList() {
   $("pcList").innerHTML = S.customOps.length ? `<tr class="hd"><td>#</td><td>opening</td><td>pre-etch</td><td></td></tr>` +
@@ -1684,10 +1818,10 @@ function useCustom() {
   renderCustomList(); prepPit(); rebuild(true);
 }
 $("pcAdd").addEventListener("click", () => {
-  const sh = pcShape(), polys = shapePolys(sh), o = hull2(polys.flat());
+  const sh = pcShape(), pieces = shapePieces(sh), loops = shapeLoops(sh);
   const T = SHAPE_TYPES[sh.type];
-  S.customOps.push({ o, pre: Math.max(0, Number($("pcPre").value) || 0), shape: sh,
-    label: `${T.name} ${sh.w}${T.f.includes("h") ? " × " + sh.h : ""} µm at (${sh.cx}, ${sh.cy}), ${sh.ang}°${isConvexType(sh.type) ? "" : " (hull)"}` });
+  S.customOps.push({ pieces, loops, pre: Math.max(0, Number($("pcPre").value) || 0), shape: sh,
+    label: `${T.name} ${sh.w}${T.f.includes("h") ? " × " + sh.h : ""} µm${T.f.includes("t") ? `, t ${sh.t} µm` : ""}${T.f.includes("n") ? `, n ${sh.n}` : ""}, at (${sh.cx}, ${sh.cy}), ${sh.ang}°` });
   useCustom();
 });
 $("pcClear").addEventListener("click", () => { S.customOps = []; useCustom(); });
@@ -1812,7 +1946,44 @@ function basePts(s) {   // shape outline before rotation and translation
   }
   return [[-w/2, -h/2], [w/2, -h/2], [w/2, h/2], [-w/2, h/2]];
 }
-// all polygons of a shape (several when it is an array), in the wafer frame (µm)
+// the shape as overlapping convex pieces that cover it, for the Etched pit scene. Pieces overlap so that no point of the
+// opening lies only on a seam between two pieces (a seam would leave a false silicon ridge between their cavities).
+function basePieces(s) {
+  const w = s.w, h = s.h, t = Math.max(1, s.t || 0), n = Math.max(3, Math.round(s.n || 3));
+  const box = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+  switch (s.type) {
+    case "lshape": return [box(-w/2, -h/2, w/2, -h/2 + t), box(-w/2, -h/2, -w/2 + t, h/2)];
+    case "ushape": return [box(-w/2, -h/2, w/2, -h/2 + t), box(-w/2, -h/2, -w/2 + t, h/2), box(w/2 - t, -h/2, w/2, h/2)];
+    case "cross": { const a = t/2; return [box(-w/2, -a, w/2, a), box(-a, -h/2, a, h/2)]; }
+    case "frame": { const tx = Math.min(t, w/2), ty = Math.min(t, h/2);
+      return [box(-w/2, -h/2, w/2, -h/2 + ty), box(-w/2, h/2 - ty, w/2, h/2), box(-w/2, -h/2, -w/2 + tx, h/2), box(w/2 - tx, -h/2, w/2, h/2)]; }
+    case "ring": { const m = 24, ro = w/2, ri = Math.min(t, w - 2)/2, O = ngon(ro, m), I = ngon(ri, m);   // each piece spans two of m sectors
+      return Array.from({ length: m }, (_, i) => [I[i], O[i], O[(i + 1) % m], O[(i + 2) % m], I[(i + 2) % m]]); }
+    case "star": { const P = basePts(s), inner = P.filter((_, i) => i % 2);   // centre polygon + one kite per point
+      return [inner, ...Array.from({ length: n }, (_, i) => [[0, 0], P[(2*i - 1 + 2*n) % (2*n)], P[2*i], P[2*i + 1]])]; }
+  }
+  return [basePts(s)];
+}
+// the shape's outline loops (holes as separate loops), before rotation and translation: for drawing the mask edge
+function baseLoops(s) {
+  const w = s.w, h = s.h, t = Math.max(1, s.t || 0);
+  if (s.type === "frame") { const R = (W, H) => [[-W/2, -H/2], [W/2, -H/2], [W/2, H/2], [-W/2, H/2]]; return [R(w, h), R(Math.max(1, w - 2*t), Math.max(1, h - 2*t))]; }
+  if (s.type === "ring") return [ngon(w/2, 72), ngon(Math.min(t, w - 2)/2, 72)];
+  return [basePts(s)];
+}
+// all polygons of a shape (several when it is an array), in the wafer frame (µm); base(s) gives the polygons before placement
+function placePolys(s, base) {
+  const c = Math.cos(s.ang/C.DEG), sn = Math.sin(s.ang/C.DEG);
+  const Ps = base.map(P => P.map(([x, y]) => [x*c - y*sn, x*sn + y*c]));
+  const nx = Math.max(1, Math.round(s.nx || 1)), ny = Math.max(1, Math.round(s.ny || 1)), px = s.px || 0, py = s.py || 0, out = [];
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+    const ox = s.cx + (i - (nx - 1)/2)*px, oy = s.cy + (j - (ny - 1)/2)*py;
+    for (const P of Ps) out.push(P.map(([x, y]) => [ox + x, oy + y]));
+  }
+  return out;
+}
+const shapePieces = s => s.type === "para" || s.type === "pts" ? shapePolys(s).map(hull2) : placePolys(s, basePieces(s));
+const shapeLoops = s => s.type === "para" || s.type === "pts" ? shapePolys(s) : placePolys(s, baseLoops(s));
 function shapePolys(s) {
   let P;
   if (s.type === "para") {   // parallelogram: side w along angle a1 (deg), side h along angle a2, relative to the flat
@@ -2117,11 +2288,12 @@ function buildSim(resetView) {
   const zbb = -zb;
   g.add(linesFromLoops([[[X0, Y0, 0], [X1, Y0, 0], [X1, Y1, 0], [X0, Y1, 0]], [[X0, Y0, zbb], [X1, Y0, zbb], [X1, Y1, zbb], [X0, Y1, zbb]]], COL["s-ink"], { opacity: 0.35, clip }));
   g.add(linesFromLoops([[[X0, Y0, 0], [X0, Y0, zbb]], [[X1, Y0, 0], [X1, Y0, zbb]], [[X0, Y1, 0], [X0, Y1, zbb]], [[X1, Y1, 0], [X1, Y1, zbb]]], COL["s-ink"], { opacity: 0.35, clip }));
-  // mask layer with suspended parts tinted
+  // mask layer (film drawn with exaggerated thickness) with suspended parts tinted
+  const zMask = maskThick();
   if (SIM.showMask) {
     const tex = maskTexture(r);
-    const pg = new THREE.PlaneGeometry(X1 - X0, Y1 - Y0); pg.translate((X0 + X1)/2, (Y0 + Y1)/2, Math.max(0.6, 0.004*radius));
-    const mm = new THREE.Mesh(pg, new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, depthWrite: false, alphaTest: 0.02, clippingPlanes: clip }));
+    const pg = new THREE.PlaneGeometry(X1 - X0, Y1 - Y0); pg.translate((X0 + X1)/2, (Y0 + Y1)/2, zMask);
+    const mm = new THREE.Mesh(pg, new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, alphaTest: 0.02, clippingPlanes: clip }));
     mm.renderOrder = 5; g.add(mm);
   }
   // mask outlines
@@ -2139,7 +2311,8 @@ function buildSim(resetView) {
     return onEdge ? [] : P;   // a shape covering the whole domain draws no outline
   };
   const loops = SIM.shapes.flatMap(s => shapePolys(s).map(clipRect)).filter(P => P.length).map(P => P.map(p => [p[0], p[1], Math.max(0.8, 0.005*radius)]));
-  if (loops.length) g.add(linesFromLoops(loops, COL.mask, { clip, opacity: 0.8 }));
+  if (SIM.showMask) { const es = SIM.shapes.map(engineShape); g.add(maskRim(SIM.shapes.flatMap(shapePolys), (x, y) => EE.isOpen(es, x, y), zMask, clip, [X0, X1, Y0, Y1])); }
+  else if (loops.length) g.add(linesFromLoops(loops, COL.mask, { clip, opacity: 0.8 }));
   // flat and frame labels
   const F = simFrame();
   g.add(new THREE.ArrowHelper(new V3(1, 0, 0), new V3(X0, Y0, 0), (X1 - X0)*0.22, COL.accent.getHex(), radius*0.05, radius*0.03));
@@ -2171,14 +2344,14 @@ function maskTexture(r) {
   const X0 = -SIM.hx, Y0 = -SIM.hy, W = 2*SIM.hx, H = 2*SIM.hy, s = Math.min(4, 1400/Math.max(W, H));
   const cv = document.createElement("canvas"); cv.width = Math.max(2, Math.round(W*s)); cv.height = Math.max(2, Math.round(H*s));
   const ctx = cv.getContext("2d");
-  paintMask(ctx, s, X0, Y0, H, "#" + COL.mask.getHexString(), 0.5);
+  paintMask(ctx, s, X0, Y0, H, "#" + COL.mask.getHexString(), 0.85);
   // mask with no silicon under it (released or undercut): darker
   if (r && r.top && SIM.grid && SIM.cfg) {
     const g = SIM.grid, dx = g.dx, ov = document.createElement("canvas"); ov.width = cv.width; ov.height = cv.height;
-    const o = ov.getContext("2d"); o.setTransform(s, 0, 0, -s, -X0*s, (Y0 + H)*s); o.fillStyle = "#" + COL.mask.getHexString();
+    const o = ov.getContext("2d"); o.setTransform(s, 0, 0, -s, -X0*s, (Y0 + H)*s); o.fillStyle = "#" + COL.mask.clone().multiplyScalar(0.55).getHexString();
     for (let j = 0; j < g.Ny; j++) for (let i = 0; i < g.Nx; i++) if (r.top[j*g.Nx + i]) o.fillRect(X0 + i*dx - 0.3, Y0 + j*dx - 0.3, dx + 0.6, dx + 0.6);
     o.setTransform(1, 0, 0, 1, 0, 0); o.globalCompositeOperation = "destination-in"; o.drawImage(cv, 0, 0);
-    ctx.globalAlpha = 1; ctx.drawImage(ov, 0, 0); ctx.drawImage(ov, 0, 0);
+    ctx.globalAlpha = 1; ctx.drawImage(ov, 0, 0);
   }
   const t = new THREE.CanvasTexture(cv); t.anisotropy = 4; return t;
 }

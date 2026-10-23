@@ -6,7 +6,8 @@ It has three scenes:
 
 - **Model on wafer**: the HW2 {111} octahedron held over a (100), (110) or (111) wafer. Click a face to see its trace on the surface and its angle to the surface.
 - **Etched pit**: the cavity under a convex mask opening, built as an intersection of moving crystal planes (n·x ≤ h + R·t over the {100}, {110} and {111} planes).
-- **Etched pit**: you can also add your own openings (rectangle, circle, L, U, cross, star and more, with rotation and arrays). Each is drawn as the convex cavity of its outline, a warning appears when cavities overlap, and "Open in etch simulator" runs the same mask in the level-set model.
+- **Etched pit**: you can also add your own openings (rectangle, circle, L, U, cross, frame, ring, star and more, with rotation). A non-convex opening is split into overlapping convex pieces; each piece etches on its own and the cavity drawn is their union, so concave corners stop at {111}. Convex mask corners are not undercut in this scene (they are in real KOH etching; Kovacs et al. 1998, Fig. 1(c); Pal et al. 2007, Sec. 2), so "Open in etch simulator" runs the same mask in the level-set model.
+- **Mask film**: drawn in its own colour as an opaque layer with exaggerated thickness, so it reads apart from the silicon and shows the overhang where the silicon is undercut.
 - **Etch simulator**: a 3D level-set simulation of KOH etching for any mask drawn in the mask editor. It includes 20 examples: cantilevers and bridges released by undercut, mesa corner attack with three compensation types, windows of different sizes and shapes that merge, (110) vertical walls and trenches, (111) pre-etched holes, and four (100) masks at 45° to the flat after Paul et al. (2024).
 
 Other functions:
@@ -48,7 +49,9 @@ Huu Quoc Anh Nguyen, Student ID X1150030, Department of Engineering and System S
 2. P. Pal and K. Sato, *Silicon Wet Bulk Micromachining for MEMS*, 1st ed. Singapore: Jenny Stanford Publishing, 2017, doi: 10.1201/9781315364926. Table 2.1 (p. 30), Table 4.1 (p. 87), p. 104, pp. 235–249.
 3. F.-G. Tseng, "HW #2," ESS5850 Micro System Design, National Tsing Hua University, fall 2026 (octahedron net, p. 3; problem 5).
 4. N. Paul, S. Bonam, S. R. K. Vanjari, and S. G. Singh, "Silicon membranes for microbolometers: simulation and fabrication using frontend bulk micromachining," in *2024 IEEE Int. Conf. Electron Devices Society Kolkata Chapter (EDKCON)*, Kolkata, India, 2024, pp. 623–628, doi: 10.1109/EDKCON62339.2024.10870751. Used for the 45° (⟨100⟩-aligned) mask examples (Fig. 1, Sec. II–III); KOH 30 wt% replaces their TMAH, for which the course files give no rate table.
-5. H. Q. A. Nguyen, "Origami tutorial: the {111} octahedron on (100), (110) and (111) wafers," ESS5850 study notes, Rev. 1, Oct. 2026.
+5. G. T. A. Kovacs, N. I. Maluf, and K. E. Petersen, "Bulk micromachining of silicon," *Proceedings of the IEEE*, vol. 86, no. 8, pp. 1536–1551, Aug. 1998. Concave and convex corners and the undercut cantilever (Fig. 1(b), 1(c), p. 1537); wet etchants (Table 1, p. 1538).
+6. P. Pal, K. Sato, and S. Chandra, "Fabrication techniques of convex corners in a (1 0 0)-silicon wafer using bulk micromachining: a review," *J. Micromech. Microeng.*, vol. 17, no. 10, pp. R111–R133, 2007, doi: 10.1088/0960-1317/17/10/R01. Undercut at convex corners (Sec. 2) and corner compensation (Sec. 3.1).
+7. H. Q. A. Nguyen, "Origami tutorial: the {111} octahedron on (100), (110) and (111) wafers," ESS5850 study notes, Rev. 1, Oct. 2026.
 
 ## Repository layout
 
