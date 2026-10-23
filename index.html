@@ -116,6 +116,32 @@ details.srcs { margin-top: 14px; font-size: 13px; }
 details.srcs summary { cursor: pointer; font-weight: 600; }
 details.srcs ul { padding-left: 18px; margin: 6px 0 0; }
 details.srcs li { margin: 4px 0; }
+.byline { margin: 6px 0 0; font-size: 13.5px; color: var(--muted); max-width: 90ch; }
+.byline b { color: var(--ink); font-weight: 600; }
+.bar .tools { margin-left: auto; display: flex; gap: 6px; }
+body.theater .wrap { max-width: none; }
+body.theater .grid { grid-template-columns: minmax(0, 1fr); }
+body.theater .stage { height: calc(100vh - 170px); min-height: 420px; }
+body.theater aside.panel { columns: 2 340px; column-gap: 28px; }
+body.theater aside.panel > * { break-inside: avoid; }
+.stage:fullscreen { height: 100vh; border-radius: 0; border: 0; }
+.cbar { position: absolute; right: 10px; bottom: 30px; background: color-mix(in srgb, var(--scene-bg) 88%, transparent); border: 1px solid var(--line);
+  border-radius: 6px; padding: 5px 8px 3px; font: 11.5px/1.3 "IBM Plex Sans", sans-serif; color: var(--ink); pointer-events: none; }
+.cbar canvas { display: block; width: 210px; height: 34px; }
+.graphcv { width: 100%; display: block; }
+.glegend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+.glegend i { display: inline-block; width: 14px; height: 3px; vertical-align: 3px; margin-right: 5px; border-radius: 2px; }
+.addrow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
+.addrow select { width: auto; }
+details.custom { margin-top: 8px; font-size: 13.5px; }
+details.custom summary { cursor: pointer; font-weight: 600; }
+.warn { color: var(--accent); font-size: 13px; margin: 6px 0 0; }
+section.refs { margin-top: 18px; font-size: 13px; color: var(--muted); max-width: 110ch; }
+section.refs h2 { font: 600 17px/1.3 "Source Serif 4", Georgia, serif; color: var(--ink); margin: 0 0 6px; }
+section.refs ol { margin: 0; padding-left: 26px; }
+section.refs li { margin: 3px 0; }
+section.refs a { color: var(--accent); }
+.kbd { font-family: "IBM Plex Mono", monospace; font-size: 12px; border: 1px solid var(--line); border-radius: 3px; padding: 0 3px; }
 </style>
 </head>
 <body>
@@ -123,6 +149,8 @@ details.srcs li { margin: 4px 0; }
 <header>
   <h1>Origami 3D viewer</h1>
   <p>The HW2 {111} octahedron held over a (100), (110) or (111) wafer, the KOH pit it predicts, and a KOH etch simulator for any mask (cantilevers, bridges, corner attack and compensation, merging windows). Drag to turn, scroll or pinch to zoom.</p>
+  <p class="byline"><b>Huu Quoc Anh Nguyen</b> · Student ID X1150030 · Department of Engineering and System Science (ESS), National Tsing Hua University · ESS5850 Micro System Design, fall 2026.<br>
+  AI use: written with help from an AI assistant (Claude, Anthropic). I chose the content and checked the numbers against the sources listed under References; the AI wrote most of the code.</p>
 </header>
 
 <div class="bar">
@@ -130,6 +158,7 @@ details.srcs li { margin: 4px 0; }
     <button data-w="100" aria-pressed="true">(100)</button><button data-w="110" aria-pressed="false">(110)</button><button data-w="111" aria-pressed="false">(111)</button></span></div>
   <div><span class="lbl">Scene</span><span class="seg" id="segM">
     <button data-m="model" aria-pressed="true">Model on wafer</button><button data-m="pit" aria-pressed="false">Etched pit</button><button data-m="sim" aria-pressed="false">Etch simulator</button></span></div>
+  <div class="tools"><button class="btn" id="bTheater" aria-pressed="false" title="Wide stage with the panel below (key T)">Theater view</button><button class="btn" id="bFull" title="Full screen 3D view (Esc to leave)">Full screen</button></div>
 </div>
 
 <div class="grid">
@@ -138,6 +167,7 @@ details.srcs li { margin: 4px 0; }
       <div class="labels" id="labels"></div>
       <div class="tip" id="tip"></div>
       <div class="hint" id="hint">Click a face of the model</div>
+      <div class="cbar hidden" id="cbar"><div id="cbarTitle"></div><canvas id="cbarCv"></canvas></div>
     </div>
     <div class="views" id="views">
       <button data-v="oblique">Oblique</button>
@@ -151,6 +181,14 @@ details.srcs li { margin: 4px 0; }
     <div class="panel hidden" id="simBelow" style="margin-top:12px">
       <h2 style="margin-bottom:4px">Cross-section</h2>
       <canvas id="secCanvas" class="seccv"></canvas>
+      <h2 style="margin:14px 0 4px">Etch history</h2>
+      <canvas id="simGraph" class="graphcv"></canvas>
+      <div class="glegend" id="simGraphLeg"></div>
+    </div>
+    <div class="panel hidden" id="pitBelow" style="margin-top:12px">
+      <h2 style="margin-bottom:4px">Etch history</h2>
+      <canvas id="pitGraph" class="graphcv"></canvas>
+      <div class="glegend" id="pitGraphLeg"></div>
     </div>
   </div>
 
@@ -169,6 +207,20 @@ details.srcs li { margin: 4px 0; }
     <h2>Etch</h2>
     <h3>Mask opening</h3>
     <select id="selOpen"></select>
+    <details class="custom" id="pitCustom"><summary>Add your own openings</summary>
+      <div class="fields">
+        <label>shape <span><select id="pcType"></select></span></label>
+        <label>size w × h <span><input type="number" id="pcW" value="200" min="5" step="10"> × <input type="number" id="pcH" value="120" min="5" step="10"> µm</span></label>
+        <label>sides / points / arm <span><input type="number" id="pcN" value="6" min="3" step="1"></span></label>
+        <label>centre x, y <span><input type="number" id="pcX" value="0" step="10"> <input type="number" id="pcY" value="0" step="10"> µm</span></label>
+        <label>angle to the flat <span><input type="number" id="pcA" value="0" step="5"> °</span></label>
+        <label>pre-etch depth <span><input type="number" id="pcPre" value="0" min="0" step="5"> µm</span></label>
+      </div>
+      <div class="addrow"><button class="btn primary" id="pcAdd">Add opening</button><button class="btn" id="pcClear">Clear</button><button class="btn" id="pcToSim">Open in etch simulator</button></div>
+      <div class="tblwrap"><table class="shapes" id="pcList"></table></div>
+      <p class="note" style="margin:4px 0 0">This scene moves the planes of each convex opening on its own. A non-convex shape (L, U, cross, star, ring) is replaced by its convex hull here; the etch simulator handles the real shape and merging cavities.</p>
+      <p class="warn hidden" id="pcWarn"></p>
+    </details>
     <h3>Etchant</h3>
     <select id="selRate"></select>
     <h3>Time</h3>
@@ -181,6 +233,7 @@ details.srcs li { margin: 4px 0; }
     <div class="row"><label><input type="checkbox" id="cBlock" checked> silicon block (off: cast of the pit)</label></div>
     <div class="row"><label><input type="checkbox" id="cGhost" checked> final {111} shape (wire)</label></div>
     <div class="row"><label><input type="checkbox" id="cMask"> mask layer</label></div>
+    <div class="row"><span class="lbl">Colour</span><select id="pitColor" style="width:auto"><option value="plane">crystal plane family</option><option value="depth">depth below the surface</option><option value="rate">etch rate of the wall</option></select></div>
     <h3>Now</h3>
     <dl class="kv" id="readout"></dl>
     <h3>Walls now</h3>
@@ -220,12 +273,14 @@ details.srcs li { margin: 4px 0; }
     <input type="range" id="simCutPos" min="-100" max="100" step="1" value="0">
     <h3>Now</h3>
     <dl class="kv" id="simReadout"></dl>
-    <h3>Planes (colour)</h3>
-    <div class="legend"><span><i class="sw" style="background:var(--f111)"></i>{111}</span><span><i class="sw" style="background:var(--f100)"></i>{100}</span><span><i class="sw" style="background:var(--f110)"></i>{110}</span><span><i class="sw" style="background:var(--fhi)"></i>higher index ({311}, {211}, {411} …)</span><span><i class="sw" style="background:var(--s-side)"></i>no plane within 4°</span><span><i class="sw" style="background:var(--s-cut)"></i>cut face</span></div>
+    <h3>Colour</h3>
+    <select id="simColor"><option value="plane">crystal plane family</option><option value="depth">depth below the surface</option><option value="rate">local etch rate R(n)</option><option value="time">time the etch front reached the surface</option></select>
+    <div class="legend" id="simPlaneLegend" style="margin-top:6px"><span><i class="sw" style="background:var(--f111)"></i>{111}</span><span><i class="sw" style="background:var(--f100)"></i>{100}</span><span><i class="sw" style="background:var(--f110)"></i>{110}</span><span><i class="sw" style="background:var(--fhi)"></i>higher index ({311}, {211}, {411} …)</span><span><i class="sw" style="background:var(--s-side)"></i>no plane within 4°</span><span><i class="sw" style="background:var(--s-cut)"></i>cut face</span></div>
     <h3>Mask editor</h3>
     <p class="note" style="margin:0 0 4px">Shapes are applied top to bottom: “open” removes the mask, “mask” puts it back. Drag a shape to move it. Solid outline: open; dashed: mask.</p>
     <canvas id="maskCanvas" class="maskcv"></canvas>
-    <div class="row" style="flex-wrap:wrap"><button class="btn" id="bAddRect">+ rectangle</button><button class="btn" id="bAddCirc">+ circle</button><button class="btn" id="bAddTri">+ triangle</button></div>
+    <div class="addrow"><select id="addType"></select><select id="addOp"><option value="open">as opening</option><option value="mask">as mask</option></select><button class="btn" id="bAddShape">Add shape</button><button class="btn" id="bDupShape">Duplicate selected</button></div>
+    <p class="note" style="margin:4px 0 0">Columns: w, h = size; t = arm width (L, U, cross, frame) or inner size (ring, star); n = sides or points; array = copies nx × ny at pitch px, py (µm).</p>
     <div class="tblwrap"><table class="shapes" id="shapeList"></table></div>
     <details class="srcs"><summary>Model, sources and assumptions</summary>
       <ul>
@@ -233,7 +288,7 @@ details.srcs li { margin: 4px 0; }
         <li><b>Rates between the measured orientations</b> (assumption): linear interpolation over a triangulation of the 12 orientations in the standard triangle (gnomonic coordinates), with cubic symmetry. It keeps the cusp at {111}: rates grow linearly with the off-angle, as measured for vicinal (111) (Pal &amp; Sato p. 104).</li>
         <li><b>Corner rules</b> (sourced, not imposed): concave corners show the slowest plane and convex corners the fastest (Lec 4-1 p. 8). The simulator does not apply these rules; they come out of the rate map.</li>
         <li><b>Front motion</b> (method): every surface element moves along its normal at R(hkl); this is solved as a 3D level set (first-order Lax-Friedrichs scheme, fast-marching re-initialisation) on a cubic grid. Accuracy is about one cell; sharp edges are rounded over about two cells. Check: square window on (100), 60 min in 30 wt%: depth 47.9 µm against 0.797 × 60 = 47.82 µm; {111} wall 54.5° against 54.74°.</li>
-        <li><b>Mask edge</b> (assumption): no etchant reaches silicon through the mask, so the level set has no downward slope at the top boundary under the mask; silicon under the mask is only removed from the side.</li>
+        <li><b>Mask edge</b> (assumption): no etchant reaches silicon through the mask, so silicon under the mask is only removed from the side. At the top row under the mask the level set has no downward slope; where the wall there is near-vertical (slope below 0.35), the vertical gradient is set to zero. Check: a 100 &micro;m square window at 45&deg; on (100), 40 min in 30 wt% KOH, gives 26.5 &micro;m sideways undercut at a 2 &micro;m grid (15.5 &micro;m at 4 &micro;m) against 0.797 &times; 40 = 31.9 &micro;m (Pal &amp; Sato Table 4.1, p. 87); a &lt;110&gt;-aligned pit keeps 0 &micro;m. Use a fine grid when {100} undercut matters.</li>
         <li><b>Known numerical limits</b>: silicon walls and beams narrower than about 8 grid cells thin slowly (numerical dissipation, not physics), most when they are oblique to the grid; windows narrower than about 5 cells etch too slowly. Use “fine” quality or wider features when this matters. Undercut values are good to about one to two cells.</li>
         <li><b>Mask</b> (assumption): inert and infinitely thin; etchant reaches the silicon only through openings and under released mask. The SiO₂ loss shown for 42 wt% uses 0.34 µm/h (thermal oxide, Lec 4-1 p. 7).</li>
         <li><b>Wafer</b>: 525 µm thick by default (100 mm wafer, Pal &amp; Sato Table 2.1, p. 30); only the depth that the etch can reach is simulated, and the back side is protected (assumption). Frames: (100) x = [1̄10] along the flat (Rev 1); (110) two conventions, see above; (111) flat along [11̄0] (assumption).</li>
@@ -248,6 +303,17 @@ details.srcs li { margin: 4px 0; }
   Scenes 1 and 2 (model and pit): each wall is a crystal plane that moves outward at its own rate from the mask opening (n·x ≤ h + R·t over the {100}, {110} and {111} planes); the long-etch limit keeps only {111} planes with R = 0. This is the construction used in the origami tutorial; non-convex openings are not modelled there, use the etch simulator (its model and sources are listed in its panel).
   Rates: Pal &amp; Sato, p. 87 (KOH 30 wt% and 40 wt%, 70 °C); Lec 4-1, p. 7 (KOH 42 wt%, 75 °C). Primary flat ⟨110⟩ for (100) and (110): Lec 4-1, p. 6. For (111) the flat is assumed along [1<span class="ob">1</span>0]. Wafer thickness 525 µm (assumption). x runs along the flat, z is the wafer normal.
 </footer>
+<section class="refs" id="references">
+  <h2>References</h2>
+  <ol>
+    <li>F.-G. Tseng, “Lecture 4-1: Bulk micromachining,” <i>ESS5850 Micro System Design class notes</i>, National Tsing Hua University, 2016. Pages used: wafer flats p. 6; KOH rates and SiO₂ etch rate p. 7; concave and convex corners p. 8; corner compensation p. 9; ⟨100⟩ streets p. 10; (110) wafers pp. 11–12; (111) wafers p. 13; bridges p. 14; etch stop p. 15; DRIE p. 16.</li>
+    <li>P. Pal and K. Sato, <i>Silicon Wet Bulk Micromachining for MEMS</i>, 1st ed. Singapore: Jenny Stanford Publishing, 2017, doi: <a href="https://doi.org/10.1201/9781315364926" target="_blank" rel="noopener">10.1201/9781315364926</a>. Pages used: Table 2.1 p. 30 (wafer thickness); Table 4.1 p. 87 (KOH rates of 12 orientations); p. 104 (vicinal (111)); pp. 235–249 (convex corners and compensation).</li>
+    <li>F.-G. Tseng, “HW #2,” ESS5850 Micro System Design, National Tsing Hua University, fall 2026 (octahedron net p. 3; problem 5, (110) wafer with the ⟨111⟩ arrow).</li>
+    <li>N. Paul, S. Bonam, S. R. K. Vanjari, and S. G. Singh, “Silicon membranes for microbolometers: simulation and fabrication using frontend bulk micromachining,” in <i>2024 IEEE Int. Conf. Electron Devices Society Kolkata Chapter (EDKCON)</i>, Kolkata, India, 2024, pp. 623–628, doi: <a href="https://doi.org/10.1109/EDKCON62339.2024.10870751" target="_blank" rel="noopener">10.1109/EDKCON62339.2024.10870751</a>. Used for the 45° (⟨100⟩-aligned) mask examples: Fig. 1, Sec. II–III.</li>
+    <li>H. Q. A. Nguyen, “Origami tutorial: the {111} octahedron on (100), (110) and (111) wafers,” ESS5850 study notes, Rev. 1, Oct. 2026 (frames, sliding-plane construction).</li>
+    <li>Source code: <a href="https://github.com/SalmonQuoc/origami-koh-etch-viewer" target="_blank" rel="noopener">github.com/SalmonQuoc/origami-koh-etch-viewer</a>. 3D rendering: three.js r128.</li>
+  </ol>
+</section>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -511,7 +577,9 @@ function etchEngineFactory() {
     return c;
   }
   // shapes are painted in order: "open" removes mask, "mask" puts it back. Default: masked.
-  function isOpen(shapes, x, y) { let o = false; for (const s of shapes) if (inPoly(s.pts, x, y)) o = s.op === "open"; return o; }
+  // a shape is one polygon (pts) or several (polys: arrays, rings)
+  const inShape = (s, x, y) => s.polys ? s.polys.some(P => inPoly(P, x, y)) : inPoly(s.pts, x, y);
+  function isOpen(shapes, x, y) { let o = false; for (const s of shapes) if (inShape(s, x, y)) o = s.op === "open"; return o; }
 
   // ---------------------------------------------------------------- simulation
   function create(cfg) {
@@ -588,6 +656,7 @@ function etchEngineFactory() {
   function step(S, tEnd, maxSteps) {
     const { Nx, Ny, Nz, NXY, dx, B, phi, T, Hr, gOpen, open, RT, al } = S;
     const [e1, e2, e3] = S.e, tab = RT.tab, N = RT.N, WT = N + 1;
+    const WALL2 = 0.35*0.35;
     const ax = al[0], ay = al[1], az = al[2], idx = 1/dx;
     let ns = 0;
     while (S.t < tEnd - 1e-9 && ns < maxSteps) {
@@ -598,10 +667,13 @@ function etchEngineFactory() {
         const xm = i > 0 ? phi[q-1] : c, xp = i < Nx-1 ? phi[q+1] : c;
         const ym = j > 0 ? phi[q-Nx] : c, yp = j < Ny-1 ? phi[q+Nx] : c;
         const zp = k < Nz-1 ? phi[q+NXY] : c;
-        let zm;
-        if (k > 0) zm = phi[q-NXY]; else { zm = 2*c - zp; if (open[r]) { if (zm > gOpen[r]) zm = gOpen[r]; } else if (zm < c) zm = c; }
-        const dxm = (c - xm)*idx, dxp = (xp - c)*idx, dym = (c - ym)*idx, dyp = (yp - c)*idx, dzm = (c - zm)*idx, dzp = (zp - c)*idx;
-        const px = 0.5*(dxm + dxp), py = 0.5*(dym + dyp), pz = -0.5*(dzm + dzp);   // grid k runs downward
+        const dxm = (c - xm)*idx, dxp = (xp - c)*idx, dym = (c - ym)*idx, dyp = (yp - c)*idx, dzp = (zp - c)*idx;
+        const px = 0.5*(dxm + dxp), py = 0.5*(dym + dyp);
+        let zm, wall = false;
+        if (k > 0) zm = phi[q-NXY]; else { zm = 2*c - zp; if (open[r]) { if (zm > gOpen[r]) zm = gOpen[r]; }
+          else if (dzp*dzp < WALL2*(px*px + py*py)) wall = true;   // near-vertical wall under the mask: no flux through the mask, no z dissipation
+          else if (zm < c) zm = c; }
+        const dzm = (c - zm)*idx, pz = wall ? 0 : -0.5*(dzm + dzp);   // grid k runs downward
         const pn = Math.sqrt(px*px + py*py + pz*pz);
         let Hn = 0;
         if (pn > 1e-12) {
@@ -731,7 +803,8 @@ function etchEngineFactory() {
       if (live) { const pa = S.phi[qa], pb = S.phi[qb]; return pa > pb ? Math.min(1, Math.max(0, pa/(pa - pb))) : 0.5; }
       return 1 - crossing(S, qb, qa, tv);
     };
-    const vid = new Int32Array(PX*PY*PZ).fill(-1), pos = [];
+    const vid = new Int32Array(PX*PY*PZ).fill(-1), pos = [], vt = [];
+    const tAt = q => live ? teff(S, q) : T[q];   // arrival time of an etched node
     const C = [[0,0,0],[1,0,0],[0,1,0],[1,1,0],[0,0,1],[1,0,1],[0,1,1],[1,1,1]];
     const E = [[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]];
     const off = C.map(c => c[2]*PXY + c[1]*PX + c[0]);
@@ -747,6 +820,10 @@ function etchEngineFactory() {
       }
       vid[p0] = pos.length/3;
       pos.push(X0 + (i + sx/n - 0.5)*dx, Y0 + (j + sy/n - 0.5)*dx, -(k + sz/n - 0.5)*dx);
+      // time the front reached this surface point: the latest arrival among the etched corners of the cell
+      let ta = -1;
+      for (let c = 0; c < 8; c++) { const q = qmap[p0 + off[c]]; if (q >= 0 && !sil[p0 + off[c]]) { const v = tAt(q); if (v > ta) ta = v; } }
+      vt.push(ta < 0 ? 0 : Math.min(ta, tv));
     }
     const tri = [], tag = [];
     const cube = (k, j, i) => (k < 0 || j < 0 || i < 0 || k >= PZ-1 || j >= PY-1 || i >= PX-1) ? -1 : vid[k*PXY + j*PX + i];
@@ -768,7 +845,7 @@ function etchEngineFactory() {
         tag.push(cap ? 1 : 0, cap ? 1 : 0);
       }
     }
-    return { pos: new Float32Array(pos), idx: new Uint32Array(tri), tag: new Uint8Array(tag) };
+    return { pos: new Float32Array(pos), idx: new Uint32Array(tri), tag: new Uint8Array(tag), vt: new Float32Array(vt) };
   }
 
   // 2D section of the arrival-time field in the plane j = const (axis "y") or i = const (axis "x")
@@ -812,7 +889,7 @@ function etchEngineFactory() {
     for (let j = 0; j < Ny; j++) for (let i = 0; i < Nx; i++) {
       const x = cfg.X0 + (i + 0.5)*dx, y = cfg.Y0 + (j + 0.5)*dx, q = j*Nx + i;
       if (S.open[q]) continue;
-      for (let s = cfg.shapes.length - 1; s >= 0; s--) if (inPoly(cfg.shapes[s].pts, x, y)) { if (cfg.shapes[s].op === "mask") S.shapeMap[s].push(q); break; }
+      for (let s = cfg.shapes.length - 1; s >= 0; s--) if (inShape(cfg.shapes[s], x, y)) { if (cfg.shapes[s].op === "mask") S.shapeMap[s].push(q); break; }
     }
   }
 
@@ -826,7 +903,7 @@ function etchEngineFactory() {
       const top = new Uint8Array(S.NXY); for (let q = 0; q < S.NXY; q++) top[q] = S.T[q] <= tv ? 1 : 0;
       return { mesh: m, sec, top, st: stats(S, tv), t: S.t, tv };
     };
-    const tr = r => { const a = [r.mesh.pos.buffer, r.mesh.idx.buffer, r.mesh.tag.buffer, r.top.buffer]; if (r.sec) a.push(r.sec.sil.buffer, r.sec.fa.buffer, r.sec.fk.buffer, r.sec.open.buffer); return a; };
+    const tr = r => { const a = [r.mesh.pos.buffer, r.mesh.idx.buffer, r.mesh.tag.buffer, r.mesh.vt.buffer, r.top.buffer]; if (r.sec) a.push(r.sec.sil.buffer, r.sec.fa.buffer, r.sec.fk.buffer, r.sec.open.buffer); return a; };
     return function (msg, tick) {
       if (msg.cmd === "run") {
         const my = ++job, t0 = Date.now();
@@ -840,6 +917,11 @@ function etchEngineFactory() {
           if (done || Date.now() - lastPost > 450) {
             lastPost = Date.now();
             const r = view(S.t, msg.cut, msg.cutMesh); r.type = done ? "done" : "progress"; r.id = msg.id; r.ms = Date.now() - t0; r.steps = S.steps;
+            if (done) {   // etch history from the arrival-time field: depth, undercut and released mask area against time
+              const nh = 48, h = { t: [], depth: [], under: [], susp: [] };
+              for (let i = 0; i <= nh; i++) { const ti = S.t*i/nh, st = stats(S, ti); h.t.push(ti); h.depth.push(st.depth); h.under.push(st.under); h.susp.push(st.susp); }
+              r.hist = h;
+            }
             post(r, tr(r));
           }
           if (!done) tick(loop);
@@ -927,6 +1009,68 @@ function shadeColor(base, n) {
 }
 const famColor = f => f === "111" ? COL.f111 : f === "100" ? COL.f100 : f === "110" ? COL.f110 : COL["s-top"];
 const v3 = p => new V3(p[0], p[1], p[2]);
+// sequential colour map (viridis stops): readable on light and dark backgrounds
+const CMAP = [[68,1,84],[72,40,120],[62,74,137],[49,104,142],[38,130,142],[31,158,137],[53,183,121],[109,205,89],[180,222,44],[253,231,37]];
+function cmap(u) {
+  u = Math.max(0, Math.min(1, u || 0)) * (CMAP.length - 1);
+  const i = Math.min(CMAP.length - 2, Math.floor(u)), f = u - i, a = CMAP[i], b = CMAP[i + 1];
+  return new THREE.Color((a[0] + f*(b[0] - a[0]))/255, (a[1] + f*(b[1] - a[1]))/255, (a[2] + f*(b[2] - a[2]))/255);
+}
+function showCbar(title, v0, v1, unit) {
+  const box = document.getElementById("cbar"), cv = document.getElementById("cbarCv");
+  box.classList.remove("hidden"); document.getElementById("cbarTitle").textContent = title;
+  const w = 210, h = 34, dpr = Math.min(2, window.devicePixelRatio || 1), ctx = cv.getContext("2d");
+  cv.width = w*dpr; cv.height = h*dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
+  const x0 = 6, x1 = w - 6;
+  for (let x = x0; x < x1; x++) { ctx.fillStyle = "#" + cmap((x - x0)/(x1 - x0 - 1)).getHexString(); ctx.fillRect(x, 2, 1.2, 11); }
+  const ink = getComputedStyle(document.documentElement).getPropertyValue("--ink").trim() || "#222";
+  ctx.fillStyle = ink; ctx.font = "10.5px IBM Plex Mono, monospace"; ctx.textAlign = "center";
+  const span = v1 - v0, st = span > 0 ? niceStep(span/4) : 1, dig = st < 0.01 ? 3 : st < 0.1 ? 2 : st < 1 ? 1 : 0;
+  for (let v = Math.ceil(v0/st)*st; v <= v1 + 1e-9*Math.max(1, Math.abs(v1)); v += st) {
+    const x = x0 + (span > 0 ? (v - v0)/span : 0)*(x1 - x0); ctx.fillRect(x - 0.5, 13, 1, 4); ctx.fillText(v.toFixed(dig), Math.min(x1 - 8, Math.max(x0 + 8, x)), 28);
+  }
+  ctx.textAlign = "right"; ctx.fillStyle = ink; ctx.globalAlpha = 0.7; ctx.fillText(unit, w - 2, 28 + 0); ctx.globalAlpha = 1;
+}
+function hideCbar() { document.getElementById("cbar").classList.add("hidden"); }
+// line graph against time: series [{name, color, x: [], y: []}], vertical marker at tv
+function drawGraph(cv, series, { xmax, tv, ylabel = "µm" }) {
+  const wcss = cv.clientWidth || 600, hcss = 190, dpr = Math.min(2, window.devicePixelRatio || 1), ctx = cv.getContext("2d");
+  cv.width = Math.round(wcss*dpr); cv.height = Math.round(hcss*dpr); cv.style.height = `${hcss}px`;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, wcss, hcss);
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const ink = css("--ink"), mut = css("--muted"), line = css("--line");
+  const L = 46, R = 12, T = 10, B = 30, W = wcss - L - R, H = hcss - T - B;
+  let ymax = 0; for (const s of series) for (const v of s.y) if (v > ymax) ymax = v;
+  ymax = ymax > 0 ? ymax*1.08 : 1; xmax = xmax > 0 ? xmax : 1;
+  const X = x => L + x/xmax*W, Y = y => T + H - y/ymax*H;
+  ctx.font = "11px IBM Plex Mono, monospace"; ctx.lineWidth = 1;
+  const ys = niceStep(ymax/4), xs = niceStep(xmax/6);
+  ctx.strokeStyle = line; ctx.fillStyle = mut; ctx.textAlign = "right";
+  for (let v = 0; v <= ymax + 1e-9; v += ys) { ctx.beginPath(); ctx.moveTo(L, Y(v)); ctx.lineTo(L + W, Y(v)); ctx.stroke(); ctx.fillText(v.toFixed(ys < 1 ? 1 : 0), L - 6, Y(v) + 4); }
+  ctx.textAlign = "center";
+  for (let v = 0; v <= xmax + 1e-9; v += xs) { ctx.fillText(v.toFixed(0), X(v), T + H + 15); }
+  ctx.fillText("etch time (min)", L + W/2, hcss - 2);
+  ctx.save(); ctx.translate(11, T + H/2); ctx.rotate(-Math.PI/2); ctx.fillText(ylabel, 0, 0); ctx.restore();
+  ctx.strokeStyle = ink; ctx.beginPath(); ctx.moveTo(L, T); ctx.lineTo(L, T + H); ctx.lineTo(L + W, T + H); ctx.stroke();
+  for (const s of series) {
+    ctx.strokeStyle = s.color; ctx.lineWidth = 2; ctx.beginPath();
+    s.x.forEach((x, i) => i ? ctx.lineTo(X(x), Y(s.y[i])) : ctx.moveTo(X(x), Y(s.y[i]))); ctx.stroke();
+  }
+  const out = [];
+  if (tv != null) {
+    ctx.strokeStyle = mut; ctx.setLineDash([4, 3]); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(X(tv), T); ctx.lineTo(X(tv), T + H); ctx.stroke(); ctx.setLineDash([]);
+    for (const s of series) {
+      let k = 0; while (k < s.x.length - 1 && s.x[k + 1] < tv) k++;
+      const x0 = s.x[k], x1 = s.x[Math.min(k + 1, s.x.length - 1)], f = x1 > x0 ? Math.max(0, Math.min(1, (tv - x0)/(x1 - x0))) : 0;
+      const v = s.y[k] + f*(s.y[Math.min(k + 1, s.y.length - 1)] - s.y[k]);
+      ctx.fillStyle = s.color; ctx.beginPath(); ctx.arc(X(tv), Y(v), 3.5, 0, 2*Math.PI); ctx.fill(); out.push(v);
+    }
+  }
+  return out;
+}
+function graphLegend(el, series, vals, tv) {
+  el.innerHTML = series.map((s, i) => `<span><i style="background:${s.color}"></i>${s.name}${vals && vals[i] != null ? `: ${vals[i].toFixed(1)} µm` : ""}</span>`).join("") + (tv != null ? `<span>at ${tv.toFixed(0)} min</span>` : "");
+}
 
 // --------------------------------------------------------------------- renderer, camera
 const stage = document.getElementById("stage"), labelsEl = document.getElementById("labels"), tip = document.getElementById("tip");
@@ -1042,7 +1186,7 @@ function rectMinus(rect, O) {
 }
 
 // --------------------------------------------------------------------- state
-const S = { wf: "100", mode: "model", sel: null, open: 0, rate: "PAL30", t: 0, final: false, cut: false, block: true, ghost: true, mask: false,
+const S = { pitColor: "plane", customOps: [], wf: "100", mode: "model", sel: null, open: 0, rate: "PAL30", t: 0, final: false, cut: false, block: true, ghost: true, mask: false,
             corners: true, faces: false, upper: true, playing: false };
 
 // --------------------------------------------------------------------- MODEL scene
@@ -1204,95 +1348,14 @@ function addLabelEl(html, cls) { const el = document.createElement("div"); el.in
 // --------------------------------------------------------------------- PIT scene
 const PL_CUT = [new THREE.Plane(new V3(0, 1, 0), 0)];
 let pit = null;
-function prepPit() {
-  const op = OPENINGS[S.wf][S.open], R = RATES[S.rate].r, pre = op.pre || 0;
-  const fin = C.etch(S.wf, op.o, { T: T_WAFER, pre });
-  const vf = C.volume(fin);
-  let lo = 0, hi = 50;
-  while (C.volume(C.etch(S.wf, op.o, { t: hi, T: T_WAFER, pre, rates: R })) < 0.98*vf && hi < 1e5) hi *= 2;
-  for (let i = 0; i < 30; i++) { const m = (lo + hi)/2; if (C.volume(C.etch(S.wf, op.o, { t: m, T: T_WAFER, pre, rates: R })) < 0.98*vf) lo = m; else hi = m; }
-  const nice = x => { const p = Math.pow(10, Math.floor(Math.log10(x))); for (const k of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (k*p >= x) return k*p; return 10*p; };
-  const tmax = nice(1.15*hi);
-  const last = C.etch(S.wf, op.o, { t: tmax, T: T_WAFER, pre, rates: R });
-  let ext = [Infinity, -Infinity, Infinity, -Infinity];
-  for (const P of [C.outline(fin.H), C.outline(last.H), op.o]) for (const p of P) {
-    ext[0] = Math.min(ext[0], p[0]); ext[1] = Math.max(ext[1], p[0]); ext[2] = Math.min(ext[2], p[1]); ext[3] = Math.max(ext[3], p[1]);
-  }
-  const span = Math.max(ext[1] - ext[0], ext[3] - ext[2]), m = 0.18*span + 10;
-  const box = [ext[0] - m, ext[1] + m, ext[2] - m, ext[3] + m];
-  const dmax = Math.max(C.depth(fin), C.depth(last));
-  const zb = dmax > 0.75*T_WAFER ? T_WAFER : Math.min(T_WAFER, Math.ceil(1.3*dmax/10)*10);
-  pit = { op, R, pre, fin, tmax, box, zb };
-  document.getElementById("tMax").textContent = `${tmax.toFixed(0)} min`;
+// openings of the current etch: one preset, or the user's list (each convex; etched on its own)
+function pitItems() {
+  if (S.open === "custom") return S.customOps.map(c => ({ o: c.o, pre: c.pre }));
+  const op = OPENINGS[S.wf][S.open]; return [{ o: op.o, pre: op.pre || 0 }];
 }
-
-function buildPit() {
-  scene = new THREE.Scene(); scene.background = COL["scene-bg"]; clearLabels();
-  const { op, R, pre, fin, box, zb } = pit;
-  const t = S.t;
-  const cav = S.final ? fin : C.etch(S.wf, op.o, { t, T: T_WAFER, pre, rates: R });
-  pit.cav = cav;
-  const [x0, x1, y0, y1b] = box, yA = S.cut ? 0 : y0, yB = y1b;
-  const cx = (x0 + x1)/2, cy = (y0 + y1b)/2;
-  radius = 0.5*Math.hypot(x1 - x0, y1b - y0, zb)*0.92;
-  const clip = S.cut ? PL_CUT : null;
-  const g = new THREE.Group(); scene.add(g);
-  pit.pick = [];
-  // cavity walls
-  const walls = cav.faces.filter(f => S.block ? !(f.label === "surface" || f.label === "back") : true);
-  if (walls.length) {
-    const cols = walls.map(f => shadeColor(f.fam === "surface" || f.fam === "back" ? COL["s-top"] : famColor(f.fam), S.block ? C.mul(f.n, -1) : f.n));
-    const mesh = meshFromPolys(walls.map(f => f.poly), cols, { clippingPlanes: clip, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
-    mesh.userData.faces = walls; g.add(mesh); pit.pick.push(mesh);
-    g.add(linesFromLoops(walls.map(f => f.poly), COL["s-ink"], { clip }));
-  }
-  // silicon block
-  if (S.block) {
-    const O = C.outline(cav.H, 0);
-    const top = rectMinus([[x0, yA], [x1, yA], [x1, yB], [x0, yB]], O.length >= 3 ? O : null);
-    const polys = [], cols = [];
-    for (const P of top) { polys.push(P.map(p => [p[0], p[1], 0])); cols.push(COL["s-top"]); }
-    const sides = [[[x1, yA], [x1, yB], [1, 0, 0]], [[x0, yB], [x0, yA], [-1, 0, 0]], [[x1, yB], [x0, yB], [0, 1, 0]]];
-    if (!S.cut) sides.push([[x0, yA], [x1, yA], [0, -1, 0]]);
-    for (const [a, b, n] of sides) { polys.push([[a[0], a[1], 0], [b[0], b[1], 0], [b[0], b[1], -zb], [a[0], a[1], -zb]]); cols.push(shadeColor(COL["s-side"], n)); }
-    const Ob = zb >= T_WAFER ? C.outline(cav.H, -zb + 1e-6) : [];
-    for (const P of rectMinus([[x0, yA], [x1, yA], [x1, yB], [x0, yB]], Ob.length >= 3 ? Ob : null)) { polys.push(P.map(p => [p[0], p[1], -zb])); cols.push(COL["s-side"]); }
-    if (S.cut) {
-      const sec = C.vsectionY(cav.H, 0);
-      for (const P of rectMinus([[x0, -zb], [x1, -zb], [x1, 0], [x0, 0]], sec.length >= 3 ? sec : null)) { polys.push(P.map(p => [p[0], 0, p[1]])); cols.push(COL["s-cut"]); }
-      if (sec.length >= 3) g.add(linesFromLoops([sec.map(p => [p[0], -0.002*zb, p[1]])], COL["s-ink"]));
-    }
-    const blk = meshFromPolys(polys, cols, { polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 });
-    blk.userData.block = true; g.add(blk); pit.pick.push(blk);
-    const yl = yB;
-    g.add(linesFromLoops([[[x0, yA, 0], [x1, yA, 0], [x1, yl, 0], [x0, yl, 0]], [[x0, yA, -zb], [x1, yA, -zb], [x1, yl, -zb], [x0, yl, -zb]]], COL["s-ink"], { opacity: 0.6 }));
-    g.add(linesFromLoops([[[x0, yA, 0], [x0, yA, -zb]], [[x1, yA, 0], [x1, yA, -zb]], [[x0, yl, 0], [x0, yl, -zb]], [[x1, yl, 0], [x1, yl, -zb]]], COL["s-ink"], { opacity: 0.6 }));
-    if (zb < T_WAFER) addLabel(new V3(x1, yA, -zb), `depth shown: ${zb.toFixed(0)} µm`, "", camDir => camDir.z > -0.2);
-    // mask
-    if (S.mask) {
-      const mp = rectMinus([[x0, yA], [x1, yA], [x1, yB], [x0, yB]], op.o).map(P => P.map(p => [p[0], p[1], 0.012*zb]));
-      const mm = meshFromPolys(mp, mp.map(() => COL.mask), { transparent: true, opacity: 0.22, depthWrite: false });
-      mm.renderOrder = 5; g.add(mm);
-    }
-  }
-  // mask opening outline
-  g.add(linesFromLoops([op.o.map(p => [p[0], p[1], 0.004*zb])], COL.mask, { clip, dashed: true, dash: radius*0.03, gap: radius*0.02 }));
-  // ghost: final {111} shape
-  if (S.ghost && !S.final) { const gh = linesFromLoops(fin.faces.filter(f => f.label !== "surface").map(f => f.poly), COL.ghost, { clip, opacity: 0.55 }); gh.material.depthTest = false; gh.renderOrder = 8; g.add(gh); }
-  // axes labels on the top surface
-  const e = C.FRAME_IDX[S.wf];
-  g.add(new THREE.ArrowHelper(new V3(1, 0, 0), new V3(x0, yA, 0), (x1 - x0)*0.18, COL.accent.getHex(), radius*0.05, radius*0.03));
-  addLabel(new V3(x0 + (x1 - x0)*0.25, yA, 0), idxHTML(e[0], "[", "]") + " along flat", "acc");
-  scene.userData.center = new V3(cx, cy, -zb/2);
-  updateReadout(cav);
-  resize();
-}
-
-function updateReadout(cav) {
-  const d = C.depth(cav), O = C.outline(cav.H, 0);
-  const xs = O.map(p => p[0]), ys = O.map(p => p[1]);
-  // largest distance of the outline outside the (convex) mask opening
-  const M = ccw(pit.op.o); let under = 0;
+// largest distance of an outline O outside the (convex) mask opening o
+function beyondEdge(O, o) {
+  const M = ccw(o); let under = 0;
   for (const p of O) {
     let s = -Infinity;
     for (let i = 0; i < M.length; i++) {
@@ -1301,20 +1364,195 @@ function updateReadout(cav) {
     }
     under = Math.max(under, s);
   }
-  const floor = cav.faces.find(f => f.label !== "surface" && f.n[2] < -1 + 1e-9 && f.label !== "back");
-  const through = cav.faces.some(f => f.label === "back");
+  return under;
+}
+function prepPit() {
+  const items = pitItems(), R = RATES[S.rate].r;
+  const nice = x => { const p = Math.pow(10, Math.floor(Math.log10(x))); for (const k of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (k*p >= x) return k*p; return 10*p; };
+  const fins = items.map(it => C.etch(S.wf, it.o, { T: T_WAFER, pre: it.pre }));
+  let hiAll = 1;
+  items.forEach((it, k) => {   // time at which the cavity reaches 98 % of its long-etch volume
+    const vf = C.volume(fins[k]), V = t => C.volume(C.etch(S.wf, it.o, { t, T: T_WAFER, pre: it.pre, rates: R }));
+    let lo = 0, hi = 50;
+    while (V(hi) < 0.98*vf && hi < 1e5) hi *= 2;
+    for (let i = 0; i < 30; i++) { const m = (lo + hi)/2; if (V(m) < 0.98*vf) lo = m; else hi = m; }
+    hiAll = Math.max(hiAll, hi);
+  });
+  const tmax = nice(1.15*hiAll);
+  const lasts = items.map(it => C.etch(S.wf, it.o, { t: tmax, T: T_WAFER, pre: it.pre, rates: R }));
+  let ext = [Infinity, -Infinity, Infinity, -Infinity];
+  const grow = P => { for (const p of P) { ext[0] = Math.min(ext[0], p[0]); ext[1] = Math.max(ext[1], p[0]); ext[2] = Math.min(ext[2], p[1]); ext[3] = Math.max(ext[3], p[1]); } };
+  items.forEach((it, k) => { grow(C.outline(fins[k].H)); grow(C.outline(lasts[k].H)); grow(it.o); });
+  const span = Math.max(ext[1] - ext[0], ext[3] - ext[2]), m = 0.18*span + 10;
+  const box = [ext[0] - m, ext[1] + m, ext[2] - m, ext[3] + m];
+  const dmax = Math.max(...fins.map(C.depth), ...lasts.map(C.depth));
+  const zb = dmax > 0.75*T_WAFER ? T_WAFER : Math.min(T_WAFER, Math.ceil(1.3*dmax/10)*10);
+  // history: depth and largest distance beyond the mask edge against time
+  const hist = { t: [], depth: [], under: [] }, nh = 40;
+  for (let i = 0; i <= nh; i++) {
+    const t = tmax*i/nh; let d = 0, u = 0;
+    items.forEach(it => { const c = C.etch(S.wf, it.o, { t, T: T_WAFER, pre: it.pre, rates: R }); d = Math.max(d, C.depth(c)); const O = C.outline(c.H, 0); if (O.length) u = Math.max(u, beyondEdge(O, it.o)); });
+    hist.t.push(t); hist.depth.push(d); hist.under.push(u);
+  }
+  pit = { items, R, fins, tmax, box, zb, dmax: Math.max(1, Math.min(zb, dmax)), hist };
+  document.getElementById("tMax").textContent = `${tmax.toFixed(0)} min`;
+  // overlapping cavities are not merged by this model
+  const outs = lasts.map(c => C.outline(c.H, 0)), ov = [];
+  for (let i = 0; i < outs.length; i++) for (let j = i + 1; j < outs.length; j++) {
+    let P = outs[i]; const Q = ccw(outs[j]);
+    for (let k = 0; k < Q.length && P.length; k++) { const a = Q[k], b = Q[(k + 1) % Q.length], n = [b[1] - a[1], -(b[0] - a[0])]; P = C.clip2(P, n, n[0]*a[0] + n[1]*a[1]); }
+    if (P.length >= 3) ov.push(`${i + 1} and ${j + 1}`);
+  }
+  const w = document.getElementById("pcWarn");
+  w.classList.toggle("hidden", !ov.length);
+  w.textContent = ov.length ? `Openings ${ov.join(", ")} grow into each other before ${tmax.toFixed(0)} min. This scene cannot merge cavities; use “Open in etch simulator”.` : "";
+}
+
+// rectangle (or any rectangle in a plane) minus polygons, painted on a canvas texture: robust for many and overlapping holes
+function holeTexture(x0, x1, y0, y1, holes, color) {
+  const W = x1 - x0, H = y1 - y0, s = Math.min(6, 1600/Math.max(W, H));
+  const cv = document.createElement("canvas"); cv.width = Math.max(2, Math.round(W*s)); cv.height = Math.max(2, Math.round(H*s));
+  const ctx = cv.getContext("2d");
+  ctx.fillStyle = "#" + color.getHexString(); ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.setTransform(s, 0, 0, -s, -x0*s, y1*s); ctx.globalCompositeOperation = "destination-out";
+  ctx.beginPath();
+  for (const P of holes) { if (P.length < 3) continue; P.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath(); }
+  ctx.fill();
+  const t = new THREE.CanvasTexture(cv); t.anisotropy = 4; return t;
+}
+function holePlane(x0, x1, y0, y1, holes, color, place, opts = {}) {
+  const geo = new THREE.PlaneGeometry(x1 - x0, y1 - y0); geo.translate((x0 + x1)/2, (y0 + y1)/2, 0);
+  const mat = new THREE.MeshBasicMaterial(Object.assign({ map: holeTexture(x0, x1, y0, y1, holes, color), transparent: true, alphaTest: 0.5, side: THREE.DoubleSide,
+    polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 }, opts));
+  const m = new THREE.Mesh(geo, mat); place(m); return m;
+}
+function meshFromPolysV(polys, vcol, matOpts) {   // per-vertex colours: vcol(point, polyIndex) -> THREE.Color
+  const pos = [], col = [], tri2poly = [];
+  polys.forEach((P, k) => {
+    for (let i = 1; i + 1 < P.length; i++) {
+      for (const q of [P[0], P[i], P[i + 1]]) { const c = vcol(q, k); pos.push(q[0], q[1], q[2]); col.push(c.r, c.g, c.b); }
+      tri2poly.push(k);
+    }
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+  const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial(Object.assign({ vertexColors: true, side: THREE.DoubleSide }, matOpts || {})));
+  m.userData.tri2poly = tri2poly; return m;
+}
+
+function buildPit() {
+  scene = new THREE.Scene(); scene.background = COL["scene-bg"]; clearLabels();
+  const { items, R, fins, box, zb } = pit;
+  const t = S.t;
+  const cavs = items.map((it, k) => S.final ? fins[k] : C.etch(S.wf, it.o, { t, T: T_WAFER, pre: it.pre, rates: R }));
+  pit.cavs = cavs;
+  const [x0, x1, y0, y1b] = box, yA = S.cut ? 0 : y0, yB = y1b;
+  const cx = (x0 + x1)/2, cy = (y0 + y1b)/2;
+  radius = 0.5*Math.hypot(x1 - x0, y1b - y0, zb)*0.92;
+  const clip = S.cut ? PL_CUT : null;
+  const g = new THREE.Group(); scene.add(g);
+  pit.pick = [];
+  const rmax = Math.max(...Object.values(R)), mode = S.pitColor;
+  // cavity walls
+  for (const cav of cavs) {
+    const walls = cav.faces.filter(f => S.block ? !(f.label === "surface" || f.label === "back") : true);
+    if (!walls.length) continue;
+    const nOf = f => S.block ? C.mul(f.n, -1) : f.n, other = f => f.fam === "surface" || f.fam === "back";
+    let mesh;
+    if (mode === "plane") {
+      const cols = walls.map(f => shadeColor(other(f) ? COL["s-top"] : famColor(f.fam), nOf(f)));
+      mesh = meshFromPolys(walls.map(f => f.poly), cols, { clippingPlanes: clip, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+    } else {
+      const rateOf = f => S.final ? R["111"] : (R[f.fam] == null ? 0 : R[f.fam]);
+      mesh = meshFromPolysV(walls.map(f => f.poly), (q, k) => {
+        const f = walls[k]; if (other(f)) return shadeColor(COL["s-top"], nOf(f));
+        return shadeColor(cmap(mode === "depth" ? -q[2]/pit.dmax : rateOf(f)/rmax), nOf(f));
+      }, { clippingPlanes: clip, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+    }
+    mesh.userData.faces = walls; g.add(mesh); pit.pick.push(mesh);
+    g.add(linesFromLoops(walls.map(f => f.poly), COL["s-ink"], { clip }));
+  }
+  if (mode === "depth") showCbar("depth below the surface", 0, pit.dmax, "µm");
+  else if (mode === "rate") showCbar(S.final ? "etch rate (long-etch limit: {111} only)" : "etch rate of the wall plane", 0, rmax, "µm/min");
+  else hideCbar();
+  // silicon block
+  if (S.block) {
+    const outs = cavs.map(c => C.outline(c.H, 0)).filter(O => O.length >= 3);
+    const top = holePlane(x0, x1, yA, yB, outs, COL["s-top"], m => { m.position.z = 0; });
+    top.userData.block = true; g.add(top); pit.pick.push(top);
+    const polys = [], cols = [];
+    const sides = [[[x1, yA], [x1, yB], [1, 0, 0]], [[x0, yB], [x0, yA], [-1, 0, 0]], [[x1, yB], [x0, yB], [0, 1, 0]]];
+    if (!S.cut) sides.push([[x0, yA], [x1, yA], [0, -1, 0]]);
+    for (const [a, b, n] of sides) { polys.push([[a[0], a[1], 0], [b[0], b[1], 0], [b[0], b[1], -zb], [a[0], a[1], -zb]]); cols.push(shadeColor(COL["s-side"], n)); }
+    const blk = meshFromPolys(polys, cols, { polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 });
+    blk.userData.block = true; g.add(blk); pit.pick.push(blk);
+    const outsB = zb >= T_WAFER ? cavs.map(c => C.outline(c.H, -zb + 1e-6)).filter(O => O.length >= 3) : [];
+    const bot = holePlane(x0, x1, yA, yB, outsB, COL["s-side"], m => { m.position.z = -zb; });
+    bot.userData.block = true; g.add(bot); pit.pick.push(bot);
+    if (S.cut) {
+      const secs = cavs.map(c => C.vsectionY(c.H, 0)).filter(P => P.length >= 3);
+      const cutp = holePlane(x0, x1, -zb, 0, secs, COL["s-cut"], m => { m.rotation.x = Math.PI/2; });   // (x, z) plane at y = 0
+      cutp.userData.block = true; g.add(cutp); pit.pick.push(cutp);
+      if (secs.length) g.add(linesFromLoops(secs.map(sec => sec.map(p => [p[0], -0.002*zb, p[1]])), COL["s-ink"]));
+    }
+    const yl = yB;
+    g.add(linesFromLoops([[[x0, yA, 0], [x1, yA, 0], [x1, yl, 0], [x0, yl, 0]], [[x0, yA, -zb], [x1, yA, -zb], [x1, yl, -zb], [x0, yl, -zb]]], COL["s-ink"], { opacity: 0.6 }));
+    g.add(linesFromLoops([[[x0, yA, 0], [x0, yA, -zb]], [[x1, yA, 0], [x1, yA, -zb]], [[x0, yl, 0], [x0, yl, -zb]], [[x1, yl, 0], [x1, yl, -zb]]], COL["s-ink"], { opacity: 0.6 }));
+    if (zb < T_WAFER) addLabel(new V3(x1, yA, -zb), `depth shown: ${zb.toFixed(0)} µm`, "", camDir => camDir.z > -0.2);
+    // mask
+    if (S.mask) {
+      const mm = holePlane(x0, x1, yA, yB, items.map(it => it.o), COL.mask, m => { m.position.z = 0.012*zb; }, { opacity: 0.22, depthWrite: false, alphaTest: 0.01 });
+      mm.renderOrder = 5; g.add(mm);
+    }
+  }
+  // mask opening outlines
+  g.add(linesFromLoops(items.map(it => it.o.map(p => [p[0], p[1], 0.004*zb])), COL.mask, { clip, dashed: true, dash: radius*0.03, gap: radius*0.02 }));
+  // ghost: final {111} shape
+  if (S.ghost && !S.final) { const gh = linesFromLoops(fins.flatMap(fin => fin.faces.filter(f => f.label !== "surface").map(f => f.poly)), COL.ghost, { clip, opacity: 0.55 }); gh.material.depthTest = false; gh.renderOrder = 8; g.add(gh); }
+  // axes labels on the top surface
+  const e = C.FRAME_IDX[S.wf];
+  g.add(new THREE.ArrowHelper(new V3(1, 0, 0), new V3(x0, yA, 0), (x1 - x0)*0.18, COL.accent.getHex(), radius*0.05, radius*0.03));
+  addLabel(new V3(x0 + (x1 - x0)*0.25, yA, 0), idxHTML(e[0], "[", "]") + " along flat", "acc");
+  scene.userData.center = new V3(cx, cy, -zb/2);
+  updateReadout(cavs);
+  drawPitGraph();
+  resize();
+}
+function drawPitGraph() {
+  if (!pit || !pit.hist) return;
+  const h = pit.hist, tv = S.final ? null : S.t;
+  const series = [{ name: "depth", color: "#" + COL.accent.getHexString(), x: h.t, y: h.depth },
+                  { name: "beyond the mask edge (undercut)", color: "#" + COL.ghost.getHexString(), x: h.t, y: h.under }];
+  const vals = drawGraph($("pitGraph"), series, { xmax: pit.tmax, tv });
+  graphLegend($("pitGraphLeg"), series, vals, tv);
+}
+
+function updateReadout(cavs) {
+  let d = 0, under = 0, xs = [], ys = [], floors = 0, through = false;
+  cavs.forEach((cav, k) => {
+    d = Math.max(d, C.depth(cav));
+    const O = C.outline(cav.H, 0);
+    for (const p of O) { xs.push(p[0]); ys.push(p[1]); }
+    if (O.length) under = Math.max(under, beyondEdge(O, pit.items[k].o));
+    if (cav.faces.find(f => f.label !== "surface" && f.n[2] < -1 + 1e-9 && f.label !== "back")) floors++;
+    if (cav.faces.some(f => f.label === "back")) through = true;
+  });
+  const floor = cavs.length === 1 ? cavs[0].faces.find(f => f.label !== "surface" && f.n[2] < -1 + 1e-9 && f.label !== "back") : null;
   const rows = [
     ["time", S.final ? "long-etch limit" : `${S.t.toFixed(S.t < 10 ? 1 : 0)} min`],
+    ["openings", String(cavs.length)],
     ["depth", d > 0 ? um(d) : "-"],
-    ["outline along flat", O.length ? um(Math.max(...xs) - Math.min(...xs)) : "-"],
-    ["outline across flat", O.length ? um(Math.max(...ys) - Math.min(...ys)) : "-"],
-    ["beyond mask edge", O.length ? um(Math.max(0, under)) : "-"],
-    ["flat floor", through ? "etched through" : floor ? `yes, area ${(floor.area/1e3).toFixed(1)}×10³ µm²` : "no (walls meet)"],
+    ["outline along flat", xs.length ? um(Math.max(...xs) - Math.min(...xs)) : "-"],
+    ["outline across flat", ys.length ? um(Math.max(...ys) - Math.min(...ys)) : "-"],
+    ["beyond mask edge", xs.length ? um(Math.max(0, under)) : "-"],
+    ["flat floor", through ? "etched through" : cavs.length === 1 ? (floor ? `yes, area ${(floor.area/1e3).toFixed(1)}×10³ µm²` : "no (walls meet)") : `${floors} of ${cavs.length} cavities`],
   ];
+  if (cavs.length === 1) rows.splice(1, 1);
   document.getElementById("readout").innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
   // walls grouped by family and angle
   const groups = new Map();
-  for (const f of cav.faces) {
+  for (const cav of cavs) for (const f of cav.faces) {
     if (f.label === "surface" || f.label === "back") continue;
     const a = C.angleToSurface(f.n), key = `${f.fam}|${a.toFixed(2)}|${f.n[2] > 1e-9 ? "o" : ""}`;
     const g = groups.get(key) || { fam: f.fam, a, over: f.n[2] > 1e-9, n: 0 }; g.n++; groups.set(key, g);
@@ -1366,7 +1604,8 @@ renderer.domElement.addEventListener("pointerleave", () => { tip.style.display =
 const $ = id => document.getElementById(id);
 function pressed(seg, attr, val) { for (const b of seg.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset[attr] === val)); }
 function fillOpenings() {
-  $("selOpen").innerHTML = OPENINGS[S.wf].map((o, i) => `<option value="${i}">${o.name}</option>`).join("");
+  $("selOpen").innerHTML = OPENINGS[S.wf].map((o, i) => `<option value="${i}">${o.name}</option>`).join("") +
+    (S.customOps.length ? `<option value="custom">Your openings (${S.customOps.length})</option>` : "");
   $("selOpen").value = String(S.open);
 }
 $("selRate").innerHTML = Object.entries(RATES).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join("");
@@ -1378,27 +1617,27 @@ function sliderToT() { return pit.tmax*Number($("tSlider").value)/1000; }
 function rebuild(resetView) {
   if (S.mode === "model") {
     buildModel();
-    $("panelModel").classList.remove("hidden"); $("panelPit").classList.add("hidden"); $("panelSim").classList.add("hidden"); $("simBelow").classList.add("hidden");
+    $("panelModel").classList.remove("hidden"); $("panelPit").classList.add("hidden"); $("panelSim").classList.add("hidden"); $("simBelow").classList.add("hidden"); $("pitBelow").classList.add("hidden"); hideCbar();
     $("vAlong").classList.remove("hidden");
     $("hint").textContent = S.sel === null ? "Click a face of the model" : "Drag to turn";
     if (resetView) setView(dirOf(...OBL[S.wf]), new V3(0, 0, 0), true);
   } else if (S.mode === "sim") {
-    $("panelSim").classList.remove("hidden"); $("simBelow").classList.remove("hidden"); $("panelPit").classList.add("hidden"); $("panelModel").classList.add("hidden");
+    $("panelSim").classList.remove("hidden"); $("simBelow").classList.remove("hidden"); $("panelPit").classList.add("hidden"); $("panelModel").classList.add("hidden"); $("pitBelow").classList.add("hidden");
     $("vAlong").classList.add("hidden");
     $("hint").textContent = "Hover a surface for its plane";
     if (SIM.wfLoaded !== S.wf) { SIM.wfLoaded = S.wf; SIM.preset = 0; fillSimPresets(); loadPreset(S.wf, 0); simRun(); resetView = true; }
     buildSim(resetView);
   } else {
     S.t = sliderToT();
+    $("panelPit").classList.remove("hidden"); $("panelModel").classList.add("hidden"); $("panelSim").classList.add("hidden"); $("simBelow").classList.add("hidden"); $("pitBelow").classList.remove("hidden");
     buildPit();
-    $("panelPit").classList.remove("hidden"); $("panelModel").classList.add("hidden"); $("panelSim").classList.add("hidden"); $("simBelow").classList.add("hidden");
     $("vAlong").classList.add("hidden");
     $("hint").textContent = "Hover a wall for its plane";
     if (resetView) setView(dirOf(...OBL[S.wf]), scene.userData.center, true);
   }
 }
 function setWafer(w) {
-  S.wf = w; S.sel = null; S.open = 0; S.rate = OPENINGS[w][0].rate; $("selRate").value = S.rate;
+  S.wf = w; S.sel = null; S.open = 0; S.customOps = []; renderCustomList(); S.rate = OPENINGS[w][0].rate; $("selRate").value = S.rate;
   pressed($("segW"), "w", w); setHold(); fillOpenings();
   $("faceInfo").innerHTML = '<span class="note">Click any face. The page then draws where its plane cuts the wafer surface, the two normals and the angle between the planes.</span>';
   prepPit(); rebuild(true);
@@ -1420,7 +1659,52 @@ $("views").addEventListener("click", e => {
   const tgt = S.mode === "model" ? new V3(0, 0, 0) : scene.userData.center;
   setView(dirOf(...(v === "oblique" ? OBL[S.wf] : v === "back" ? [OBL[S.wf][0], OBL[S.wf][1] + 180] : VIEWS[v])), tgt);
 });
-$("selOpen").addEventListener("change", e => { S.open = Number(e.target.value); S.rate = OPENINGS[S.wf][S.open].rate; $("selRate").value = S.rate; prepPit(); rebuild(true); });
+$("selOpen").addEventListener("change", e => {
+  S.open = e.target.value === "custom" ? "custom" : Number(e.target.value);
+  if (S.open !== "custom") { S.rate = OPENINGS[S.wf][S.open].rate; $("selRate").value = S.rate; }
+  prepPit(); rebuild(true);
+});
+$("pitColor").addEventListener("change", e => { S.pitColor = e.target.value; buildPit(); });
+// ---- the user's own openings in the Etched pit scene
+function fillPcTypes() { $("pcType").innerHTML = Object.entries(SHAPE_TYPES).filter(([, v]) => !v.noAdd).map(([k, v]) => `<option value="${k}">${v.name}${isConvexType(k) ? "" : " (convex hull here)"}</option>`).join(""); }
+function pcShape() {
+  const type = $("pcType").value, d = SHAPE_TYPES[type].d, n = Number($("pcN").value) || d.n || 6;
+  const w = Number($("pcW").value) || 100, h = Number($("pcH").value) || w;
+  return Object.assign(shp(type, "open", Number($("pcX").value) || 0, Number($("pcY").value) || 0, w, h, Number($("pcA").value) || 0),
+    { n, t: type === "ring" || type === "star" ? h : Math.min(w, h)*0.3 });
+}
+function renderCustomList() {
+  $("pcList").innerHTML = S.customOps.length ? `<tr class="hd"><td>#</td><td>opening</td><td>pre-etch</td><td></td></tr>` +
+    S.customOps.map((c, i) => `<tr><td>${i + 1}</td><td class="ty">${c.label}</td><td>${c.pre} µm</td><td><button class="x" data-pcdel="${i}" title="remove">×</button></td></tr>`).join("") : "";
+}
+function useCustom() {
+  fillOpenings();
+  if (S.customOps.length) { S.open = "custom"; $("selOpen").value = "custom"; }
+  else if (S.open === "custom") { S.open = 0; $("selOpen").value = "0"; }
+  renderCustomList(); prepPit(); rebuild(true);
+}
+$("pcAdd").addEventListener("click", () => {
+  const sh = pcShape(), polys = shapePolys(sh), o = hull2(polys.flat());
+  const T = SHAPE_TYPES[sh.type];
+  S.customOps.push({ o, pre: Math.max(0, Number($("pcPre").value) || 0), shape: sh,
+    label: `${T.name} ${sh.w}${T.f.includes("h") ? " × " + sh.h : ""} µm at (${sh.cx}, ${sh.cy}), ${sh.ang}°${isConvexType(sh.type) ? "" : " (hull)"}` });
+  useCustom();
+});
+$("pcClear").addEventListener("click", () => { S.customOps = []; useCustom(); });
+$("pcList").addEventListener("click", e => { const d = e.target.closest("[data-pcdel]"); if (!d) return; S.customOps.splice(Number(d.dataset.pcdel), 1); useCustom(); });
+$("pcToSim").addEventListener("click", () => {
+  // the current openings, as they are (not their hulls), go to the etch simulator
+  const shapes = S.open === "custom" ? S.customOps.map(c => Object.assign({}, c.shape)) : [shp("pts", "open", 0, 0, 0, 0, 0, { pts: OPENINGS[S.wf][S.open].o.map(p => p.slice()) })];
+  const [x0, x1, y0, y1] = pit.box, hx = Math.ceil(Math.max(Math.abs(x0), Math.abs(x1))/10)*10, hy = Math.ceil(Math.max(Math.abs(y0), Math.abs(y1))/10)*10;
+  SIM.fk = { "100": "100", "110": "110f", "111": "111" }[S.wf]; SIM.rate = { PAL30: "PAL30", PAL40: "PAL40", LEC: "LEC42" }[S.rate];
+  SIM.t = Math.max(5, Math.round(S.final ? pit.tmax : S.t)); SIM.pre = Math.max(0, ...pit.items.map(it => it.pre)); SIM.hx = hx; SIM.hy = hy; SIM.dxMax = 0;
+  SIM.shapes = shapes; SIM.sel = -1; SIM.preset = -1; SIM.cutPos = 0; SIM.cutAxis = "y"; SIM.wfLoaded = S.wf;
+  fillSimPresets(); $("simPreset").value = "-1";
+  $("simNote").innerHTML = "Openings sent from the Etched pit scene. Here they keep their real shape, and cavities that meet merge.";
+  syncSimInputs(); renderShapeList();
+  S.mode = "sim"; pressed($("segM"), "m", "sim"); tip.style.display = "none";
+  simRun(); rebuild(true);
+});
 $("selRate").addEventListener("change", e => { S.rate = e.target.value; prepPit(); rebuild(false); });
 $("tSlider").addEventListener("input", () => { S.t = sliderToT(); $("tNow").textContent = `${S.t.toFixed(S.t < 10 ? 1 : 0)} min`; if (S.final) { S.final = false; $("cFinal").checked = false; } buildPit(); });
 $("cFinal").addEventListener("change", e => { S.final = e.target.checked; buildPit(); });
@@ -1489,19 +1773,73 @@ function vTraces(fk) {
 }
 // shape helpers (all in µm, wafer frame)
 const shp = (type, op, cx, cy, w, h, ang, extra) => Object.assign({ type, op, cx, cy, w, h: h == null ? w : h, ang: ang || 0 }, extra || {});
-function shapePts(s) {
-  const c = Math.cos(s.ang/C.DEG), sn = Math.sin(s.ang/C.DEG);
+const SHAPE_TYPES = {   // name, which size fields the editor shows, defaults for a new shape
+  rect:    { name: "rectangle",       f: ["w", "h"],      d: { w: 100, h: 60 } },
+  circle:  { name: "circle",          f: ["w"],           d: { w: 80 } },
+  ellipse: { name: "ellipse",         f: ["w", "h"],      d: { w: 120, h: 70 } },
+  tri:     { name: "triangle",        f: ["w"],           d: { w: 90 } },
+  poly:    { name: "regular polygon", f: ["w", "n"],      d: { w: 90, n: 6 } },
+  lshape:  { name: "L-shape",         f: ["w", "h", "t"], d: { w: 120, h: 120, t: 35 } },
+  ushape:  { name: "U-shape",         f: ["w", "h", "t"], d: { w: 120, h: 100, t: 30 } },
+  cross:   { name: "cross",           f: ["w", "h", "t"], d: { w: 140, h: 140, t: 40 } },
+  frame:   { name: "square frame",    f: ["w", "h", "t"], d: { w: 160, h: 160, t: 25 } },
+  ring:    { name: "ring",            f: ["w", "t"],      d: { w: 140, t: 80 } },
+  star:    { name: "star",            f: ["w", "t", "n"], d: { w: 140, t: 60, n: 5 } },
+  para:    { name: "parallelogram",   f: ["w", "h"],      d: { w: 120, h: 60, a1: 54.74, a2: 125.26 }, noAdd: true },
+  pts:     { name: "polygon",         f: [],              d: {}, noAdd: true },
+};
+const ngon = (r, n, a0 = 0) => Array.from({ length: n }, (_, i) => { const a = a0 + 2*Math.PI*i/n; return [r*Math.cos(a), r*Math.sin(a)]; });
+// polygon with a hole as one loop: outer (counter-clockwise), a zero-width slit along +x, inner reversed
+function keyhole(O, I) { return [...O, O[0], I[0], ...I.slice(1).reverse(), I[0]]; }
+function basePts(s) {   // shape outline before rotation and translation
+  const w = s.w, h = s.h, t = Math.max(1, s.t || 0), n = Math.max(3, Math.round(s.n || 3));
+  switch (s.type) {
+    case "rect": return [[-w/2, -h/2], [w/2, -h/2], [w/2, h/2], [-w/2, h/2]];
+    case "circle": return ngon(w/2, 64);
+    case "ellipse": return Array.from({ length: 72 }, (_, i) => { const a = 2*Math.PI*i/72; return [w/2*Math.cos(a), h/2*Math.sin(a)]; });
+    case "tri": return ngon(s.w/Math.sqrt(3), 3, Math.PI/2);
+    case "poly": return ngon(w/2, n, Math.PI/2);
+    case "lshape": return [[-w/2, -h/2], [w/2, -h/2], [w/2, -h/2 + t], [-w/2 + t, -h/2 + t], [-w/2 + t, h/2], [-w/2, h/2]];
+    case "ushape": return [[-w/2, -h/2], [w/2, -h/2], [w/2, h/2], [w/2 - t, h/2], [w/2 - t, -h/2 + t], [-w/2 + t, -h/2 + t], [-w/2 + t, h/2], [-w/2, h/2]];
+    case "cross": { const a = t/2; return [[-a, -h/2], [a, -h/2], [a, -a], [w/2, -a], [w/2, a], [a, a], [a, h/2], [-a, h/2], [-a, a], [-w/2, a], [-w/2, -a], [-a, -a]]; }
+    case "frame": {
+      const R = (W, H) => [[W/2, 0], [W/2, H/2], [-W/2, H/2], [-W/2, -H/2], [W/2, -H/2]];
+      return keyhole(R(w, h), R(Math.max(1, w - 2*t), Math.max(1, h - 2*t)));
+    }
+    case "ring": return keyhole(ngon(w/2, 72), ngon(Math.min(t, w - 2)/2, 72));
+    case "star": return Array.from({ length: 2*n }, (_, i) => { const r = i % 2 ? Math.min(t, w)/2 : w/2, a = Math.PI/2 + Math.PI*i/n; return [r*Math.cos(a), r*Math.sin(a)]; });
+    case "pts": return s.pts.map(p => p.slice());
+  }
+  return [[-w/2, -h/2], [w/2, -h/2], [w/2, h/2], [-w/2, h/2]];
+}
+// all polygons of a shape (several when it is an array), in the wafer frame (µm)
+function shapePolys(s) {
   let P;
-  if (s.type === "rect") P = [[-s.w/2, -s.h/2], [s.w/2, -s.h/2], [s.w/2, s.h/2], [-s.w/2, s.h/2]];
-  else if (s.type === "circle") { P = []; for (let i = 0; i < 64; i++) { const a = 2*Math.PI*i/64; P.push([s.w/2*Math.cos(a), s.w/2*Math.sin(a)]); } }
-  else if (s.type === "tri") { const r = s.w/Math.sqrt(3); P = [0, 1, 2].map(i => { const a = Math.PI/2 + 2*Math.PI*i/3; return [r*Math.cos(a), r*Math.sin(a)]; }); }
-  else if (s.type === "para") {   // parallelogram: side w along angle a1 (deg), side h along angle a2, relative to the flat
+  if (s.type === "para") {   // parallelogram: side w along angle a1 (deg), side h along angle a2, relative to the flat
     const u = [Math.cos(s.a1/C.DEG), Math.sin(s.a1/C.DEG)], v = [Math.cos(s.a2/C.DEG), Math.sin(s.a2/C.DEG)];
     P = [[-1,-1],[1,-1],[1,1],[-1,1]].map(([p, q]) => [p*s.w/2*u[0] + q*s.h/2*v[0], p*s.w/2*u[1] + q*s.h/2*v[1]]);
-    return P.map(([x, y]) => [s.cx + x, s.cy + y]);
+  } else {
+    const c = Math.cos(s.ang/C.DEG), sn = Math.sin(s.ang/C.DEG);
+    P = basePts(s).map(([x, y]) => [x*c - y*sn, x*sn + y*c]);
   }
-  return P.map(([x, y]) => [s.cx + x*c - y*sn, s.cy + x*sn + y*c]);
+  const nx = Math.max(1, Math.round(s.nx || 1)), ny = Math.max(1, Math.round(s.ny || 1)), px = s.px || 0, py = s.py || 0, out = [];
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+    const ox = s.cx + (i - (nx - 1)/2)*px, oy = s.cy + (j - (ny - 1)/2)*py;
+    out.push(P.map(([x, y]) => [ox + x, oy + y]));
+  }
+  return out;
 }
+function shapePts(s) { return shapePolys(s)[0]; }
+const engineShape = s => { const polys = shapePolys(s); return { pts: polys[0], polys, op: s.op }; };
+function hull2(pts) {   // convex hull (monotone chain), counter-clockwise
+  const P = pts.map(p => p.slice()).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  if (P.length < 3) return P;
+  const cr = (o, a, b) => (a[0] - o[0])*(b[1] - o[1]) - (a[1] - o[1])*(b[0] - o[0]), lo = [], up = [];
+  for (const p of P) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 1e-9) lo.pop(); lo.push(p); }
+  for (let i = P.length - 1; i >= 0; i--) { const p = P[i]; while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], p) <= 1e-9) up.pop(); up.push(p); }
+  return lo.slice(0, -1).concat(up.slice(0, -1));
+}
+const isConvexType = t => ["rect", "circle", "ellipse", "tri", "poly", "para"].includes(t);
 // presets: wafer frame key, shapes, domain half-sizes, etchant, time, pre-etch, note
 function makePresets() {
   const P = { "100": [], "110": [], "111": [] };
@@ -1536,6 +1874,23 @@ function makePresets() {
       shapes: [shp("rect", "open", -100, 0, 140, 140), shp("rect", "open", 20, 75, 100, 100, 45), shp("circle", "open", 30, -30, 80),
                shp("rect", "open", 160, -60, 40, 40)],
       note: "Each window grows to the ⟨110⟩ rectangle that bounds it (Lec 4-1 p. 8, Fig. 5e). The small square stops as a V-pit (self-limited at w/√2); where the bounding rectangles overlap, the mask strip between windows is undercut and the cavities merge." },
+    { name: "Square window along the flat vs at 45° (Paul et al. 2024, Fig. 1a, b)", fk: "100", rate: "PAL30", t: 40, hx: 230, hy: 120, dxMax: 3,
+      shapes: [shp("rect", "open", -110, 0, 100, 100), shp("rect", "open", 110, 0, 100, 100, 45)],
+      note: "Left: edges along ⟨110⟩ (parallel to the flat) give a pit bounded by {111} walls at 54.7° that stops at a V. Right: the same square turned 45° has edges along ⟨100⟩; only {100} planes are exposed, so it etches down and sideways at the same rate with vertical walls and undercuts the mask (Paul et al. 2024, Fig. 1a, b, Sec. I). The paper uses TMAH; here KOH 30 wt% is used because the course files have no full-orientation TMAH rate table (Pal & Sato Table 4.1 is KOH only)." },
+    { name: "Membrane pixel with a 45° mask (after Paul et al. 2024, Fig. 1c)", fk: "100", rate: "PAL30", t: 60, hx: 130, hy: 130, dxMax: 2.5,
+      shapes: (() => {   // two L-shaped trenches around a 60 µm square, turned 45° so every edge runs along ⟨100⟩
+        const A = [[-20, 45, 80, 30], [-45, 20, 30, 80]], out = [], c = SQ2;
+        for (const sg of [1, -1]) for (const [x, y, w, h] of A) { const X = sg*x, Y = sg*y; out.push(shp("rect", "open", c*(X - Y), c*(X + Y), w, h, 45)); }
+        out.push(shp("rect", "mask", 0, 0, 60, 60, 45, { name: "membrane" }));
+        return out;
+      })(),
+      note: "A square membrane outlined by two L-shaped openings, the whole pattern turned 45° to the flat so that all edges lie along ⟨100⟩ (Paul et al. 2024, Sec. II and Fig. 1c). The {100} side walls undercut the membrane from every trench at about R(100), so it is released from below; it stays held at two opposite corners. This reproduces only the first anisotropic step of Method I (Fig. 3a–c); the HNA isotropic steps are not modelled. Trench width 30 µm and membrane 60 µm are design choices (the paper gives only a 128 × 60 µm mask, Sec. IV); KOH 30 wt% replaces TMAH (no TMAH rate table in the course files)." },
+    { name: "Ring window: round island with convex-corner attack", fk: "100", rate: "PAL30", t: 50, hx: 170, hy: 170,
+      shapes: [shp("ring", "open", 0, 0, 260, 260, 0, { t: 120 })],
+      note: "An annular opening leaves a round island of silicon. Outside, the cavity grows to the ⟨110⟩ square that bounds the ring (concave side, slow {111}); the island edge is convex everywhere, so fast planes eat it and it turns into a polygon (Lec 4-1 p. 8). Ring sizes are design choices." },
+    { name: "Array of small squares at 45° (2 × 3, pitch 90 µm)", fk: "100", rate: "PAL30", t: 30, hx: 190, hy: 140, dxMax: 2.5,
+      shapes: [shp("rect", "open", 0, 0, 40, 40, 45, { nx: 3, ny: 2, px: 90, py: 90 })],
+      note: "One shape with the array option: 3 × 2 copies at 90 µm pitch. Each 45° square exposes {100} walls and grows sideways at about R(100) until neighbouring cavities meet (Paul et al. 2024, Fig. 1b). Sizes are design choices." },
     { name: "Cross-shaped window: concave and convex corners", fk: "100", rate: "PAL30", t: 70, hx: 190, hy: 190,
       shapes: [shp("rect", "open", 0, 0, 280, 70), shp("rect", "open", 0, 0, 70, 280)],
       note: "The four inner corners of the cross are convex silicon corners and are undercut; the outer corners are concave and stay sharp. Given enough time the cavity becomes the bounding square (Lec 4-1 p. 8, Fig. 5e)." },
@@ -1570,7 +1925,7 @@ function makePresets() {
 }
 const SPRESETS = makePresets();
 
-const SIM = { fk: "100", rate: "PAL30", t: 60, thick: T_WAFER_SIM, pre: 0, quality: "normal", hx: 200, hy: 130, shapes: [], preset: 0,
+const SIM = { color: "plane", hist: null, fk: "100", rate: "PAL30", t: 60, thick: T_WAFER_SIM, pre: 0, quality: "normal", hx: 200, hy: 130, shapes: [], preset: 0,
               tv: 0, tSim: 0, tEnd: 0, res: null, running: false, cutOn: false, cutAxis: "y", cutPos: 0, showMask: true, sel: -1,
               grid: null, id: 0, dirty: false, playing: false, viewBusy: false, viewWant: null, worker: null };
 function simFrame() { return SFR[SIM.fk]; }
@@ -1597,7 +1952,7 @@ function startWorker() {
 // ---- configuration from the UI state
 function simConfig() {
   const F = simFrame(), R = SRATES[SIM.rate].r;
-  const shapes = SIM.shapes.map(s => ({ pts: shapePts(s), op: s.op }));
+  const shapes = SIM.shapes.map(engineShape);
   const X0 = -SIM.hx, X1 = SIM.hx, Y0 = -SIM.hy, Y1 = SIM.hy;
   const vert = EE.rateC(EE.makeRate(R), F.e[2][0], F.e[2][1], F.e[2][2]);   // R of the wafer normal (crystal components of e3)
   const target = { draft: 1.2e5, normal: 3e5, fine: 8e5 }[SIM.quality];
@@ -1620,7 +1975,7 @@ function cutSpec() {
 function simRun() {
   startWorker();
   const cfg = simConfig();
-  SIM.id++; SIM.rtab = EE.makeRate(cfg.rates); SIM.tEnd = SIM.t; SIM.tSim = 0; SIM.running = true; SIM.res = null; SIM.cfg = cfg;
+  SIM.id++; SIM.hist = null; SIM.rtab = EE.makeRate(cfg.rates); SIM.tEnd = SIM.t; SIM.tSim = 0; SIM.running = true; SIM.res = null; SIM.cfg = cfg;
   SIM.grid = { Nx: Math.round((cfg.X1 - cfg.X0)/cfg.dx), Ny: Math.round((cfg.Y1 - cfg.Y0)/cfg.dx), Nz: Math.max(3, Math.round(cfg.depth/cfg.dx)), dx: cfg.dx, depth: cfg.depth };
   const msg = { cmd: "run", cfg, tEnd: SIM.t, id: SIM.id, cut: cutSpec(), cutMesh: SIM.cutOn };
   SIM.pendingRun = msg;
@@ -1638,7 +1993,7 @@ function simMessage(m) {
     SIM.tSim = m.t; SIM.res = m;
     $("simBar").style.width = `${(100*m.t/SIM.tEnd).toFixed(1)}%`;
     if (m.type === "done") {
-      SIM.running = false;
+      SIM.running = false; if (m.hist) SIM.hist = m.hist;
       $("simStatus").textContent = `Done: ${m.steps} time steps in ${(m.ms/1000).toFixed(1)} s on a ${SIM.grid.Nx} × ${SIM.grid.Ny} × ${SIM.grid.Nz} grid (cell ${SIM.grid.dx} µm).`;
     } else $("simStatus").textContent = `Etching… ${m.t.toFixed(0)} of ${SIM.tEnd} min`;
     $("simT").max = String(SIM.tSim); $("simT").value = String(SIM.tSim); SIM.tv = SIM.tSim;
@@ -1717,6 +2072,23 @@ function buildSim(resetView) {
       VN.set(V2);
     }
     const gx1 = X0 + SIM.grid.Nx*SIM.grid.dx, gy1 = Y0 + SIM.grid.Ny*SIM.grid.dx;
+    // colour by a value: depth, local rate R(n) or arrival time of the front
+    const mode = SIM.color, vt = r.mesh.vt;
+    let vval = null, vmax = 1;
+    if (mode !== "plane") {
+      vval = new Float32Array(nv);
+      if (mode === "depth") { vmax = Math.max(1, SIM.hist ? Math.max(...SIM.hist.depth) : r.st ? r.st.depth : zb); for (let v = 0; v < nv; v++) vval[v] = -pos[3*v+2]; }
+      else if (mode === "time") { vmax = Math.max(1e-6, r.tv); for (let v = 0; v < nv; v++) vval[v] = vt ? vt[v] : 0; }
+      else {
+        if (!SIM.rtab) SIM.rtab = EE.makeRate(SRATES[SIM.rate].r);
+        const [e1, e2, e3] = simFrame().e; vmax = Math.max(...Object.values(SRATES[SIM.rate].r));
+        for (let v = 0; v < nv; v++) {
+          const L = Math.hypot(VN[3*v], VN[3*v+1], VN[3*v+2]) || 1, n = [VN[3*v]/L, VN[3*v+1]/L, VN[3*v+2]/L];
+          vval[v] = EE.rateC(SIM.rtab, e1[0]*n[0] + e2[0]*n[1] + e3[0]*n[2], e1[1]*n[0] + e2[1]*n[1] + e3[1]*n[2], e1[2]*n[0] + e2[2]*n[1] + e3[2]*n[2]);
+        }
+      }
+      SIM.cbar = { mode, vmax };
+    } else SIM.cbar = null;
     const d = SIM.grid.dx*0.05, onB = v => Math.abs(pos[3*v] - X0) < d || Math.abs(pos[3*v] - gx1) < d || Math.abs(pos[3*v+1] - Y0) < d || Math.abs(pos[3*v+1] - gy1) < d || Math.abs(pos[3*v+2] + zb) < d;
     for (let t = 0; t < nt; t++) {
       const a = idx[3*t], b = idx[3*t+1], c = idx[3*t+2];
@@ -1729,7 +2101,11 @@ function buildSim(resetView) {
       else if (onB(a) && onB(b) && onB(c)) { col = shadeColor(COL["s-side"], fn); kind = 2; }
       else if (pos[3*a+2] > -d && pos[3*b+2] > -d && pos[3*c+2] > -d && fn[2] > 0.9) { col = shadeColor(COL["s-top"], fn); kind = 3; }
       else { cls = classifyN(qn); col = shadeColor(famCol(cls.fam, cls.ang), qn); }
-      info[t] = { qn: kind ? fn : qn, cls, cap: kind === 1, kind };
+      info[t] = { qn: kind ? fn : qn, cls, cap: kind === 1, kind, val: vval && !kind ? (vval[a] + vval[b] + vval[c])/3 : null };
+      if (vval && !kind) {
+        [a, b, c].forEach((v, k) => { const cv = shadeColor(cmap(vval[v]/vmax), qn); Cc[9*t + 3*k] = cv.r; Cc[9*t + 3*k + 1] = cv.g; Cc[9*t + 3*k + 2] = cv.b; });
+        continue;
+      }
       for (let k = 0; k < 3; k++) { Cc[9*t + 3*k] = col.r; Cc[9*t + 3*k + 1] = col.g; Cc[9*t + 3*k + 2] = col.b; }
     }
     const geo = new THREE.BufferGeometry();
@@ -1762,7 +2138,7 @@ function buildSim(resetView) {
     const onEdge = P.every(p => Math.min(Math.abs(p[0] - X0), Math.abs(p[0] - X1), Math.abs(p[1] - Y0), Math.abs(p[1] - Y1)) < 1e-6);
     return onEdge ? [] : P;   // a shape covering the whole domain draws no outline
   };
-  const loops = SIM.shapes.map(s => clipRect(shapePts(s))).filter(P => P.length).map(P => P.map(p => [p[0], p[1], Math.max(0.8, 0.005*radius)]));
+  const loops = SIM.shapes.flatMap(s => shapePolys(s).map(clipRect)).filter(P => P.length).map(P => P.map(p => [p[0], p[1], Math.max(0.8, 0.005*radius)]));
   if (loops.length) g.add(linesFromLoops(loops, COL.mask, { clip, opacity: 0.8 }));
   // flat and frame labels
   const F = simFrame();
@@ -1775,8 +2151,21 @@ function buildSim(resetView) {
   addLabel(new V3(X1, Y1, 0), idxHTML(F.idx[2], "(", ")") + " surface", "", camDir => camDir.z > 0.1);
   scene.userData.center = new V3((X0 + X1)/2, (Y0 + Y1)/2, -zb/2);
   if (resetView) setView(dirOf(30, -62), scene.userData.center, true);
-  updateSimReadout(); drawSection(); drawMaskEditor();
+  updateSimReadout(); drawSection(); drawMaskEditor(); drawSimGraph(); simCbar();
   resize();
+}
+const CB_TITLE = { depth: ["depth below the surface", "µm"], rate: ["local etch rate R(n)", "µm/min"], time: ["time the front reached the surface", "min"] };
+function simCbar() {
+  if (S.mode !== "sim" || !SIM.cbar) { if (S.mode === "sim") hideCbar(); return; }
+  const [t, u] = CB_TITLE[SIM.cbar.mode]; showCbar(t, 0, SIM.cbar.vmax, u);
+}
+function drawSimGraph() {
+  const h = SIM.hist, cv = $("simGraph"), leg = $("simGraphLeg");
+  if (!h) { const ctx = cv.getContext("2d"); cv.style.height = "40px"; cv.width = cv.clientWidth || 300; cv.height = 40; ctx.clearRect(0, 0, cv.width, 40); ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--muted"); ctx.font = "12px IBM Plex Sans, sans-serif"; ctx.fillText(SIM.running ? "The history appears when the run finishes." : "Run the simulation to see the history.", 4, 24); leg.innerHTML = ""; return; }
+  const series = [{ name: "max depth", color: "#" + COL.accent.getHexString(), x: h.t, y: h.depth },
+                  { name: "max undercut under the mask", color: "#" + COL.ghost.getHexString(), x: h.t, y: h.under }];
+  const vals = drawGraph(cv, series, { xmax: h.t[h.t.length - 1], tv: SIM.tv });
+  graphLegend(leg, series, vals, SIM.tv);
 }
 function maskTexture(r) {
   const X0 = -SIM.hx, Y0 = -SIM.hy, W = 2*SIM.hx, H = 2*SIM.hy, s = Math.min(4, 1400/Math.max(W, H));
@@ -1799,8 +2188,8 @@ function paintMask(ctx, s, X0, Y0, H, color, alpha) {
   ctx.setTransform(s, 0, 0, -s, -X0*s, (Y0 + H)*s);   // world (x, y) -> canvas, y up
   ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.fillRect(X0, Y0, W, H);
   for (const sh of SIM.shapes) {
-    const P = shapePts(sh);
-    ctx.beginPath(); P.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath();
+    ctx.beginPath();
+    for (const P of shapePolys(sh)) { P.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath(); }
     if (sh.op === "open") { ctx.globalCompositeOperation = "destination-out"; ctx.globalAlpha = 1; ctx.fill(); }
     else { ctx.globalCompositeOperation = "destination-out"; ctx.globalAlpha = 1; ctx.fill(); ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = alpha; ctx.fill(); }
   }
@@ -1898,8 +2287,8 @@ function drawMaskEditor() {
   ctx.strokeStyle = "#" + COL["s-ink"].getHexString(); ctx.lineWidth = 1; ctx.strokeRect(10, 10, W*s, H*s);
   const toC = p => [SIM.ed.ox + p[0]*s, SIM.ed.oy - p[1]*s];
   SIM.shapes.forEach((sh, i) => {
-    const P = shapePts(sh).map(toC);
-    ctx.beginPath(); P.forEach((p, k) => k ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath();
+    ctx.beginPath();
+    for (const Q of shapePolys(sh)) { const P = Q.map(toC); P.forEach((p, k) => k ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath(); }
     ctx.setLineDash(sh.op === "open" ? [] : [4, 3]); ctx.lineWidth = i === SIM.sel ? 2.2 : 1;
     ctx.strokeStyle = i === SIM.sel ? "#" + COL.accent.getHexString() : "#" + COL["s-ink"].getHexString(); ctx.stroke();
   });
@@ -1916,14 +2305,16 @@ function drawMaskEditor() {
 }
 const plainIdx = v => "[" + v.map(x => x < 0 ? `${-x}̅` : `${x}`).join("") + "]";
 function renderShapeList() {
-  const rows = SIM.shapes.map((s, i) => {
-    const f = (k, v, st = 5) => `<input type="number" step="${st}" data-i="${i}" data-k="${k}" value="${+(+v).toFixed(1)}">`;
-    const dims = s.type === "circle" ? `${f("w", s.w)}` : s.type === "tri" ? `${f("w", s.w)}` : `${f("w", s.w)}${f("h", s.h)}`;
-    const ang = s.type === "para" ? "" : f("ang", s.ang, 1);
-    return `<tr class="${i === SIM.sel ? "sel" : ""}" data-row="${i}"><td><select data-i="${i}" data-k="op"><option value="open"${s.op === "open" ? " selected" : ""}>open</option><option value="mask"${s.op === "mask" ? " selected" : ""}>mask</option></select></td>
-      <td class="ty">${{ rect: "rect", circle: "circle", tri: "triangle", para: "parallelogram" }[s.type]}</td><td>${f("cx", s.cx)}${f("cy", s.cy)}</td><td>${dims}</td><td>${ang}</td><td><button class="x" data-del="${i}" title="remove">×</button></td></tr>`;
+  const rows = SIM.shapes.map((sh, i) => {
+    const f = (k, v, st = 5, ttl = k) => `<input type="number" step="${st}" data-i="${i}" data-k="${k}" title="${ttl}" value="${+(+(v == null ? 0 : v)).toFixed(1)}">`;
+    const T = SHAPE_TYPES[sh.type] || SHAPE_TYPES.rect;
+    const dims = T.f.map(k => f(k, sh[k], k === "n" ? 1 : 5, { w: "w (µm)", h: "h (µm)", t: sh.type === "ring" || sh.type === "star" ? "inner size (µm)" : "arm width t (µm)", n: "sides or points" }[k])).join("");
+    const ang = sh.type === "para" || sh.type === "pts" ? "" : f("ang", sh.ang, 1, "angle to the flat (°)");
+    const arr = `${f("nx", sh.nx || 1, 1, "copies along x")}${f("ny", sh.ny || 1, 1, "copies along y")}${f("px", sh.px || 0, 5, "pitch x (µm)")}${f("py", sh.py || 0, 5, "pitch y (µm)")}`;
+    return `<tr class="${i === SIM.sel ? "sel" : ""}" data-row="${i}"><td><select data-i="${i}" data-k="op"><option value="open"${sh.op === "open" ? " selected" : ""}>open</option><option value="mask"${sh.op === "mask" ? " selected" : ""}>mask</option></select></td>
+      <td class="ty">${T.name}</td><td>${f("cx", sh.cx)}${f("cy", sh.cy)}</td><td>${dims}</td><td>${ang}</td><td>${arr}</td><td><button class="x" data-del="${i}" title="remove">×</button></td></tr>`;
   }).join("");
-  $("shapeList").innerHTML = `<tr class="hd"><td>layer</td><td>shape</td><td>centre x, y</td><td>size</td><td>angle°</td><td></td></tr>` + rows;
+  $("shapeList").innerHTML = `<tr class="hd"><td>layer</td><td>shape</td><td>centre x, y</td><td>size</td><td>angle°</td><td>array nx, ny, px, py</td><td></td></tr>` + rows;
 }
 function markDirty() { SIM.dirty = true; updateDirtyNote(); renderShapeList(); if (S.mode === "sim") buildSim(false); }
 function updateDirtyNote() { $("simDirty").classList.toggle("hidden", !SIM.dirty); }
@@ -1975,6 +2366,7 @@ function stepSimPlay(now) {
   if (SIM.tv >= SIM.tSim - 1e-9) { SIM.playing = false; $("bSimPlay").textContent = "Play"; }
 }
 $("cSimMask").addEventListener("change", e => { SIM.showMask = e.target.checked; buildSim(false); });
+$("simColor").addEventListener("change", e => { SIM.color = e.target.value; $("simPlaneLegend").classList.toggle("hidden", SIM.color !== "plane"); buildSim(false); });
 $("cSimCut").addEventListener("change", e => { SIM.cutOn = e.target.checked; requestView(SIM.tv); });
 $("segCut").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; SIM.cutAxis = b.dataset.a; SIM.cutPos = 0; pressed($("segCut"), "a", SIM.cutAxis); syncCutSlider(); drawMaskEditor(); requestView(SIM.tv); });
 $("simCutPos").addEventListener("input", e => { SIM.cutPos = Number(e.target.value); syncCutSlider(); drawMaskEditor(); requestView(SIM.tv); });
@@ -1986,15 +2378,24 @@ $("shapeList").addEventListener("click", e => {
   const d = e.target.closest("[data-del]"); if (d) { SIM.shapes.splice(Number(d.dataset.del), 1); SIM.sel = -1; markDirty(); return; }
   const r = e.target.closest("tr[data-row]"); if (r && e.target.tagName !== "INPUT" && e.target.tagName !== "SELECT") { SIM.sel = Number(r.dataset.row); drawMaskEditor(); renderShapeList(); }
 });
-for (const [id, type] of [["bAddRect", "rect"], ["bAddCirc", "circle"], ["bAddTri", "tri"]])
-  $(id).addEventListener("click", () => { SIM.shapes.push(shp(type, "open", 0, 0, type === "rect" ? 100 : 80, type === "rect" ? 60 : null)); SIM.sel = SIM.shapes.length - 1; $("simPreset").value = "-1"; markDirty(); });
+$("addType").innerHTML = Object.entries(SHAPE_TYPES).filter(([, v]) => !v.noAdd).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join("");
+$("bAddShape").addEventListener("click", () => {
+  const type = $("addType").value, d = SHAPE_TYPES[type].d;
+  SIM.shapes.push(Object.assign(shp(type, $("addOp").value, 0, 0, d.w, d.h == null ? d.w : d.h), d, { nx: 1, ny: 1, px: 0, py: 0 }));
+  SIM.sel = SIM.shapes.length - 1; $("simPreset").value = "-1"; markDirty();
+});
+$("bDupShape").addEventListener("click", () => {
+  if (!(SIM.sel >= 0) || !SIM.shapes[SIM.sel]) return;
+  const c = JSON.parse(JSON.stringify(SIM.shapes[SIM.sel])); c.cx += 20; c.cy -= 20; delete c.name;
+  SIM.shapes.push(c); SIM.sel = SIM.shapes.length - 1; $("simPreset").value = "-1"; markDirty();
+});
 // drag shapes in the editor
 (() => {
   const cv = $("maskCanvas"); let drag = null;
   const world = ev => { const r = cv.getBoundingClientRect(); return [(ev.clientX - r.left - SIM.ed.ox)/SIM.ed.s, -(ev.clientY - r.top - SIM.ed.oy)/SIM.ed.s]; };
   cv.addEventListener("pointerdown", ev => {
     const [x, y] = world(ev);
-    for (let i = SIM.shapes.length - 1; i >= 0; i--) if (EE.isOpen([{ pts: shapePts(SIM.shapes[i]), op: "open" }], x, y)) {
+    for (let i = SIM.shapes.length - 1; i >= 0; i--) if (EE.isOpen([Object.assign(engineShape(SIM.shapes[i]), { op: "open" })], x, y)) {
       SIM.sel = i; drag = { i, x0: x, y0: y, cx: SIM.shapes[i].cx, cy: SIM.shapes[i].cy, moved: false }; cv.setPointerCapture(ev.pointerId); drawMaskEditor(); renderShapeList(); return;
     }
     SIM.sel = -1; drawMaskEditor(); renderShapeList();
@@ -2023,9 +2424,31 @@ function simHover(ev) {
     tip.innerHTML = c.ang <= 4 ? `<b>${idxHTML(c.hkl)}</b> &nbsp;{${c.fam}} (within ${c.ang.toFixed(1)}°)<br>${kind}, ${a.toFixed(1)}° to the surface<br>model rate ${R.toFixed(3)} µm/min`
                                : `no low-index plane within 4° (nearest {${c.fam}}, ${c.ang.toFixed(1)}° off)<br>${kind}, ${a.toFixed(1)}° to the surface<br>model rate ${R.toFixed(3)} µm/min`;
   }
+  if (inf && inf.val != null && SIM.cbar) { const [t, u] = CB_TITLE[SIM.cbar.mode]; tip.innerHTML += `<br>${t}: ${inf.val.toFixed(SIM.cbar.mode === "rate" ? 3 : 1)} ${u}`; }
   const r = stage.getBoundingClientRect();
   tip.style.left = `${Math.min(ev.clientX - r.left + 14, r.width - 220)}px`; tip.style.top = `${ev.clientY - r.top + 12}px`; tip.style.display = "block";
 }
+
+// ---- theater view (wide stage, panel below) and full screen
+function setTheater(on) {
+  document.body.classList.toggle("theater", on); $("bTheater").setAttribute("aria-pressed", String(on));
+  $("bTheater").textContent = on ? "Exit theater view" : "Theater view";
+  try { localStorage.setItem("o3d-theater", on ? "1" : "0"); } catch (e) {}
+  requestAnimationFrame(() => { resize(); if (S.mode === "sim") { drawSection(); drawMaskEditor(); drawSimGraph(); } else if (S.mode === "pit") drawPitGraph(); });
+}
+$("bTheater").addEventListener("click", () => setTheater(!document.body.classList.contains("theater")));
+document.addEventListener("keydown", e => {
+  if (e.key !== "t" && e.key !== "T") return;
+  const tg = e.target.tagName; if (tg === "INPUT" || tg === "SELECT" || tg === "TEXTAREA" || e.ctrlKey || e.metaKey || e.altKey) return;
+  setTheater(!document.body.classList.contains("theater"));
+});
+$("bFull").addEventListener("click", () => {
+  if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); return; }
+  const r = stage.requestFullscreen ? stage.requestFullscreen() : null;
+  if (r && r.catch) r.catch(() => { $("bFull").textContent = "Full screen not available here"; setTimeout(() => { $("bFull").textContent = "Full screen"; }, 2500); });
+});
+document.addEventListener("fullscreenchange", () => { $("bFull").textContent = document.fullscreenElement ? "Exit full screen" : "Full screen"; requestAnimationFrame(resize); });
+try { if (localStorage.getItem("o3d-theater") === "1") setTheater(true); } catch (e) {}
 
 // theme changes: re-read colours and rebuild
 function onTheme() { readColors(); rebuild(false); }
@@ -2037,7 +2460,7 @@ function loop(now) {
   if (dirty) { renderer.render(scene, camera); placeLabels(); dirty = false; }
   requestAnimationFrame(loop);
 }
-readColors(); setHold(); fillOpenings(); $("selRate").value = S.rate;
+readColors(); setHold(); fillOpenings(); fillPcTypes(); $("selRate").value = S.rate;
 prepPit(); $("tNow").textContent = `${sliderToT().toFixed(0)} min`;
 rebuild(true);
 requestAnimationFrame(loop);

@@ -79,7 +79,9 @@ function etchEngineFactory() {
     return c;
   }
   // shapes are painted in order: "open" removes mask, "mask" puts it back. Default: masked.
-  function isOpen(shapes, x, y) { let o = false; for (const s of shapes) if (inPoly(s.pts, x, y)) o = s.op === "open"; return o; }
+  // a shape is one polygon (pts) or several (polys: arrays, rings)
+  const inShape = (s, x, y) => s.polys ? s.polys.some(P => inPoly(P, x, y)) : inPoly(s.pts, x, y);
+  function isOpen(shapes, x, y) { let o = false; for (const s of shapes) if (inShape(s, x, y)) o = s.op === "open"; return o; }
 
   // ---------------------------------------------------------------- simulation
   function create(cfg) {
@@ -156,6 +158,7 @@ function etchEngineFactory() {
   function step(S, tEnd, maxSteps) {
     const { Nx, Ny, Nz, NXY, dx, B, phi, T, Hr, gOpen, open, RT, al } = S;
     const [e1, e2, e3] = S.e, tab = RT.tab, N = RT.N, WT = N + 1;
+    const WALL2 = Math.pow(S.cfg.wallTan || 0.35, 2);
     const ax = al[0], ay = al[1], az = al[2], idx = 1/dx;
     let ns = 0;
     while (S.t < tEnd - 1e-9 && ns < maxSteps) {
@@ -166,10 +169,14 @@ function etchEngineFactory() {
         const xm = i > 0 ? phi[q-1] : c, xp = i < Nx-1 ? phi[q+1] : c;
         const ym = j > 0 ? phi[q-Nx] : c, yp = j < Ny-1 ? phi[q+Nx] : c;
         const zp = k < Nz-1 ? phi[q+NXY] : c;
-        let zm;
-        if (k > 0) zm = phi[q-NXY]; else { zm = 2*c - zp; if (open[r]) { if (zm > gOpen[r]) zm = gOpen[r]; } else if (S.cfg.ghost !== "extrap" && zm < c) zm = c; }
-        const dxm = (c - xm)*idx, dxp = (xp - c)*idx, dym = (c - ym)*idx, dyp = (yp - c)*idx, dzm = (c - zm)*idx, dzp = (zp - c)*idx;
-        const px = 0.5*(dxm + dxp), py = 0.5*(dym + dyp), pz = -0.5*(dzm + dzp);   // grid k runs downward
+        const dxm = (c - xm)*idx, dxp = (xp - c)*idx, dym = (c - ym)*idx, dyp = (yp - c)*idx, dzp = (zp - c)*idx;
+        const px = 0.5*(dxm + dxp), py = 0.5*(dym + dyp);
+        let zm, wall = false;
+        if (k > 0) zm = phi[q-NXY]; else { zm = 2*c - zp; if (open[r]) { if (zm > gOpen[r]) zm = gOpen[r]; }
+          else if (S.cfg.ghost === "extrap") {}
+          else if ((S.cfg.ghost || "noflux") === "noflux" && dzp*dzp < WALL2*(px*px + py*py)) wall = true;   // near-vertical wall under the mask
+          else if (zm < c) zm = c; }
+        const dzm = (c - zm)*idx, pz = wall ? 0 : -0.5*(dzm + dzp);   // grid k runs downward
         const pn = Math.sqrt(px*px + py*py + pz*pz);
         let Hn = 0;
         if (pn > 1e-12) {
@@ -299,7 +306,8 @@ function etchEngineFactory() {
       if (live) { const pa = S.phi[qa], pb = S.phi[qb]; return pa > pb ? Math.min(1, Math.max(0, pa/(pa - pb))) : 0.5; }
       return 1 - crossing(S, qb, qa, tv);
     };
-    const vid = new Int32Array(PX*PY*PZ).fill(-1), pos = [];
+    const vid = new Int32Array(PX*PY*PZ).fill(-1), pos = [], vt = [];
+    const tAt = q => live ? teff(S, q) : T[q];   // arrival time of an etched node
     const C = [[0,0,0],[1,0,0],[0,1,0],[1,1,0],[0,0,1],[1,0,1],[0,1,1],[1,1,1]];
     const E = [[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]];
     const off = C.map(c => c[2]*PXY + c[1]*PX + c[0]);
@@ -315,6 +323,10 @@ function etchEngineFactory() {
       }
       vid[p0] = pos.length/3;
       pos.push(X0 + (i + sx/n - 0.5)*dx, Y0 + (j + sy/n - 0.5)*dx, -(k + sz/n - 0.5)*dx);
+      // time the front reached this surface point: the latest arrival among the etched corners of the cell
+      let ta = -1;
+      for (let c = 0; c < 8; c++) { const q = qmap[p0 + off[c]]; if (q >= 0 && !sil[p0 + off[c]]) { const v = tAt(q); if (v > ta) ta = v; } }
+      vt.push(ta < 0 ? 0 : Math.min(ta, tv));
     }
     const tri = [], tag = [];
     const cube = (k, j, i) => (k < 0 || j < 0 || i < 0 || k >= PZ-1 || j >= PY-1 || i >= PX-1) ? -1 : vid[k*PXY + j*PX + i];
@@ -336,7 +348,7 @@ function etchEngineFactory() {
         tag.push(cap ? 1 : 0, cap ? 1 : 0);
       }
     }
-    return { pos: new Float32Array(pos), idx: new Uint32Array(tri), tag: new Uint8Array(tag) };
+    return { pos: new Float32Array(pos), idx: new Uint32Array(tri), tag: new Uint8Array(tag), vt: new Float32Array(vt) };
   }
 
   // 2D section of the arrival-time field in the plane j = const (axis "y") or i = const (axis "x")
@@ -380,7 +392,7 @@ function etchEngineFactory() {
     for (let j = 0; j < Ny; j++) for (let i = 0; i < Nx; i++) {
       const x = cfg.X0 + (i + 0.5)*dx, y = cfg.Y0 + (j + 0.5)*dx, q = j*Nx + i;
       if (S.open[q]) continue;
-      for (let s = cfg.shapes.length - 1; s >= 0; s--) if (inPoly(cfg.shapes[s].pts, x, y)) { if (cfg.shapes[s].op === "mask") S.shapeMap[s].push(q); break; }
+      for (let s = cfg.shapes.length - 1; s >= 0; s--) if (inShape(cfg.shapes[s], x, y)) { if (cfg.shapes[s].op === "mask") S.shapeMap[s].push(q); break; }
     }
   }
 
@@ -394,7 +406,7 @@ function etchEngineFactory() {
       const top = new Uint8Array(S.NXY); for (let q = 0; q < S.NXY; q++) top[q] = S.T[q] <= tv ? 1 : 0;
       return { mesh: m, sec, top, st: stats(S, tv), t: S.t, tv };
     };
-    const tr = r => { const a = [r.mesh.pos.buffer, r.mesh.idx.buffer, r.mesh.tag.buffer, r.top.buffer]; if (r.sec) a.push(r.sec.sil.buffer, r.sec.fa.buffer, r.sec.fk.buffer, r.sec.open.buffer); return a; };
+    const tr = r => { const a = [r.mesh.pos.buffer, r.mesh.idx.buffer, r.mesh.tag.buffer, r.mesh.vt.buffer, r.top.buffer]; if (r.sec) a.push(r.sec.sil.buffer, r.sec.fa.buffer, r.sec.fk.buffer, r.sec.open.buffer); return a; };
     return function (msg, tick) {
       if (msg.cmd === "run") {
         const my = ++job, t0 = Date.now();
@@ -408,6 +420,11 @@ function etchEngineFactory() {
           if (done || Date.now() - lastPost > 450) {
             lastPost = Date.now();
             const r = view(S.t, msg.cut, msg.cutMesh); r.type = done ? "done" : "progress"; r.id = msg.id; r.ms = Date.now() - t0; r.steps = S.steps;
+            if (done) {   // etch history from the arrival-time field: depth, undercut and released mask area against time
+              const nh = 48, h = { t: [], depth: [], under: [], susp: [] };
+              for (let i = 0; i <= nh; i++) { const ti = S.t*i/nh, st = stats(S, ti); h.t.push(ti); h.depth.push(st.depth); h.under.push(st.under); h.susp.push(st.susp); }
+              r.hist = h;
+            }
             post(r, tr(r));
           }
           if (!done) tick(loop);
