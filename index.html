@@ -44,6 +44,8 @@ header p { margin: 0; color: var(--muted); max-width: 70ch; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel); }
 .seg button { border: 0; background: none; color: var(--ink); font: 500 14px "IBM Plex Sans", sans-serif; padding: 7px 13px; cursor: pointer; }
 .seg button + button { border-left: 1px solid var(--line); }
+#segM { flex-wrap: wrap; max-width: 100%; }
+@media (max-width: 600px) { #segM button { padding: 7px 9px; } #segM button + button { border-left: 1px solid var(--line); } }
 .seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
 .lbl { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-right: 8px; }
 .grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
@@ -132,7 +134,7 @@ body.theater aside.panel > * { break-inside: avoid; }
 .glegend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--muted); margin-top: 2px; }
 .glegend i { display: inline-block; width: 14px; height: 3px; vertical-align: 3px; margin-right: 5px; border-radius: 2px; }
 .addrow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
-.addrow select { width: auto; }
+.addrow select { width: auto; max-width: 100%; min-width: 0; }
 details.custom { margin-top: 8px; font-size: 13.5px; }
 details.custom summary { cursor: pointer; font-weight: 600; }
 .warn { color: var(--accent); font-size: 13px; margin: 6px 0 0; }
@@ -150,6 +152,9 @@ section.refs a { color: var(--accent); }
 .card .fl label { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; color: var(--muted); }
 .card input { width: 56px; font: 12px "IBM Plex Mono", monospace; padding: 2px 3px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--ink); }
 .card button.x { border: 0; background: none; color: var(--muted); font-size: 16px; cursor: pointer; padding: 0 4px; }
+.dsel { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); margin-top: 3px; max-width: 100%; }
+.dsel select { width: auto; max-width: 100%; min-width: 0; font-size: 12px; padding: 2px; }
+table.shapes .dsel { margin: 0; }
 .kbd { font-family: "IBM Plex Mono", monospace; font-size: 12px; border: 1px solid var(--line); border-radius: 3px; padding: 0 3px; }
 </style>
 </head>
@@ -157,7 +162,7 @@ section.refs a { color: var(--accent); }
 <div class="wrap">
 <header>
   <h1>Origami 3D viewer</h1>
-  <p>The HW2 {111} octahedron held over a (100), (110) or (111) wafer, the KOH pit it predicts, and a KOH etch simulator for any mask (cantilevers, bridges, corner attack and compensation, merging windows). Drag to turn, scroll or pinch to zoom.</p>
+  <p>The HW2 {111} octahedron held over a (100), (110) or (111) wafer, the KOH pit it predicts, a KOH and EDP etch simulator for any mask (cantilevers, bridges, corner attack and compensation, merging windows), a corner lab for convex-corner compensation, and an orientation finder that reads the flat error from etched alignment marks. Drag to turn, scroll or pinch to zoom.</p>
   <p class="byline"><b>Huu Quoc Anh Nguyen</b> · Student ID X1150030 · Department of Engineering and System Science (ESS), National Tsing Hua University · ESS5850 Micro System Design, fall 2026.<br>
   AI use: written with help from an AI assistant (Claude, Anthropic). I chose the content and checked the numbers against the sources listed under References; the AI wrote most of the code.</p>
 </header>
@@ -166,7 +171,7 @@ section.refs a { color: var(--accent); }
   <div><span class="lbl">Wafer</span><span class="seg" id="segW">
     <button data-w="100" aria-pressed="true">(100)</button><button data-w="110" aria-pressed="false">(110)</button><button data-w="111" aria-pressed="false">(111)</button></span></div>
   <div><span class="lbl">Scene</span><span class="seg" id="segM">
-    <button data-m="model" aria-pressed="true">Model on wafer</button><button data-m="pit" aria-pressed="false">Etched pit</button><button data-m="sim" aria-pressed="false">Etch simulator</button></span></div>
+    <button data-m="model" aria-pressed="true">Model on wafer</button><button data-m="pit" aria-pressed="false">Etched pit</button><button data-m="sim" aria-pressed="false">Etch simulator</button><button data-m="corner" aria-pressed="false">Corner lab</button><button data-m="find" aria-pressed="false">Find orientation</button></span></div>
   <div class="tools"><button class="btn" id="bTheater" aria-pressed="false" title="Wide stage with the panel below (key T)">Theater view</button><button class="btn" id="bFull" title="Full screen 3D view (Esc to leave)">Full screen</button></div>
 </div>
 
@@ -194,6 +199,14 @@ section.refs a { color: var(--accent); }
       <canvas id="simGraph" class="graphcv"></canvas>
       <div class="glegend" id="simGraphLeg"></div>
     </div>
+    <div class="panel hidden" id="findBelow" style="margin-top:12px">
+      <h2 style="margin-bottom:4px">Microscope view of the selected item</h2>
+      <canvas id="fdScope" class="seccv"></canvas>
+      <p class="note" id="fdScopeNote" style="margin:4px 0 0"></p>
+      <h2 style="margin:14px 0 4px">Reading</h2>
+      <canvas id="fdPlot" class="graphcv"></canvas>
+      <div class="glegend" id="fdPlotLeg"></div>
+    </div>
     <div class="panel hidden" id="pitBelow" style="margin-top:12px">
       <h2 style="margin-bottom:4px">Etch history</h2>
       <canvas id="pitGraph" class="graphcv"></canvas>
@@ -218,7 +231,7 @@ section.refs a { color: var(--accent); }
     <div class="row"><span class="lbl">Start from</span><select id="selOpen" style="flex:1;min-width:0"></select></div>
     <p class="note" style="margin:4px 0 6px"><b>Drag</b> a shape to move it, <b>click</b> to select it, <b>double-click</b> an empty spot to add the chosen shape there. With the editor focused, the <span class="kbd">←</span><span class="kbd">→</span><span class="kbd">↑</span><span class="kbd">↓</span> keys move the selected shape by 5 µm (with Shift, 25 µm) and <span class="kbd">Delete</span> removes it. The 3D view updates when you let go.</p>
     <canvas id="pitCanvas" class="maskcv" tabindex="0" aria-label="Mask editor for the etched pit"></canvas>
-    <div class="legend" style="margin-top:4px"><span><i class="sw" style="background:var(--mask)"></i>mask</span><span><i class="sw" style="background:var(--scene-bg);border:1px solid var(--s-ink)"></i>opening</span><span><i class="sw" style="background:var(--ghost)"></i>cavity edge at the surface now</span></div>
+    <div class="legend" style="margin-top:4px"><span><i class="sw" style="background:var(--mask)"></i>mask</span><span><i class="sw" style="background:var(--scene-bg);border:1px solid var(--s-ink)"></i>opening</span><span><i class="sw" style="background:var(--ghost)"></i>cavity edge at the surface now</span><label><input type="checkbox" class="cCompass" checked> crystal compass (orange: {111} traces)</label></div>
     <div class="addrow"><select id="pcType" aria-label="shape to add"></select><button class="btn primary" id="pcAdd">Add shape</button><button class="btn" id="pcDup">Duplicate</button><button class="btn" id="pcDel">Delete</button><button class="btn" id="pcClear">Clear all</button></div>
     <div id="pcList" class="cards"></div>
     <p class="warn hidden" id="pcWarn"></p>
@@ -228,6 +241,8 @@ section.refs a { color: var(--accent); }
     </details>
     <h3>Etchant</h3>
     <select id="selRate"></select>
+    <div class="fields"><label>flat error δ (crystal turned from the flat) <span><input type="number" id="pitRot" step="0.5" value="0"> °</span></label></div>
+    <p class="note src">δ = 0: edges drawn along the flat lie exactly on ⟨110⟩. Lec 10 p. 18: the flat itself is only good to 2–5°; see the “Find orientation” scene.</p>
     <h3>Time</h3>
     <div class="tline"><span id="tNow">0 min</span><span id="tMax"></span></div>
     <input type="range" id="tSlider" min="0" max="1000" value="350">
@@ -239,6 +254,7 @@ section.refs a { color: var(--accent); }
     <div class="row"><label><input type="checkbox" id="cGhost" checked> final {111} shape (wire)</label></div>
     <div class="row"><label><input type="checkbox" id="cMask" checked> mask layer</label></div>
     <div class="legend"><span><i class="sw" style="background:var(--mask)"></i>mask film (SiO₂ or Si₃N₄; drawn thicker than real)</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span></div>
+    <div class="waferUI"></div>
     <div class="row"><span class="lbl">Colour</span><select id="pitColor" style="width:auto"><option value="plane">crystal plane family</option><option value="depth">depth below the surface</option><option value="rate">etch rate of the wall</option></select></div>
     <h3>Now</h3>
     <dl class="kv" id="readout"></dl>
@@ -247,11 +263,30 @@ section.refs a { color: var(--accent); }
     <p class="note" style="margin-top:8px">Hover a wall in the picture for its index and angle.</p>
   </aside>
   <aside class="panel hidden" id="panelSim">
-    <h2>KOH etch simulator</h2>
+    <div id="cornerBox" class="hidden">
+      <h2>Corner lab: attack and protection</h2>
+      <p class="note" style="margin:0 0 6px">Two mesas on a (100) wafer with edges along ⟨110⟩, their convex corners facing each other. Left: no compensation, so the corner is attacked by fast planes (Lec 10 p. 14). Right: the chosen compensation pattern (Lec 10 pp. 15–16). The graph under the 3D view follows the top corner of each mesa along its diagonal: 0 is the sharp corner of the mask, below 0 the corner has been eaten, above 0 compensation silicon is still left.</p>
+      <div class="fields">
+        <label>etchant <select id="clRate"></select></label>
+        <label>target etch depth H <span><input type="number" id="clH" min="10" step="5"> µm</span></label>
+        <label>mesa width <span><input type="number" id="clA" min="60" step="10"> µm</span></label>
+        <label>compensation <select id="clType"><option value="none">none (both corners attacked)</option><option value="square">square centred on the corner</option><option value="beam110">⟨110⟩ beam along the mesa edge</option><option value="beam100">⟨100⟩ beam (rotated rectangle)</option></select></label>
+        <label id="clL1">size 1 <span><input type="number" id="clS1" min="0" step="5"> µm</span></label>
+        <label id="clL2">size 2 <span><input type="number" id="clS2" min="0" step="5"> µm</span></label>
+      </div>
+      <div class="row"><button class="btn" id="clAuto">Size from the design rule</button><button class="btn primary" id="clRun">Build and run</button></div>
+      <p class="note src" id="clRule"></p>
+      <h3>Corner result</h3>
+      <dl class="kv" id="clReadout"></dl>
+      <p class="note">The mask, time and grid below can still be edited by hand; “Build and run” rebuilds them from these settings.</p>
+    </div>
+    <div id="simExBox">
+    <h2>KOH and EDP etch simulator</h2>
     <p class="note" style="margin:0 0 6px">Any mask on a (100), (110) or (111) wafer: undercut, release, convex-corner attack, compensation and merging windows. Pick an example or edit the mask below, then run.</p>
     <h3>Example</h3>
     <select id="simPreset"></select>
     <p class="note simnote" id="simNote"></p>
+    </div>
     <div class="row hidden" id="simFrameRow" style="display:block"><span class="lbl">(110) reference</span>
       <select id="simFrame"><option value="110f">Flat along ⟨110⟩ (Lec 4-1 p. 6)</option><option value="110a">⟨111⟩ arrow = flat normal (Lec 4-1 p. 11, HW2 P5)</option><option value="100" hidden>(100)</option><option value="111" hidden>(111)</option></select></div>
     <p class="note src" id="simFrameSrc"></p>
@@ -262,6 +297,7 @@ section.refs a { color: var(--accent); }
       <label>etch time <span><input type="number" id="simTime" min="1" step="5"> min</span></label>
       <label>wafer thickness <span><input type="number" id="simThick" min="50" step="25"> µm</span></label>
       <label>pre-etch depth <span><input type="number" id="simPre" min="0" step="5"> µm</span></label>
+      <label>flat error δ (crystal turned from the flat) <span><input type="number" id="simRot" step="0.5"> °</span></label>
       <label>domain x × y <span><input type="number" id="simHx" min="40" step="20"> × <input type="number" id="simHy" min="40" step="20"> µm</span></label>
       <label>resolution <span><select id="simQual"><option value="draft">draft (fast)</option><option value="normal">normal</option><option value="fine">fine (slow)</option></select></span></label>
     </div>
@@ -283,9 +319,11 @@ section.refs a { color: var(--accent); }
     <h3>Colour</h3>
     <select id="simColor"><option value="plane">crystal plane family</option><option value="depth">depth below the surface</option><option value="rate">local etch rate R(n)</option><option value="time">time the etch front reached the surface</option></select>
     <div class="legend" id="simPlaneLegend" style="margin-top:6px"><span><i class="sw" style="background:var(--f111)"></i>{111}</span><span><i class="sw" style="background:var(--f100)"></i>{100}</span><span><i class="sw" style="background:var(--f110)"></i>{110}</span><span><i class="sw" style="background:var(--fhi)"></i>higher index ({311}, {211}, {411} …)</span><span><i class="sw" style="background:var(--s-side)"></i>no plane within 4°</span><span><i class="sw" style="background:var(--s-cut)"></i>cut face</span></div>
+    <div class="waferUI"></div>
     <h3>Mask editor</h3>
     <p class="note" style="margin:0 0 4px">Shapes are applied top to bottom: “open” removes the mask, “mask” puts it back (solid outline: open; dashed: mask). <b>Drag</b> a shape to move it, <b>double-click</b> an empty spot to add the chosen shape there; with the editor focused, the arrow keys move the selected shape by 5 µm (Shift: 25 µm) and <span class="kbd">Delete</span> removes it. Press Run to etch the new mask.</p>
     <canvas id="maskCanvas" class="maskcv"></canvas>
+    <div class="legend"><label><input type="checkbox" class="cCompass" checked> crystal compass (orange: {111} traces)</label></div>
     <div class="addrow"><select id="addType"></select><select id="addOp"><option value="open">as opening</option><option value="mask">as mask</option></select><button class="btn" id="bAddShape">Add shape</button><button class="btn" id="bDupShape">Duplicate selected</button></div>
     <p class="note" style="margin:4px 0 0">Columns: w, h = size; t = arm width (L, U, cross, frame) or inner size (ring, star); n = sides or points; array = copies nx × ny at pitch px, py (µm).</p>
     <div class="tblwrap"><table class="shapes" id="shapeList"></table></div>
@@ -304,8 +342,50 @@ section.refs a { color: var(--accent); }
       </ul>
     </details>
   </aside>
+  <aside class="panel hidden" id="panelFind">
+    <h2>Find the true crystal orientation</h2>
+    <p class="note" style="margin:0 0 6px">The flat of a real wafer is only good to 2–5° (Lec 10 p. 18; 1° to 5°, Pal &amp; Sato p. 294), so mask edges drawn along the flat miss ⟨110⟩ by a flat error δ. Here the crystal is turned by δ. Put test structures on the mask, etch them, read them under the microscope, and turn the device mask by the estimate before the device etch (Lec 10 pp. 18, 25–26; Pal &amp; Sato Ch. 7).</p>
+    <p class="warn hidden" id="fdWarn">Lec 10 and Pal &amp; Sato Ch. 7 give these methods for (100) and (110) wafers. Pick (100) or (110) above.</p>
+    <h3>Flat error</h3>
+    <div class="fields"><label>true flat error δ (crystal turned from the flat, counter-clockwise +) <span><input type="number" id="fdDelta" step="0.05"> °</span></label></div>
+    <div class="row"><button class="btn" id="fdRandom">Random δ, hidden</button><label><input type="checkbox" id="fdReveal" checked> show the true δ</label></div>
+    <h3>Etch</h3>
+    <select id="fdRate"></select>
+    <div class="row"><label><input type="checkbox" id="fdFinal" checked> long-etch limit ({111} only)</label></div>
+    <div class="fields">
+      <label>etch time (when not at the limit) <span><input type="number" id="fdTime" min="1" step="10"> min</span></label>
+      <label>smallest length you can read <span><input type="number" id="fdRes" min="0" step="0.1"> µm</span></label>
+      <label>trench widths read to <span><input type="number" id="fdRelW" min="0" step="0.5"> % of the width</span></label>
+    </div>
+    <p class="note src">Readings are rounded to these steps: Pal &amp; Sato (pp. 299–300, 303) note that sub-micron offsets are hard to see in an optical microscope. 0.5 µm and 1 % are design choices.</p>
+    <h3>Mask on the wafer</h3>
+    <p class="note" style="margin:0 0 4px"><b>Drag</b> an item to move it, <b>double-click</b> an empty spot to add the chosen item there. With the map focused, the arrow keys move the selected item by 1 mm (Shift: 5 mm) and <span class="kbd">Delete</span> removes it. Test structures: slot fan and circle arc; everything else is a device shape (µm).</p>
+    <canvas id="fdCanvas" class="maskcv" tabindex="0" aria-label="Mask map of the whole wafer"></canvas>
+    <div class="addrow"><select id="fdType" aria-label="item to add"></select><button class="btn primary" id="fdAdd">Add</button><button class="btn" id="fdDup">Duplicate</button><button class="btn" id="fdDel">Delete</button><button class="btn" id="fdReset">Lecture layout</button></div>
+    <div id="fdList" class="cards"></div>
+    <h3>Estimate of δ</h3>
+    <dl class="kv" id="fdReadout"></dl>
+    <h3>Error reduction</h3>
+    <div class="row"><label><input type="checkbox" id="fdCorrect"> turn the device shapes by the best estimate (second mask aligned to the test structures)</label></div>
+    <dl class="kv" id="fdDevice"></dl>
+    <div class="row"><button class="btn" id="fdMC">Test this layout on 500 random wafers</button></div>
+    <dl class="kv" id="fdMCout"></dl>
+    <div class="row"><button class="btn" id="fdToPit">Selected item in the Etched pit</button><button class="btn" id="fdToSim">… in the simulator</button></div>
+    <details class="srcs"><summary>Method, sources and assumptions</summary>
+      <ul>
+        <li><b>Flat error</b> (sourced): ⟨110⟩ flat 2–5° (Lec 10 pp. 18, 25); 1° to 5° (Pal &amp; Sato p. 294). Pre-etched patterns reach 0.01° (Pal &amp; Sato p. 296). Misalignment widens a channel of length l by U = l sin δ cos δ (Pal &amp; Sato eq. 7.1, p. 289: 18 µm for 10 mm at 0.1°).</li>
+        <li><b>Slot fan</b> (method after Lec 10 p. 18, “long slot gives around 1°”): long slots at stepped angles. In the long-etch limit a slot of length L and width w misaligned by α etches to the ⟨110⟩ rectangle of width w cos α + L sin α (3 cm at 1° gives 524 µm, Lec 10 p. 18). The narrowest slot gives δ to ± half a step; the widths of its two neighbours give a V-shaped fit. Fan size, step and spacing are design choices.</li>
+        <li><b>Circle arc</b> (sourced): circles on an arc of radius R at pitch p, so neighbours turn by p/R. On (100) each circle etches to an inverted pyramid with ⟨110⟩ edges; the pair whose line of centres is parallel to ⟨110⟩ has aligned edges (Ensell, in Pal &amp; Sato pp. 297–299: 41 circles Ø 75 µm, 78.5 µm apart, 0.1°, R = 45 mm; Lec 10 p. 18: 80 µm pitch, tan⁻¹(80/45000) = 0.1°). On (110) the circles etch to hexagons and the bow-tie corners of neighbours line up (Tseng and Chang, Lec 10 pp. 25–26: φ/360° = (√6 r + x)/(2πR), R = 48.9 mm, 0.06°). Here the edge offset between neighbours k and k+1 is read as the shift of their edges along the true edge normal, p sin(τ − δ).</li>
+        <li><b>Inconsistency in the source</b>: Lec 10 p. 25 gives 0.06° with a 35 µm pitch and R = 48.9 mm, but 35/48 900 rad = 0.041°. The lecture layout here uses r = 20 µm and x = 2 µm, so p = √6 r + x = 51 µm and φ = 0.060° at R = 48.9 mm (design choice that matches the stated 0.06°).</li>
+        <li><b>Etching</b> (method): each structure is etched with the analytic plane model of the Etched pit (walls n·x ≤ h + R t; long-etch limit: {111} only), with the crystal turned by δ. Structures do not interact (cavities that grow into each other are overlaid, not merged).</li>
+        <li><b>Reading</b> (assumption): every length is rounded to the readable length. Real limits not modelled: mask-writer angle steps (Chang and Huang, in Pal &amp; Sato p. 304), edge roughness, rate scatter, θ error of the second alignment.</li>
+        <li><b>Random wafers</b>: δ uniform in ±5° (upper end of Lec 10 p. 18); readings from the long-etch formulas above, which the analytic etch reproduces (checked).</li>
+      </ul>
+    </details>
+  </aside>
 </div>
 
+<footer>
 <footer>
   Scenes 1 and 2 (model and pit): each wall is a crystal plane that moves outward at its own rate from the mask opening (n·x ≤ h + R·t over the {100}, {110} and {111} planes); the long-etch limit keeps only {111} planes with R = 0. This is the construction used in the origami tutorial; non-convex openings are split there into overlapping convex pieces whose cavities are joined, and convex mask corners are not undercut; use the etch simulator for that (its model and sources are listed in its panel).
   Rates: Pal &amp; Sato, p. 87 (KOH 30 wt% and 40 wt%, 70 °C); Lec 4-1, p. 7 (KOH 42 wt%, 75 °C). Primary flat ⟨110⟩ for (100) and (110): Lec 4-1, p. 6. For (111) the flat is assumed along [1<span class="ob">1</span>0]. Wafer thickness 525 µm (assumption). x runs along the flat, z is the wafer normal.
@@ -319,6 +399,11 @@ section.refs a { color: var(--accent); }
     <li>N. Paul, S. Bonam, S. R. K. Vanjari, and S. G. Singh, “Silicon membranes for microbolometers: simulation and fabrication using frontend bulk micromachining,” in <i>2024 IEEE Int. Conf. Electron Devices Society Kolkata Chapter (EDKCON)</i>, Kolkata, India, 2024, pp. 623–628, doi: <a href="https://doi.org/10.1109/EDKCON62339.2024.10870751" target="_blank" rel="noopener">10.1109/EDKCON62339.2024.10870751</a>. Used for the 45° (⟨100⟩-aligned) mask examples: Fig. 1, Sec. II–III.</li>
     <li>G. T. A. Kovacs, N. I. Maluf, and K. E. Petersen, “Bulk micromachining of silicon,” <i>Proceedings of the IEEE</i>, vol. 86, no. 8, pp. 1536–1551, Aug. 1998. Used for: concave and convex corners of a (100) cavity and the undercut cantilever (Fig. 1(b), 1(c), p. 1537); comparison of wet etchants (Table 1, p. 1538).</li>
     <li>P. Pal, K. Sato, and S. Chandra, “Fabrication techniques of convex corners in a (1 0 0)-silicon wafer using bulk micromachining: a review,” <i>Journal of Micromechanics and Microengineering</i>, vol. 17, no. 10, pp. R111–R133, 2007, doi: <a href="https://doi.org/10.1088/0960-1317/17/10/R01" target="_blank" rel="noopener">10.1088/0960-1317/17/10/R01</a>. Used for: undercut at convex corners (Sec. 2, p. R112) and corner compensation (Sec. 3.1, from p. R113).</li>
+    <li>F.-G. Tseng, “Lecture 10: Bulk micromachining,” <i>ESS 5810 Advanced Micro System Fabrication and Lab class notes</i> (16-Lec10Bulkmicromachining.pdf), National Tsing Hua University. Pages used: wafer flats p. 10; KOH and EDP rates p. 11; corner attack and compensation pp. 14–16; ⟨100⟩ trench in EDP p. 17; flat error and alignment marks p. 18; in-plane directions p. 22; (110) alignment pp. 25–26.</li>
+    <li>UC Berkeley Marvell Nanofabrication Laboratory, “Chapter 1.10: Miscellaneous etches,” <i>Lab manual</i>, <a href="https://nanolab.berkeley.edu/labmanual/chap1/1.10miscetch.pdf" target="_blank" rel="noopener">nanolab.berkeley.edu/labmanual/chap1/1.10miscetch.pdf</a>. Used for the EDP 50:30:3 ratio (after R. M. Finne and D. L. Klein, <i>J. Electrochem. Soc.</i> 114, 965, 1967; A. Reisman et al., <i>J. Electrochem. Soc.</i> 126, 1406, 1979).</li>
+    <li>B. Radjenović, M. Radmilović-Radjenović, and M. Mitrić, “Level set approach to anisotropic wet etching of silicon,” <i>Sensors</i>, vol. 10, no. 5, pp. 4950–4967, 2010, doi: <a href="https://doi.org/10.3390/s100504950" target="_blank" rel="noopener">10.3390/s100504950</a>. Used for the three-rate model (eq. 1) behind the EDP rate maps.</li>
+    <li>P. Pal and K. Sato (above), Ch. 7, pp. 287–320. Used for: eq. 7.1 (p. 289), flat accuracy (p. 294), pre-etched patterns (p. 296), Ensell’s circles (pp. 297–299), mask-writer limits (p. 304).</li>
+    <li>Topline Corp., “Wafer dimensions: 100 mm standard,” drawing A 174004 A, <a href="https://www.topline.tv/drawings/pdf/wafers/wafer_flats_thickness.pdf" target="_blank" rel="noopener">topline.tv/drawings/pdf/wafers/wafer_flats_thickness.pdf</a>. Used for the flat lengths 32.5 mm and 18 mm.</li>
     <li>H. Q. A. Nguyen, “Origami tutorial: the {111} octahedron on (100), (110) and (111) wafers,” ESS5850 study notes, Rev. 1, Oct. 2026 (frames, sliding-plane construction).</li>
     <li>Source code: <a href="https://github.com/SalmonQuoc/origami-koh-etch-viewer" target="_blank" rel="noopener">github.com/SalmonQuoc/origami-koh-etch-viewer</a>. 3D rendering: three.js r128.</li>
   </ol>
@@ -475,10 +560,12 @@ const Core = (() => {
   }
 
   // cavity under a convex opening; t = null -> final {111} shape
-  function etchH(wf, opening, { t = null, T = null, pre = 0, rates = null } = {}) {
+  // rot (deg): the crystal is turned by rot about the wafer normal relative to the flat (flat error); default 0
+  function etchH(wf, opening, { t = null, T = null, pre = 0, rates = null, rot = 0 } = {}) {
     let P = opening.map(p => [p[0], p[1], 0]);
     if (pre > 0) P = P.concat(opening.map(p => [p[0], p[1], -pre]));
     const pl = t === null ? planes(wf, ["111"], null) : planes(wf, ["100", "110", "111"], rates);
+    if (rot) { const c = Math.cos(rot/DEG), s = Math.sin(rot/DEG); for (const p of pl) p.n = [p.n[0]*c - p.n[1]*s, p.n[0]*s + p.n[1]*c, p.n[2]]; }
     const H = pl.map(p => {
       let s = -Infinity; for (const q of P) s = Math.max(s, dot(p.n, q));
       return { n: p.n, b: s + (t === null ? 0 : p.R*t), label: p.hkl, fam: p.fam };
@@ -891,7 +978,18 @@ function etchEngineFactory() {
     }
     // release of each "mask" shape: fraction of its masked area with no silicon under it (top node row)
     const rel = (S.shapeMap || []).map(m => { let a = 0, b = 0; for (const q of m) { a++; if (T[q] <= tv) b++; } return a ? b/a : null; });
-    return { depth, under, susp: susp*dx*dx, through: through*dx*dx, rel };
+    // probes (corner lab): along a ray from (x, y) in direction (ux, uy), from s0 (inside the silicon) outward to s1, the last
+    // position s where the top node row under the mask is still silicon; s0 - dx/2 if the start is already etched
+    const probe = (S.cfg.probes || []).map(pr => {
+      let last = pr.s0 - 0.5*dx;
+      for (let s = pr.s0; s <= pr.s1; s += 0.25*dx) {
+        const i = Math.floor((pr.x + s*pr.ux - S.cfg.X0)/dx), j = Math.floor((pr.y + s*pr.uy - S.cfg.Y0)/dx);
+        if (i < 0 || j < 0 || i >= Nx || j >= Ny) break;
+        const q = j*Nx + i; if (!S.open[q] && T[q] > tv) last = s; else break;   // silicon under the mask (mesa or compensation)
+      }
+      return last;
+    });
+    return { depth, under, susp: susp*dx*dx, through: through*dx*dx, rel, probe };
   }
   function shapeMaps(S) {
     const { Nx, Ny, dx, cfg } = S; S.shapeMap = cfg.shapes.map(() => []);
@@ -927,8 +1025,8 @@ function etchEngineFactory() {
             lastPost = Date.now();
             const r = view(S.t, msg.cut, msg.cutMesh); r.type = done ? "done" : "progress"; r.id = msg.id; r.ms = Date.now() - t0; r.steps = S.steps;
             if (done) {   // etch history from the arrival-time field: depth, undercut and released mask area against time
-              const nh = 48, h = { t: [], depth: [], under: [], susp: [] };
-              for (let i = 0; i <= nh; i++) { const ti = S.t*i/nh, st = stats(S, ti); h.t.push(ti); h.depth.push(st.depth); h.under.push(st.under); h.susp.push(st.susp); }
+              const nh = 48, h = { t: [], depth: [], under: [], susp: [], probe: (S.cfg.probes || []).map(() => []) };
+              for (let i = 0; i <= nh; i++) { const ti = S.t*i/nh, st = stats(S, ti); h.t.push(ti); h.depth.push(st.depth); h.under.push(st.under); h.susp.push(st.susp); st.probe.forEach((v, k) => h.probe[k].push(v)); }
               r.hist = h;
             }
             post(r, tr(r));
@@ -954,7 +1052,11 @@ const RATES = {
   PAL30: { name: "KOH 30 wt%, 70 °C (Pal & Sato p. 87)", r: { "100": 0.797, "110": 1.455, "111": 0.005 } },
   PAL40: { name: "KOH 40 wt%, 70 °C (Pal & Sato p. 87)", r: { "100": 0.599, "110": 1.293, "111": 0.009 } },
   LEC:   { name: "KOH 42 wt%, 75 °C (Lec 4-1 p. 7)", r: { "100": 42/60, "110": 66/60, "111": 0.5/60 } },
+  LEC57: { name: "KOH 57 wt%, 75 °C (Lec 10 p. 11)", r: { "100": 25/60, "110": 39/60, "111": 0.5/60 } },
+  EDPS:  { name: "EDP Type S, 110 °C (Lec 10 p. 11)", r: { "100": 51/60, "110": 57/60, "111": 1.25/60 } },
+  EDPFK: { name: "EDP, ratio 50:30:3 (F&K), R(100) as Lec 10", r: { "100": 51/60, "110": 30.6/60, "111": 3.06/60 } },
 };
+const PIT2SIM = { PAL30: "PAL30", PAL40: "PAL40", LEC: "LEC42", LEC57: "LEC57", EDPS: "EDPS", EDPFK: "EDPFK" };
 // vertical-wall trench on (110): long edges along a vertical-wall trace (54.74° from the flat), as Example 8
 function trench110(W, L) {
   const a = 35.2644/C.DEG, d1 = [Math.sin(a), Math.cos(a)], d2 = [-Math.sin(a), Math.cos(a)];
@@ -1042,25 +1144,26 @@ function showCbar(title, v0, v1, unit) {
 }
 function hideCbar() { document.getElementById("cbar").classList.add("hidden"); }
 // line graph against time: series [{name, color, x: [], y: []}], vertical marker at tv
-function drawGraph(cv, series, { xmax, tv, ylabel = "µm" }) {
+function drawGraph(cv, series, { xmax, tv, ylabel = "µm", marks = [] }) {
   const wcss = cv.clientWidth || 600, hcss = 190, dpr = Math.min(2, window.devicePixelRatio || 1), ctx = cv.getContext("2d");
   cv.width = Math.round(wcss*dpr); cv.height = Math.round(hcss*dpr); cv.style.height = `${hcss}px`;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, wcss, hcss);
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const ink = css("--ink"), mut = css("--muted"), line = css("--line");
   const L = 46, R = 12, T = 10, B = 30, W = wcss - L - R, H = hcss - T - B;
-  let ymax = 0; for (const s of series) for (const v of s.y) if (v > ymax) ymax = v;
-  ymax = ymax > 0 ? ymax*1.08 : 1; xmax = xmax > 0 ? xmax : 1;
-  const X = x => L + x/xmax*W, Y = y => T + H - y/ymax*H;
+  let ymax = 0, ymin = 0; for (const s of series) for (const v of s.y) { if (v > ymax) ymax = v; if (v < ymin) ymin = v; }
+  ymax = ymax > 0 ? ymax*1.08 : (ymin < 0 ? 0.08*-ymin : 1); ymin = ymin < 0 ? ymin*1.08 : 0; xmax = xmax > 0 ? xmax : 1;
+  const X = x => L + x/xmax*W, Y = y => T + H - (y - ymin)/(ymax - ymin)*H;
   ctx.font = "11px IBM Plex Mono, monospace"; ctx.lineWidth = 1;
-  const ys = niceStep(ymax/4), xs = niceStep(xmax/6);
+  const ys = niceStep((ymax - ymin)/4), xs = niceStep(xmax/6);
   ctx.strokeStyle = line; ctx.fillStyle = mut; ctx.textAlign = "right";
-  for (let v = 0; v <= ymax + 1e-9; v += ys) { ctx.beginPath(); ctx.moveTo(L, Y(v)); ctx.lineTo(L + W, Y(v)); ctx.stroke(); ctx.fillText(v.toFixed(ys < 1 ? 1 : 0), L - 6, Y(v) + 4); }
+  for (let v = Math.ceil(ymin/ys - 1e-9)*ys; v <= ymax + 1e-9; v += ys) { ctx.beginPath(); ctx.moveTo(L, Y(v)); ctx.lineTo(L + W, Y(v)); ctx.stroke(); ctx.fillText(v.toFixed(ys < 1 ? 1 : 0), L - 6, Y(v) + 4); }
   ctx.textAlign = "center";
   for (let v = 0; v <= xmax + 1e-9; v += xs) { ctx.fillText(v.toFixed(0), X(v), T + H + 15); }
   ctx.fillText("etch time (min)", L + W/2, hcss - 2);
   ctx.save(); ctx.translate(11, T + H/2); ctx.rotate(-Math.PI/2); ctx.fillText(ylabel, 0, 0); ctx.restore();
-  ctx.strokeStyle = ink; ctx.beginPath(); ctx.moveTo(L, T); ctx.lineTo(L, T + H); ctx.lineTo(L + W, T + H); ctx.stroke();
+  ctx.strokeStyle = ink; ctx.beginPath(); ctx.moveTo(L, T); ctx.lineTo(L, T + H); ctx.moveTo(L, Y(0)); ctx.lineTo(L + W, Y(0)); ctx.stroke();
+  for (const m of marks) { ctx.strokeStyle = m.color || ink; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(X(m.x), T); ctx.lineTo(X(m.x), T + H); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = m.color || ink; ctx.textAlign = "left"; ctx.fillText(m.label, Math.min(X(m.x) + 4, L + W - 90), T + 10); }
   for (const s of series) {
     ctx.strokeStyle = s.color; ctx.lineWidth = 2; ctx.beginPath();
     s.x.forEach((x, i) => i ? ctx.lineTo(X(x), Y(s.y[i])) : ctx.moveTo(X(x), Y(s.y[i]))); ctx.stroke();
@@ -1093,14 +1196,16 @@ const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enableDamping = false;
 controls.addEventListener("change", () => { dirty = true; });
 let scene = new THREE.Scene(), dirty = true, radius = 1, labels = [];
+let frameR = 0;   // > 0: the view is framed for this radius (whole wafer) instead of the die
+const simLike = () => S.mode === "sim" || S.mode === "corner";
 
 function resize() {
   const w = stage.clientWidth, h = stage.clientHeight;
   renderer.setSize(w, h, false);
-  const a = w/h, r = radius*1.08;
+  const a = w/h, r = (frameR || radius)*1.08, R = Math.max(radius, frameR);
   if (a >= 1) { camera.left = -r*a; camera.right = r*a; camera.top = r; camera.bottom = -r; }
   else { camera.left = -r; camera.right = r; camera.top = r/a; camera.bottom = -r/a; }
-  camera.near = -radius*20; camera.far = radius*20;
+  camera.near = -R*20; camera.far = R*20;
   camera.updateProjectionMatrix(); dirty = true;
 }
 new ResizeObserver(resize).observe(stage);
@@ -1108,16 +1213,16 @@ new ResizeObserver(resize).observe(stage);
 const OBL = { "100": [30, -60], "110": [26, -34], "111": [28, -70] };
 const VIEWS = { oblique: [30, -60], back: [30, 120], top: [89.5, -90], flat: [0, -90], left: [0, 0], below: [-40, -60] };
 const dirOf = (e, a) => new V3(Math.cos(e/C.DEG)*Math.cos(a/C.DEG), Math.cos(e/C.DEG)*Math.sin(a/C.DEG), Math.sin(e/C.DEG));
-let anim = null;
+let anim = null, anim0Zoom = 1;   // anim0Zoom: zoom the next setView ends at (1 = fit)
 function setView(dir, target, instant = false) {
   dir = dir.clone().normalize();
   const tgt = target ? target.clone() : controls.target.clone();
   if (instant) {
-    controls.target.copy(tgt); camera.position.copy(tgt).addScaledVector(dir, radius*4); camera.zoom = 1;
+    controls.target.copy(tgt); camera.position.copy(tgt).addScaledVector(dir, Math.max(radius, frameR)*4); camera.zoom = anim0Zoom; anim0Zoom = 1;
     camera.updateProjectionMatrix(); controls.update(); dirty = true; return;
   }
   const d0 = camera.position.clone().sub(controls.target).normalize(), t0 = controls.target.clone(), z0 = camera.zoom;
-  anim = { d0, d1: dir, t0, t1: tgt, z0, start: performance.now(), dur: 500 };
+  anim = { d0, d1: dir, t0, t1: tgt, z0, z1: anim0Zoom, start: performance.now(), dur: 500 }; anim0Zoom = 1;
 }
 function stepAnim(now) {
   if (!anim) return;
@@ -1127,22 +1232,23 @@ function stepAnim(now) {
   const d = anim.d0.clone().applyQuaternion(q1);
   if (Math.abs(anim.d0.dot(anim.d1) + 1) < 1e-6) d.copy(anim.d0).lerp(anim.d1, s).normalize();
   controls.target.lerpVectors(anim.t0, anim.t1, s);
-  camera.position.copy(controls.target).addScaledVector(d, radius*4);
-  camera.zoom = anim.z0 + (1 - anim.z0)*s; camera.updateProjectionMatrix();
+  camera.position.copy(controls.target).addScaledVector(d, Math.max(radius, frameR)*4);
+  camera.zoom = anim.z0*Math.pow(anim.z1/anim.z0, s); camera.updateProjectionMatrix();
   controls.update(); dirty = true;
   if (s >= 1) anim = null;
 }
 
 // --------------------------------------------------------------------- overlay labels
+let labelTag = null;   // "wafer" while the wafer labels are added: they stay visible in the wafer overview
 function addLabel(pos, html, cls = "", show = null) {
   const el = document.createElement("div"); el.innerHTML = html; if (cls) el.className = cls;
-  labelsEl.appendChild(el); labels.push({ el, pos: pos.clone(), show }); return el;
+  labelsEl.appendChild(el); labels.push({ el, pos: pos.clone(), show, tag: labelTag }); return el;
 }
 function clearLabels() { labels = []; labelsEl.innerHTML = ""; }
 function placeLabels() {
   const w = stage.clientWidth, h = stage.clientHeight, camDir = camera.position.clone().sub(controls.target).normalize();
   for (const L of labels) {
-    const vis = L.show ? L.show(camDir) : true;
+    const vis = (L.show ? L.show(camDir) : true) && !(frameR && L.tag !== "wafer" && camera.zoom < 0.12*frameR/radius);
     if (!vis) { L.el.style.display = "none"; continue; }
     const p = L.pos.clone().project(camera);
     L.el.style.display = "";
@@ -1194,8 +1300,106 @@ function rectMinus(rect, O) {
   return out;
 }
 
+// --------------------------------------------------------------------- whole wafer (100 mm) and in-plane crystal directions
+// 100 mm wafer, 525 µm thick (Pal & Sato Table 2.1, p. 30); flat lengths 32.5 mm and 18 mm (Topline drawing A 174004 A,
+// "Wafer dimensions 100 mm standard"). Secondary flat: degrees clockwise from the primary flat (Lec 10 p. 10); null = none.
+const WAFER = { D: 100000, T: 525, Lp: 32500, Ls: 18000 };
+const SEC_FLAT = { "100": { n: 180, p: 90 }, "110": { n: null, p: null }, "111": { n: 45, p: null } };
+// outline in the wafer frame (µm), centre at the origin, primary flat on the -y side (x along the flat)
+function waferOutline(wf, type, m = 360) {
+  const R = WAFER.D/2, fl = [[-90, WAFER.Lp]], sf = SEC_FLAT[wf] && SEC_FLAT[wf][type];
+  if (sf != null) fl.push([-90 - sf, WAFER.Ls]);   // clockwise seen from the front
+  // arc points outside the flats, plus the exact flat end points (on the circle), in angle order
+  const norm = a => ((a % (2*Math.PI)) + 2*Math.PI) % (2*Math.PI), F = fl.map(([deg, L]) => ({ a: norm(deg/C.DEG), b: Math.asin(L/(2*R)) }));
+  const inFlat = t => F.some(f => { const d = Math.abs(norm(t - f.a + Math.PI) - Math.PI); return d < f.b - 1e-12; });
+  const ang = []; for (let i = 0; i < m; i++) { const t = 2*Math.PI*i/m; if (!inFlat(t)) ang.push(t); }
+  for (const f of F) ang.push(norm(f.a - f.b), norm(f.a + f.b));
+  return ang.sort((p, q) => p - q).map(t => [R*Math.cos(t), R*Math.sin(t)]);
+}
+const secFlatText = (wf, type) => { const sf = SEC_FLAT[wf][type]; return sf == null ? "primary flat only" : `secondary flat ${sf}° clockwise from the primary`; };
+// 3D wafer: top face (with the die box cut out), rim, bottom; centred at (ox, oy); flats drawn in the accent colour
+function waferGroup(wf, type, ox, oy, opts = {}) {
+  const grp = new THREE.Group(), O = waferOutline(wf, type).map(p => [p[0] + ox, p[1] + oy]), T = WAFER.T, clip = opts.clip || null;
+  const shape = new THREE.Shape(O.map(p => new THREE.Vector2(p[0], p[1])));
+  if (opts.hole) { const [x0, x1, y0, y1] = opts.hole; shape.holes.push(new THREE.Path([[x0, y0], [x0, y1], [x1, y1], [x1, y0]].map(p => new THREE.Vector2(p[0], p[1])))); }
+  const top = new THREE.Mesh(new THREE.ShapeGeometry(shape), new THREE.MeshBasicMaterial({ color: shadeColor(COL["s-top"], [0, 0, 1]), side: THREE.DoubleSide, clippingPlanes: clip, polygonOffset: true, polygonOffsetFactor: 3, polygonOffsetUnits: 3 }));
+  grp.add(top);
+  const bot = new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape(O.map(p => new THREE.Vector2(p[0], p[1])))), new THREE.MeshBasicMaterial({ color: shadeColor(COL["s-side"], [0, 0, -1]), side: THREE.DoubleSide, clippingPlanes: clip }));
+  bot.position.z = -T; grp.add(bot);
+  const pos = [], col = [];
+  for (let i = 0; i < O.length; i++) {
+    const a = O[i], b = O[(i + 1) % O.length], n = C.unit([b[1] - a[1], -(b[0] - a[0]), 0]), c = shadeColor(COL["s-side"], n);
+    for (const v of [[a, 0], [b, 0], [b, -T], [a, 0], [b, -T], [a, -T]]) { pos.push(v[0][0], v[0][1], v[1]); col.push(c.r, c.g, c.b); }
+  }
+  const gr = new THREE.BufferGeometry(); gr.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); gr.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+  grp.add(new THREE.Mesh(gr, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, clippingPlanes: clip })));
+  grp.add(linesFromLoops([O.map(p => [p[0], p[1], 0]), O.map(p => [p[0], p[1], -T])], COL["s-ink"], { clip, opacity: 0.6 }));
+  // flats: the straight parts of the outline (segments longer than 5 mm)
+  const flats = [];
+  for (let i = 0; i < O.length; i++) { const a = O[i], b = O[(i + 1) % O.length]; if (Math.hypot(b[0] - a[0], b[1] - a[1]) > 5000) flats.push([[a[0], a[1], 1], [b[0], b[1], 1]]); }
+  grp.add(linesFromLoops(flats, COL.accent, { clip }));
+  labelTag = "wafer";
+  if (opts.labels !== false) {
+    const R = WAFER.D/2, yp = -Math.sqrt(R*R - WAFER.Lp*WAFER.Lp/4);
+    addLabel(new V3(ox, oy + yp - 0.06*R, 0), `primary flat ${opts.flatLabel || ""}`, "acc");
+    const sf = SEC_FLAT[wf][type];
+    if (sf != null) { const a = (-90 - sf)/C.DEG, d = Math.sqrt(R*R - WAFER.Ls*WAFER.Ls/4) + 0.07*R; addLabel(new V3(ox + d*Math.cos(a), oy + d*Math.sin(a), 0), "secondary flat", "acc"); }
+  }
+  if (opts.hole) {   // the die: its outline and a cross-hair big enough to find it on the whole wafer
+    const [x0, x1, y0, y1] = opts.hole, cx = (x0 + x1)/2, cy = (y0 + y1)/2, k = 0.035*WAFER.D;
+    grp.add(linesFromLoops([[[x0, y0, 2], [x1, y0, 2], [x1, y1, 2], [x0, y1, 2]]], COL.accent));
+    grp.add(linesFromLoops([[[cx - k, cy, 2], [cx - 0.3*k, cy, 2]], [[cx + 0.3*k, cy, 2], [cx + k, cy, 2]], [[cx, cy - k, 2], [cx, cy - 0.3*k, 2]], [[cx, cy + 0.3*k, 2], [cx, cy + k, 2]]], COL.accent));
+    addLabel(new V3(cx + 1.2*k, cy + 0.6*k, 0), "die", "acc", () => camera.zoom < 0.12*frameR/radius);
+  }
+  labelTag = null;
+  return grp;
+}
+// directions lying in the wafer surface (index ≤ 3), as angles from the flat (0 to 180°), with the {111} traces marked.
+// e: crystal components of the wafer x, y, z axes. Each angle keeps the lowest-index direction.
+function inPlaneDirs(e) {
+  const [e1, e2, e3] = e, best = new Map(), gcd = (a, b) => b ? gcd(b, a % b) : Math.abs(a);
+  for (let a = -3; a <= 3; a++) for (let b = -3; b <= 3; b++) for (let c = -3; c <= 3; c++) {
+    if (gcd(gcd(Math.abs(a), Math.abs(b)), Math.abs(c)) !== 1) continue;
+    const v = [a, b, c], L = Math.hypot(a, b, c);
+    if (Math.abs(C.dot(v, e3)) > 1e-9*L) continue;
+    let ang = Math.atan2(C.dot(v, e2), C.dot(v, e1))*C.DEG;
+    if (ang < -1e-6 || ang >= 180 - 1e-6) continue;   // one of v and -v
+    ang = Math.max(0, ang);
+    const key = ang.toFixed(3), sum = Math.abs(a) + Math.abs(b) + Math.abs(c), old = best.get(key);
+    if (!old || sum < old.sum) best.set(key, { ang, v, sum, fam: [a, b, c].map(Math.abs).sort((p, q) => q - p).join("") });
+  }
+  const out = [...best.values()].filter(d => ["100", "110", "111", "210", "211", "221", "310", "311"].includes(d.fam)).sort((p, q) => p.ang - q.ang);
+  // traces of the {111} planes on the surface: a wall along this direction is a {111} plane at angle w to the surface
+  for (const m of [[1, 1, 1], [1, 1, -1], [1, -1, 1], [-1, 1, 1]]) {
+    const n = C.unit(m), nz = C.dot(n, e3), tr = C.cross(e3, n), L = C.norm(tr); if (L < 1e-9) continue;
+    let ang = Math.atan2(C.dot(tr, e2), C.dot(tr, e1))*C.DEG; ang = ((ang % 180) + 180) % 180; if (ang > 180 - 1e-6) ang = 0;
+    const d = out.find(q => Math.abs(q.ang - ang) < 1e-3); if (d) d.wall = Math.acos(Math.min(1, Math.abs(nz)))*C.DEG;
+  }
+  return out;
+}
+const dirText = d => `${plainIdx(d.v)} ⟨${d.fam}⟩ ${d.ang.toFixed(2)}°${d.wall != null ? ` · {111} trace, wall ${d.wall.toFixed(1)}°` : ""}`;
+// <select> of the in-plane directions for a shape angle; value = angle from the flat
+function dirSelect(dirs, val, attrs, label = "edges along") {
+  const m = ((Number(val) % 180) + 180) % 180, hit = dirs.find(d => Math.abs(d.ang - m) < 0.01);
+  return `<label class="dsel">${label}<select ${attrs} aria-label="${label}"><option value=""${hit ? "" : " selected"}>${hit ? "custom angle" : `custom (${m.toFixed(2)}°)`}</option>${dirs.map(d => `<option value="${d.ang}"${d === hit ? " selected" : ""}>${dirText(d)}</option>`).join("")}</select></label>`;
+}
+// small compass in a 2D editor: in-plane directions of the crystal (rot: the crystal turned by rot degrees from the flat)
+function drawCompass(ctx, cx, cy, r, dirs, rot = 0) {
+  const ink = "#" + COL["s-ink"].getHexString(), acc = "#" + COL.accent.getHexString();
+  ctx.save(); ctx.globalAlpha = 0.85; ctx.fillStyle = "#" + COL["scene-bg"].getHexString(); ctx.beginPath(); ctx.arc(cx, cy, r + 4, 0, 2*Math.PI); ctx.fill();
+  ctx.font = "9.5px IBM Plex Mono, monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (const d of dirs) {
+    if (!["100", "110", "111", "211"].includes(d.fam)) continue;
+    const a = (d.ang + rot)/C.DEG, ux = Math.cos(a), uy = -Math.sin(a), k = d.fam === "110" || d.fam === "100" ? 1 : 0.72;
+    ctx.strokeStyle = d.wall != null ? acc : ink; ctx.lineWidth = d.wall != null ? 1.6 : 0.8; ctx.globalAlpha = d.wall != null ? 0.95 : 0.55;
+    ctx.beginPath(); ctx.moveTo(cx - ux*r*k, cy - uy*r*k); ctx.lineTo(cx + ux*r*k, cy + uy*r*k); ctx.stroke();
+    ctx.globalAlpha = 0.9; ctx.fillStyle = d.wall != null ? acc : ink; ctx.fillText(d.fam, cx + ux*(r*k + 8), cy + uy*(r*k + 8));
+  }
+  ctx.restore();
+}
+
 // --------------------------------------------------------------------- state
-const S = { pitColor: "plane", pitShapes: [], pitSel: -1, wf: "100", mode: "model", sel: null, open: 0, rate: "PAL30", t: 0, final: false, cut: false, block: true, ghost: true, mask: true,
+const S = { rot: 0, waferOn: false, wtype: "p", dieX: 0, dieY: 0, compass: true, pitColor: "plane", pitShapes: [], pitSel: -1, wf: "100", mode: "model", sel: null, open: 0, rate: "PAL30", t: 0, final: false, cut: false, block: true, ghost: true, mask: true,
             corners: true, faces: false, upper: true, playing: false };
 
 // --------------------------------------------------------------------- MODEL scene
@@ -1218,7 +1422,7 @@ let model = null;
 function buildModel() {
   const wf = S.wf, F = octaFaces(wf);
   scene = new THREE.Scene(); scene.background = COL["scene-bg"]; clearLabels();
-  radius = 1.6;
+  radius = 1.6; frameR = 0;
   const g = new THREE.Group(); scene.add(g);
   // upper half (translucent) and lower half (the pit), both from the same 8 triangles
   const polys = F.map(f => f.V);
@@ -1464,6 +1668,8 @@ function beyondEdge(O, o) {
   }
   return under;
 }
+// analytic etch of one convex opening in the pit; S.rot = flat error (the crystal turned by S.rot relative to the flat)
+const pe = (o, opts) => C.etch(S.wf, o, Object.assign({ rot: S.rot || 0 }, opts));
 function prepPit() {
   const items = pitItems(), R = RATES[S.rate].r;
   if (!items.length) {   // empty mask: plain wafer
@@ -1471,17 +1677,17 @@ function prepPit() {
     document.getElementById("tMax").textContent = "100 min"; document.getElementById("pcWarn").classList.add("hidden"); return;
   }
   const nice = x => { const p = Math.pow(10, Math.floor(Math.log10(x))); for (const k of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (k*p >= x) return k*p; return 10*p; };
-  const fins = items.map(it => C.etch(S.wf, it.o, { T: T_WAFER, pre: it.pre }));
+  const fins = items.map(it => pe(it.o, { T: T_WAFER, pre: it.pre }));
   let hiAll = 1;
   items.forEach((it, k) => {   // time at which the cavity reaches 98 % of its long-etch volume
-    const vf = C.volume(fins[k]), V = t => C.volume(C.etch(S.wf, it.o, { t, T: T_WAFER, pre: it.pre, rates: R }));
+    const vf = C.volume(fins[k]), V = t => C.volume(pe(it.o, { t, T: T_WAFER, pre: it.pre, rates: R }));
     let lo = 0, hi = 50;
     while (V(hi) < 0.98*vf && hi < 1e5) hi *= 2;
     for (let i = 0; i < 30; i++) { const m = (lo + hi)/2; if (V(m) < 0.98*vf) lo = m; else hi = m; }
     hiAll = Math.max(hiAll, hi);
   });
   const tmax = nice(1.15*hiAll);
-  const lasts = items.map(it => C.etch(S.wf, it.o, { t: tmax, T: T_WAFER, pre: it.pre, rates: R }));
+  const lasts = items.map(it => pe(it.o, { t: tmax, T: T_WAFER, pre: it.pre, rates: R }));
   let ext = [Infinity, -Infinity, Infinity, -Infinity];
   const grow = P => { for (const p of P) { ext[0] = Math.min(ext[0], p[0]); ext[1] = Math.max(ext[1], p[0]); ext[2] = Math.min(ext[2], p[1]); ext[3] = Math.max(ext[3], p[1]); } };
   items.forEach((it, k) => { grow(C.outline(fins[k].H)); grow(C.outline(lasts[k].H)); grow(it.o); });
@@ -1493,7 +1699,7 @@ function prepPit() {
   const hist = { t: [], depth: [], under: [] }, nh = 40;
   for (let i = 0; i <= nh; i++) {
     const t = tmax*i/nh; let d = 0, u = 0;
-    items.forEach(it => { const c = C.etch(S.wf, it.o, { t, T: T_WAFER, pre: it.pre, rates: R }); d = Math.max(d, C.depth(c)); const O = C.outline(c.H, 0); if (O.length) u = Math.max(u, beyondAll(O, items.filter(o => o.g === it.g).map(o => o.o))); });
+    items.forEach(it => { const c = pe(it.o, { t, T: T_WAFER, pre: it.pre, rates: R }); d = Math.max(d, C.depth(c)); const O = C.outline(c.H, 0); if (O.length) u = Math.max(u, beyondAll(O, items.filter(o => o.g === it.g).map(o => o.o))); });
     hist.t.push(t); hist.depth.push(d); hist.under.push(u);
   }
   pit = { items, R, fins, tmax, box, zb, dmax: Math.max(1, Math.min(zb, dmax)), hist };
@@ -1574,7 +1780,7 @@ function buildPit() {
   scene = new THREE.Scene(); scene.background = COL["scene-bg"]; clearLabels();
   const { items, R, fins, box, zb } = pit;
   const t = S.t;
-  const cavs = items.map((it, k) => S.final ? fins[k] : C.etch(S.wf, it.o, { t, T: T_WAFER, pre: it.pre, rates: R }));
+  const cavs = items.map((it, k) => S.final ? fins[k] : pe(it.o, { t, T: T_WAFER, pre: it.pre, rates: R }));
   pit.cavs = cavs;
   const [x0, x1, y0, y1b] = box, yA = S.cut ? 0 : y0, yB = y1b;
   const cx = (x0 + x1)/2, cy = (y0 + y1b)/2;
@@ -1648,7 +1854,9 @@ function buildPit() {
   const e = C.FRAME_IDX[S.wf];
   g.add(new THREE.ArrowHelper(new V3(1, 0, 0), new V3(x0, yA, 0), (x1 - x0)*0.18, COL.accent.getHex(), radius*0.05, radius*0.03));
   addLabel(new V3(x0 + (x1 - x0)*0.25, yA, 0), idxHTML(e[0], "[", "]") + " along flat", "acc");
-  scene.userData.center = new V3(cx, cy, -zb/2);
+  scene.userData.center = new V3(cx, cy, -zb/2); scene.userData.die = scene.userData.center.clone();
+  frameR = S.waferOn ? 0.53*WAFER.D : 0;
+  if (S.waferOn) { g.add(waferGroup(S.wf, S.wtype, -S.dieX*1000, -S.dieY*1000, { hole: [x0, x1, y0, y1b], clip, flatLabel: idxHTML(e[0], "[", "]") })); scene.userData.center = new V3(-S.dieX*1000, -S.dieY*1000, 0); }
   updateReadout(cavs);
   drawPitGraph(); drawPitEditor();
   resize();
@@ -1720,7 +1928,7 @@ renderer.domElement.addEventListener("pointerup", ev => {
   document.getElementById("hint").textContent = "Drag to turn; try \"Along the selected line\"";
 });
 renderer.domElement.addEventListener("pointermove", ev => {
-  if (S.mode === "sim" && !ev.buttons) { simHover(ev); return; }
+  if (simLike() && !ev.buttons) { simHover(ev); return; }
   if (S.mode !== "pit" || ev.buttons) { tip.style.display = "none"; return; }
   pickAt(ev);
   let hits = ray.intersectObjects(pit.pick || []);
@@ -1752,21 +1960,34 @@ function setHold() {
 }
 function sliderToT() { return pit.tmax*Number($("tSlider").value)/1000; }
 function rebuild(resetView) {
+  syncWaferUI();
   if (S.mode === "model") {
     buildModel();
     $("panelModel").classList.remove("hidden"); $("panelPit").classList.add("hidden"); $("panelSim").classList.add("hidden"); $("simBelow").classList.add("hidden"); $("pitBelow").classList.add("hidden"); hideCbar();
+    $("panelFind").classList.add("hidden"); $("findBelow").classList.add("hidden");
     $("vAlong").classList.remove("hidden");
     $("hint").textContent = S.sel === null ? "Click a face of the model" : "Drag to turn";
     if (resetView) setView(dirOf(...OBL[S.wf]), new V3(0, 0, 0), true);
-  } else if (S.mode === "sim") {
-    $("panelSim").classList.remove("hidden"); $("simBelow").classList.remove("hidden"); $("panelPit").classList.add("hidden"); $("panelModel").classList.add("hidden"); $("pitBelow").classList.add("hidden");
+  } else if (simLike()) {
+    $("panelSim").classList.remove("hidden"); $("panelFind").classList.add("hidden"); $("findBelow").classList.add("hidden");
+    $("cornerBox").classList.toggle("hidden", S.mode !== "corner"); $("simExBox").classList.toggle("hidden", S.mode === "corner"); $("simBelow").classList.remove("hidden"); $("panelPit").classList.add("hidden"); $("panelModel").classList.add("hidden"); $("pitBelow").classList.add("hidden");
     $("vAlong").classList.add("hidden");
     $("hint").textContent = "Hover a surface for its plane";
-    if (SIM.wfLoaded !== S.wf) { SIM.wfLoaded = S.wf; SIM.preset = 0; fillSimPresets(); loadPreset(S.wf, 0); simRun(); resetView = true; }
+    if (S.mode === "corner") { if (SIM.owner !== "corner") { clSync(); clBuild(false); simRun(); resetView = true; } }
+    else if (SIM.wfLoaded !== S.wf || SIM.owner !== "sim") { SIM.wfLoaded = S.wf; SIM.owner = "sim"; SIM.preset = 0; fillSimPresets(); loadPreset(S.wf, 0); simRun(); resetView = true; }
     buildSim(resetView);
+  } else if (S.mode === "find") {
+    $("panelFind").classList.remove("hidden"); $("findBelow").classList.remove("hidden");
+    for (const id of ["panelPit", "panelModel", "panelSim", "simBelow", "pitBelow"]) $(id).classList.add("hidden");
+    hideCbar(); $("vAlong").classList.add("hidden"); $("fdWarn").classList.toggle("hidden", S.wf !== "111");
+    $("hint").textContent = "Mask map of the whole wafer: zoom in to see the structures";
+    if (FD.wfLoaded !== fdWf()) { FD.wfLoaded = fdWf(); FD.items = fdLecture(fdWf()); FD.sel = 0; FD.mc = null; resetView = true; }
+    fdSync(); fdAnalyse(); fdCards(); fdReadout(); buildFind(resetView);
+    requestAnimationFrame(() => { drawFindMap(); drawScope(); drawFdPlot(); });
   } else {
     S.t = sliderToT();
     $("panelPit").classList.remove("hidden"); $("panelModel").classList.add("hidden"); $("panelSim").classList.add("hidden"); $("simBelow").classList.add("hidden"); $("pitBelow").classList.remove("hidden");
+    $("panelFind").classList.add("hidden"); $("findBelow").classList.add("hidden");
     buildPit();
     $("vAlong").classList.add("hidden");
     $("hint").textContent = "Hover a wall for its plane";
@@ -1802,6 +2023,44 @@ $("selOpen").addEventListener("change", e => {
   renderCustomList(); prepPit(); rebuild(true);
 });
 $("pitColor").addEventListener("change", e => { S.pitColor = e.target.value; buildPit(); });
+$("pitRot").addEventListener("change", e => { S.rot = Number(e.target.value) || 0; prepPit(); rebuild(false); });
+// ---- whole-wafer controls (one copy in the pit panel, one in the simulator panel, same state)
+const WAFER_SRC = "100 mm wafer, 525 µm thick (Pal & Sato Table 2.1, p. 30); flat lengths 32.5 mm and 18 mm (Topline drawing A 174004 A); flat positions Lec 10 p. 10, secondary flat measured clockwise from the primary seen from the front. Lec 10 p. 10 labels the (110) flat ⟨111⟩; the (110) frames here follow Lec 4-1. The die is drawn to scale: use “Zoom to die”.";
+for (const el of document.querySelectorAll(".waferUI")) el.innerHTML = `<h3>Whole wafer</h3>
+  <div class="row"><label><input type="checkbox" data-wu="on"> show the whole 100 mm wafer around the die</label></div>
+  <div class="fields" data-wu="box">
+    <label>doping (sets the secondary flat) <select data-wu="type"><option value="p">p-type</option><option value="n">n-type</option></select></label>
+    <label>die centre on the wafer <span><input type="number" data-wu="x" step="1"> , <input type="number" data-wu="y" step="1"> mm</span></label>
+    <div class="row"><button class="btn" data-wu="wview">Whole wafer</button><button class="btn" data-wu="dview">Zoom to die</button></div>
+    <p class="note src" data-wu="txt"></p></div>`;
+function syncWaferUI() {
+  const wf = simLike() ? SFR[SIM.fk].wf : S.wf;
+  for (const el of document.querySelectorAll(".waferUI")) {
+    el.querySelector('[data-wu="on"]').checked = S.waferOn; el.querySelector('[data-wu="box"]').classList.toggle("hidden", !S.waferOn);
+    el.querySelector('[data-wu="type"]').value = S.wtype; el.querySelector('[data-wu="x"]').value = S.dieX; el.querySelector('[data-wu="y"]').value = S.dieY;
+    const out = Math.hypot(S.dieX, S.dieY) > 47 ? " The die is outside the usable wafer area." : "";
+    el.querySelector('[data-wu="txt"]').textContent = `(${wf}) ${S.wtype}-type: ${secFlatText(wf, S.wtype)}.${out} ${WAFER_SRC}`;
+  }
+}
+function viewTo(target, zoom) {
+  anim0Zoom = zoom; const d = camera.position.clone().sub(controls.target).normalize(); setView(d, target);
+}
+document.addEventListener("change", e => {
+  const k = e.target.dataset && e.target.dataset.wu; if (!k) return;
+  if (k === "on") S.waferOn = e.target.checked; else if (k === "type") S.wtype = e.target.value;
+  else if (k === "x") S.dieX = Number(e.target.value) || 0; else if (k === "y") S.dieY = Number(e.target.value) || 0;
+  syncWaferUI(); rebuild(k === "on" || k === "x" || k === "y");
+});
+document.addEventListener("click", e => {
+  const k = e.target.dataset && e.target.dataset.wu; if (k !== "wview" && k !== "dview") return;
+  if (k === "wview") viewTo(scene.userData.center, 1);
+  else viewTo(scene.userData.die || scene.userData.center, frameR ? frameR/radius : 1);
+});
+document.addEventListener("change", e => {
+  if (!e.target.classList.contains("cCompass")) return;
+  S.compass = e.target.checked; for (const c of document.querySelectorAll(".cCompass")) c.checked = S.compass;
+  if (S.mode === "pit") drawPitEditor(); else if (simLike()) drawMaskEditor();
+});
 // ---- the pit mask editor: the same handling as the simulator's (add, select, drag, edit in the table)
 function fillPcTypes() { $("pcType").innerHTML = Object.entries(SHAPE_TYPES).filter(([, v]) => !v.noAdd).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join(""); }
 // any edit of an example turns it into the user's own mask, starting from the example
@@ -1809,10 +2068,15 @@ function toCustom() {
   if (S.open === "custom") return;
   S.pitShapes = [presetShape()]; S.open = "custom"; fillOpenings();
 }
+// a new parallelogram gets its sides along two {111} traces of the wafer (vertical walls first)
+function paraSides(e) {
+  const t = inPlaneDirs(e).filter(d => d.wall != null).sort((p, q) => q.wall - p.wall || p.ang - q.ang);
+  return t.length >= 2 ? { a1: t[0].ang, a2: t[1].ang } : { a1: 0, a2: 90 };
+}
 function newPitShape(type, x, y) {
   const d = SHAPE_TYPES[type].d;   // the simulator defaults, doubled: pit openings are usually larger
   const o = { w: 2*d.w, h: 2*(d.h || d.w) }; if (d.t) o.t = 2*d.t; if (d.n) o.n = d.n;
-  return Object.assign(shp(type, "open", Math.round(x/5)*5, Math.round(y/5)*5, o.w, o.h), d, o, { pre: 0 });
+  return Object.assign(shp(type, "open", Math.round(x/5)*5, Math.round(y/5)*5, o.w, o.h), d, o, { pre: 0 }, type === "para" ? paraSides(C.FRAMES[S.wf]) : {});
 }
 let pitBusy = 0;
 function pitChanged(resetView) {   // after an edit: rebuild the pit (deferred so the editor redraws first)
@@ -1821,8 +2085,14 @@ function pitChanged(resetView) {   // after an edit: rebuild the pit (deferred s
   clearTimeout(pitBusy);
   pitBusy = setTimeout(() => { prepPit(); rebuild(!!resetView); drawPitEditor(); }, 30);
 }
+// direction selects for a shape card or table row: "edges along" (or both sides of a parallelogram)
+function dirSelects(sh, i, dirs) {
+  if (sh.type === "pts") return "";
+  if (sh.type === "para") return dirSelect(dirs, sh.a1, `data-i="${i}" data-k="a1"`, "side 1 along") + dirSelect(dirs, sh.a2, `data-i="${i}" data-k="a2"`, "side 2 along");
+  return dirSelect(dirs, sh.ang, `data-i="${i}" data-k="ang"`, sh.type === "circle" || sh.type === "ring" ? "turned to" : "edges along");
+}
 function renderCustomList() {
-  const list = pitShapesNow();
+  const list = pitShapesNow(), dirs = inPlaneDirs(C.FRAMES[S.wf]);
   const f = (i, k, v, lbl, st = 5) => `<label>${lbl}<input type="number" step="${st}" data-i="${i}" data-k="${k}" aria-label="${lbl}" value="${+(+(v == null ? 0 : v)).toFixed(1)}"></label>`;
   const cards = list.map((sh, i) => {
     const T = SHAPE_TYPES[sh.type] || SHAPE_TYPES.rect;
@@ -1830,8 +2100,8 @@ function renderCustomList() {
     const dims = T.f.map(k => f(i, k, sh[k], lab[k], k === "n" ? 1 : 5)).join("");
     return `<div class="card${i === S.pitSel ? " sel" : ""}" data-row="${i}">
       <div class="top"><span><b>${i + 1}. ${T.name}</b>${S.open === "custom" ? "" : ' <span class="note">(the example; editing it makes it your own mask)</span>'}</span><button class="x" data-pcdel="${i}" title="remove" aria-label="remove">×</button></div>
-      <div class="fl">${f(i, "cx", sh.cx, "x")}${f(i, "cy", sh.cy, "y")}${f(i, "ang", sh.ang, "angle°", 1)}${f(i, "pre", sh.pre || 0, "pre-etch")}</div>
-      ${dims ? `<div class="fl">${dims}<span class="note">µm</span></div>` : ""}</div>`;
+      <div class="fl">${f(i, "cx", sh.cx, "x")}${f(i, "cy", sh.cy, "y")}${sh.type === "para" ? f(i, "a1", sh.a1, "side 1°", 1) + f(i, "a2", sh.a2, "side 2°", 1) : sh.type === "pts" ? "" : f(i, "ang", sh.ang, "angle°", 1)}${f(i, "pre", sh.pre || 0, "pre-etch")}</div>
+      ${dims ? `<div class="fl">${dims}<span class="note">µm</span></div>` : ""}${dirSelects(sh, i, dirs)}</div>`;
   }).join("");
   $("pcList").innerHTML = list.length ? cards : `<p class="note">No openings. Pick a shape and press “Add shape”, or double-click in the editor.</p>`;
   $("pcDup").disabled = $("pcDel").disabled = !(S.pitSel >= 0 && S.pitSel < list.length);
@@ -1885,6 +2155,7 @@ function drawPitEditor(keepExtent) {
   ctx.fillStyle = col("accent"); ctx.fillRect(10, 10 + 2*hy*s + 2, 2*hx*s, 3);
   ctx.font = "11px IBM Plex Sans, sans-serif";
   ctx.fillText(`primary flat side; x along ${plainIdx(C.FRAME_IDX[S.wf][0])}; grid ${g} µm`, 12, 10 + 2*hy*s + 18);
+  if (S.compass) drawCompass(ctx, 10 + 2*hx*s - 44, 54, 30, inPlaneDirs(C.FRAMES[S.wf]), S.rot || 0);
 }
 (() => {
   const cv = $("pitCanvas"); let drag = null;
@@ -1934,6 +2205,7 @@ $("pcDel").addEventListener("click", () => {
 $("pcClear").addEventListener("click", () => { S.open = "custom"; S.pitShapes = []; S.pitSel = -1; pitChanged(false); });
 $("pcList").addEventListener("change", e => {
   const el = e.target, i = Number(el.dataset.i), k = el.dataset.k; if (!(i >= 0) || !k) return;
+  if (el.value === "") return;   // "custom angle" picked in a direction list: nothing to change
   toCustom(); S.pitShapes[i][k] = Number(el.value); S.pitSel = i; pitChanged(false);
 });
 $("pcList").addEventListener("click", e => {
@@ -1944,9 +2216,10 @@ $("pcToSim").addEventListener("click", () => {
   // the current openings, as they are (not their hulls), go to the etch simulator
   const shapes = pitShapesNow().map(sh => JSON.parse(JSON.stringify(sh)));
   const [x0, x1, y0, y1] = pit.box, hx = Math.ceil(Math.max(Math.abs(x0), Math.abs(x1))/10)*10, hy = Math.ceil(Math.max(Math.abs(y0), Math.abs(y1))/10)*10;
-  SIM.fk = { "100": "100", "110": "110f", "111": "111" }[S.wf]; SIM.rate = { PAL30: "PAL30", PAL40: "PAL40", LEC: "LEC42" }[S.rate];
+  SIM.fk = { "100": "100", "110": "110f", "111": "111" }[S.wf]; SIM.rate = PIT2SIM[S.rate];
+  SIM.rot = S.rot || 0; SIM.probes = null;
   SIM.t = Math.max(5, Math.round(S.final ? pit.tmax : S.t)); SIM.pre = Math.max(0, ...pit.items.map(it => it.pre)); SIM.hx = hx; SIM.hy = hy; SIM.dxMax = 0;
-  SIM.shapes = shapes; SIM.sel = -1; SIM.preset = -1; SIM.cutPos = 0; SIM.cutAxis = "y"; SIM.wfLoaded = S.wf;
+  SIM.shapes = shapes; SIM.sel = -1; SIM.preset = -1; SIM.cutPos = 0; SIM.cutAxis = "y"; SIM.wfLoaded = S.wf; SIM.owner = "sim"; SIM.cl = null;
   fillSimPresets(); $("simPreset").value = "-1";
   $("simNote").innerHTML = "Openings sent from the Etched pit scene. Here they keep their real shape, and cavities that meet merge.";
   syncSimInputs(); renderShapeList();
@@ -2000,11 +2273,21 @@ const LEC42 = (() => {   // Lec 4-1 p. 7 gives {100}, {110}, {111} only; the res
   for (const [h, v] of Object.entries(PAL[40])) r[h] = v*k;
   r["100"] = 42/60; r["110"] = 66/60; r["111"] = 0.5/60; return r;
 })();
+const LEC57 = (() => {   // Lec 10 p. 11 gives {100}, {110}, {111} only; the rest: Pal 50 wt% scaled by R100(Lec)/R100(Pal 50) (assumption)
+  const k = (25/60)/PAL[50]["100"], r = {};
+  for (const [h, v] of Object.entries(PAL[50])) r[h] = v*k;
+  r["100"] = 25/60; r["110"] = 39/60; r["111"] = 0.5/60; return r;
+})();
 const SRATES = {
   PAL30: { name: "KOH 30 wt%, 70 °C", r: PAL[30], src: "Pal & Sato Table 4.1, p. 87 (12 orientations)", sio2: null },
   PAL40: { name: "KOH 40 wt%, 70 °C", r: PAL[40], src: "Pal & Sato Table 4.1, p. 87 (12 orientations)", sio2: null },
   PAL50: { name: "KOH 50 wt%, 70 °C", r: PAL[50], src: "Pal & Sato Table 4.1, p. 87 (12 orientations)", sio2: null },
-  LEC42: { name: "KOH 42 wt%, 75 °C (Lec 4-1)", r: LEC42, src: "Lec 4-1 p. 7 for {100}, {110}, {111}; other orientations scaled from Pal & Sato 40 wt% (assumption)", sio2: 0.34/60 },
+  LEC42: { name: "KOH 42 wt%, 75 °C (Lec 4-1)", r: LEC42, src: "Lec 4-1 p. 7 (and Lec 10 p. 11) for {100}, {110}, {111}; other orientations scaled from Pal & Sato 40 wt% (assumption)", sio2: 0.34/60, sio2src: "Lec 10 p. 11" },
+  LEC57: { name: "KOH 57 wt%, 75 °C (Lec 10)", r: LEC57, src: "Lec 10 p. 11: {100} 25, {110} 39, {111} 0.5 µm/h; other orientations scaled from Pal & Sato 50 wt% by R(100) (assumption)", sio2: 0.62/60, sio2src: "Lec 10 p. 11" },
+  EDPS:  { name: "EDP Type S, 110 °C (Lec 10)", r: { "100": 51/60, "110": 57/60, "111": 1.25/60 }, sio2: 0.004/60, sio2src: "Lec 10 p. 11",
+           src: "Lec 10 p. 11: {100} 51, {110} 57, {111} 1.25 µm/h, SiO₂ 0.004 µm/h. Only three orientations are given; all other planes use the linear three-rate interpolation (Radjenović et al. 2010, eq. 1) (assumption). Note: here {110} > {100}, while Lec 10 p. 16 orders EDP as (100) > (110) > (111)." },
+  EDPFK: { name: "EDP, 50:30:3 (F&K ratio)", r: { "100": 51/60, "110": 30.6/60, "111": 3.06/60 }, sio2: null,
+           src: "Ratio R(100):R(110):R(111) = 50:30:3 for EDP 'F&K' at 110 °C (Finne & Klein 1967, as listed in the Berkeley Microlab manual ch. 1.10); scaled so that R(100) = 51 µm/h as in Lec 10 p. 11 (assumption). Matches the order (100) > (110) > (111) of Lec 10 p. 16. Other planes: linear three-rate interpolation (assumption)." },
 };
 const T_WAFER_SIM = 525;   // Pal & Sato Table 2.1, p. 30: 100 mm wafer
 
@@ -2033,7 +2316,7 @@ const SHAPE_TYPES = {   // name, which size fields the editor shows, defaults fo
   frame:   { name: "square frame",    f: ["w", "h", "t"], d: { w: 160, h: 160, t: 25 } },
   ring:    { name: "ring",            f: ["w", "t"],      d: { w: 140, t: 80 } },
   star:    { name: "star",            f: ["w", "t", "n"], d: { w: 140, t: 60, n: 5 } },
-  para:    { name: "parallelogram",   f: ["w", "h"],      d: { w: 120, h: 60, a1: 54.74, a2: 125.26 }, noAdd: true },
+  para:    { name: "parallelogram (sides along chosen directions)", f: ["w", "h"], d: { w: 120, h: 60, a1: 54.74, a2: 125.26 } },
   pts:     { name: "example outline",         f: [],              d: {}, noAdd: true },
 };
 const ngon = (r, n, a0 = 0) => Array.from({ length: n }, (_, i) => { const a = a0 + 2*Math.PI*i/n; return [r*Math.cos(a), r*Math.sin(a)]; });
@@ -2210,10 +2493,15 @@ function makePresets() {
 }
 const SPRESETS = makePresets();
 
-const SIM = { color: "plane", hist: null, fk: "100", rate: "PAL30", t: 60, thick: T_WAFER_SIM, pre: 0, quality: "normal", hx: 200, hy: 130, shapes: [], preset: 0,
+const SIM = { rot: 0, probes: null, color: "plane", hist: null, fk: "100", rate: "PAL30", t: 60, thick: T_WAFER_SIM, pre: 0, quality: "normal", hx: 200, hy: 130, shapes: [], preset: 0,
               tv: 0, tSim: 0, tEnd: 0, res: null, running: false, cutOn: false, cutAxis: "y", cutPos: 0, showMask: true, sel: -1,
               grid: null, id: 0, dirty: false, playing: false, viewBusy: false, viewWant: null, worker: null };
 function simFrame() { return SFR[SIM.fk]; }
+// crystal components of the wafer axes with the flat error: the crystal is turned by SIM.rot about the normal
+function simE() {
+  const [e1, e2, e3] = SFR[SIM.fk].e, d = (SIM.rot || 0)/C.DEG, c = Math.cos(d), s = Math.sin(d);
+  return [e1.map((v, i) => c*v - s*e2[i]), e1.map((v, i) => s*v + c*e2[i]), e3.slice()];
+}
 
 // ---- worker (with an in-page fallback when workers are blocked)
 function startWorker() {
@@ -2248,7 +2536,7 @@ function simConfig() {
     if (SIM.dxMax) dx = Math.min(dx, SIM.dxMax);   // preset with thin walls: keep them at least ~8 cells thick
   }
   Lz = Math.min(SIM.thick, Math.max(3*dx, Lz));
-  return { frame: F.e.map(v => v.slice()), rates: R, shapes, X0, X1, Y0, Y1, depth: Lz, dx, pre: SIM.pre || 0 };
+  return { frame: simE(), rates: R, probes: SIM.probes || null, shapes, X0, X1, Y0, Y1, depth: Lz, dx, pre: SIM.pre || 0 };
 }
 function cutSpec() {
   if (!SIM.grid) return null;
@@ -2283,12 +2571,12 @@ function simMessage(m) {
     } else $("simStatus").textContent = `Etching… ${m.t.toFixed(0)} of ${SIM.tEnd} min`;
     $("simT").max = String(SIM.tSim); $("simT").value = String(SIM.tSim); SIM.tv = SIM.tSim;
     $("simTnow").textContent = `${SIM.tv.toFixed(0)} min`; $("simTmax").textContent = `${SIM.tSim.toFixed(0)} min simulated`;
-    if (S.mode === "sim") buildSim(false);
+    if (simLike()) buildSim(false);
     return;
   }
   if (m.type === "view") {
     SIM.viewBusy = false; SIM.res = m;
-    if (S.mode === "sim") buildSim(false);
+    if (simLike()) buildSim(false);
     if (SIM.viewWant) { const w = SIM.viewWant; SIM.viewWant = null; requestView(w); }
   }
 }
@@ -2304,7 +2592,7 @@ const FAMS = ["100", "110", "111", "311", "211", "221", "331", "210", "310", "32
   const v = k.split("").map(Number), n = Math.hypot(...v); return { k, v: v.map(x => x/n).sort((a, b) => b - a), raw: v };
 });
 function classifyN(nw) {   // nw: wafer-frame unit normal -> {fam, hkl, ang}
-  const [e1, e2, e3] = simFrame().e;
+  const [e1, e2, e3] = simE();
   const c = [0, 1, 2].map(i => e1[i]*nw[0] + e2[i]*nw[1] + e3[i]*nw[2]);
   const order = [0, 1, 2].sort((a, b) => Math.abs(c[b]) - Math.abs(c[a]));
   const s = order.map(i => Math.abs(c[i]));
@@ -2366,7 +2654,7 @@ function buildSim(resetView) {
       else if (mode === "time") { vmax = Math.max(1e-6, r.tv); for (let v = 0; v < nv; v++) vval[v] = vt ? vt[v] : 0; }
       else {
         if (!SIM.rtab) SIM.rtab = EE.makeRate(SRATES[SIM.rate].r);
-        const [e1, e2, e3] = simFrame().e; vmax = Math.max(...Object.values(SRATES[SIM.rate].r));
+        const [e1, e2, e3] = simE(); vmax = Math.max(...Object.values(SRATES[SIM.rate].r));
         for (let v = 0; v < nv; v++) {
           const L = Math.hypot(VN[3*v], VN[3*v+1], VN[3*v+2]) || 1, n = [VN[3*v]/L, VN[3*v+1]/L, VN[3*v+2]/L];
           vval[v] = EE.rateC(SIM.rtab, e1[0]*n[0] + e2[0]*n[1] + e3[0]*n[2], e1[1]*n[0] + e2[1]*n[1] + e3[1]*n[2], e1[2]*n[0] + e2[2]*n[1] + e3[2]*n[2]);
@@ -2436,22 +2724,34 @@ function buildSim(resetView) {
     addLabel(new V3(X1 - (X1 - X0)*0.08, Y0 - radius*0.32, 0), "⟨111⟩ " + idxHTML(F.arrow, "[", "]") + " flat normal", "acc");
   }
   addLabel(new V3(X1, Y1, 0), idxHTML(F.idx[2], "(", ")") + " surface", "", camDir => camDir.z > 0.1);
-  scene.userData.center = new V3((X0 + X1)/2, (Y0 + Y1)/2, -zb/2);
+  scene.userData.center = new V3((X0 + X1)/2, (Y0 + Y1)/2, -zb/2); scene.userData.die = scene.userData.center.clone();
+  frameR = S.waferOn ? 0.53*WAFER.D : 0;
+  if (S.waferOn) { g.add(waferGroup(F.wf, S.wtype, -S.dieX*1000, -S.dieY*1000, { hole: [X0, X1, Y0, Y1], clip, flatLabel: idxHTML(F.idx[0], "[", "]") })); scene.userData.center = new V3(-S.dieX*1000, -S.dieY*1000, 0); }
   if (resetView) setView(dirOf(30, -62), scene.userData.center, true);
-  updateSimReadout(); drawSection(); drawMaskEditor(); drawSimGraph(); simCbar();
+  if (S.mode === "corner" && SIM.cl) {
+    addLabel(new V3(SIM.cl.xL, SIM.cl.yc + 0.25*SIM.hy, 2), "no compensation", "acc");
+    addLabel(new V3(SIM.cl.xR, SIM.cl.yc + 0.25*SIM.hy, 2), SIM.cl.type === "none" ? "no compensation" : $("clType").selectedOptions[0].textContent, "acc");
+  }
+  updateSimReadout(); drawSection(); drawMaskEditor(); drawSimGraph(); simCbar(); clReadout();
   resize();
 }
 const CB_TITLE = { depth: ["depth below the surface", "µm"], rate: ["local etch rate R(n)", "µm/min"], time: ["time the front reached the surface", "min"] };
 function simCbar() {
-  if (S.mode !== "sim" || !SIM.cbar) { if (S.mode === "sim") hideCbar(); return; }
+  if (!simLike() || !SIM.cbar) { if (simLike()) hideCbar(); return; }
   const [t, u] = CB_TITLE[SIM.cbar.mode]; showCbar(t, 0, SIM.cbar.vmax, u);
 }
 function drawSimGraph() {
   const h = SIM.hist, cv = $("simGraph"), leg = $("simGraphLeg");
   if (!h) { const ctx = cv.getContext("2d"); cv.style.height = "40px"; cv.width = cv.clientWidth || 300; cv.height = 40; ctx.clearRect(0, 0, cv.width, 40); ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--muted"); ctx.font = "12px IBM Plex Sans, sans-serif"; ctx.fillText(SIM.running ? "The history appears when the run finishes." : "Run the simulation to see the history.", 4, 24); leg.innerHTML = ""; return; }
-  const series = [{ name: "max depth", color: "#" + COL.accent.getHexString(), x: h.t, y: h.depth },
+  let series = [{ name: "max depth", color: "#" + COL.accent.getHexString(), x: h.t, y: h.depth },
                   { name: "max undercut under the mask", color: "#" + COL.ghost.getHexString(), x: h.t, y: h.under }];
-  const vals = drawGraph(cv, series, { xmax: h.t[h.t.length - 1], tv: SIM.tv });
+  let marks = [];
+  if (S.mode === "corner" && h.probe && h.probe.length === 2 && SIM.cl) {
+    series = [{ name: "unprotected corner", color: "#" + COL.accent.getHexString(), x: h.t, y: h.probe[0] }];
+    if (SIM.cl.type !== "none") series.push({ name: "compensated corner", color: "#" + COL.ghost.getHexString(), x: h.t, y: h.probe[1] });
+    marks = [{ x: SIM.cl.tT, label: `depth H at ${SIM.cl.tT.toFixed(0)} min` }];
+  }
+  const vals = drawGraph(cv, series, { xmax: h.t[h.t.length - 1], tv: SIM.tv, marks, ylabel: S.mode === "corner" ? "corner position (µm)" : "µm" });
   graphLegend(leg, series, vals, SIM.tv);
 }
 function maskTexture(r) {
@@ -2496,7 +2796,7 @@ function updateSimReadout() {
     if (st.through > 0) rows.push(SIM.cfg && SIM.cfg.depth >= SIM.thick - 1e-6 ? ["etched through the wafer", `${(st.through/1e3).toFixed(1)}×10³ µm²`] : ["reached the simulated depth", `${SIM.cfg.depth.toFixed(0)} µm (raise it only by a longer time)`]);
     SIM.shapes.forEach((s, i) => { if (s.name && st.rel[i] != null) rows.push([`${s.name} free`, `${(100*st.rel[i]).toFixed(0)} %${st.rel[i] > 0.995 ? " (released)" : ""}`]); });
     const ox = SRATES[SIM.rate].sio2;
-    rows.push(["SiO₂ mask consumed", ox ? `${(ox*r.tv).toFixed(2)} µm (Lec 4-1 p. 7)` : "rate not in the course files"]);
+    rows.push(["SiO₂ mask consumed", ox ? `${(ox*r.tv).toFixed(ox*r.tv < 0.1 ? 3 : 2)} µm (${SRATES[SIM.rate].sio2src})` : "rate not in the course files"]);
   }
   $("simReadout").innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
 }
@@ -2589,33 +2889,35 @@ function drawMaskEditor() {
   ctx.fillStyle = "#" + COL.accent.getHexString(); ctx.fillRect(10, 10 + H*s + 2, W*s, 3);
   ctx.font = "11px IBM Plex Sans, sans-serif";
   ctx.fillText(`primary flat side; x along ${plainIdx(simFrame().idx[0])}`, 12, 10 + H*s + 18);
+  if (S.compass) drawCompass(ctx, 10 + W*s - 44, 54, 30, inPlaneDirs(SFR[SIM.fk].e), SIM.rot || 0);
 }
 const plainIdx = v => "[" + v.map(x => x < 0 ? `${-x}̅` : `${x}`).join("") + "]";
 function renderShapeList() {
+  const dirs = inPlaneDirs(SFR[SIM.fk].e);
   const rows = SIM.shapes.map((sh, i) => {
     const f = (k, v, st = 5, ttl = k) => `<input type="number" step="${st}" data-i="${i}" data-k="${k}" title="${ttl}" value="${+(+(v == null ? 0 : v)).toFixed(1)}">`;
     const T = SHAPE_TYPES[sh.type] || SHAPE_TYPES.rect;
     const dims = T.f.map(k => f(k, sh[k], k === "n" ? 1 : 5, { w: "w (µm)", h: "h (µm)", t: sh.type === "ring" || sh.type === "star" ? "inner size (µm)" : "arm width t (µm)", n: "sides or points" }[k])).join("");
-    const ang = sh.type === "para" || sh.type === "pts" ? "" : f("ang", sh.ang, 1, "angle to the flat (°)");
+    const ang = (sh.type === "para" ? f("a1", sh.a1, 1, "side 1 angle to the flat (°)") + f("a2", sh.a2, 1, "side 2 angle to the flat (°)") : sh.type === "pts" ? "" : f("ang", sh.ang, 1, "angle to the flat (°)")) + dirSelects(sh, i, dirs);
     const arr = `${f("nx", sh.nx || 1, 1, "copies along x")}${f("ny", sh.ny || 1, 1, "copies along y")}${f("px", sh.px || 0, 5, "pitch x (µm)")}${f("py", sh.py || 0, 5, "pitch y (µm)")}`;
     return `<tr class="${i === SIM.sel ? "sel" : ""}" data-row="${i}"><td><select data-i="${i}" data-k="op"><option value="open"${sh.op === "open" ? " selected" : ""}>open</option><option value="mask"${sh.op === "mask" ? " selected" : ""}>mask</option></select></td>
       <td class="ty">${T.name}</td><td>${f("cx", sh.cx)}${f("cy", sh.cy)}</td><td>${dims}</td><td>${ang}</td><td>${arr}</td><td><button class="x" data-del="${i}" title="remove">×</button></td></tr>`;
   }).join("");
   $("shapeList").innerHTML = `<tr class="hd"><td>layer</td><td>shape</td><td>centre x, y</td><td>size</td><td>angle°</td><td>array nx, ny, px, py</td><td></td></tr>` + rows;
 }
-function markDirty() { SIM.dirty = true; updateDirtyNote(); renderShapeList(); if (S.mode === "sim") buildSim(false); }
+function markDirty() { SIM.dirty = true; updateDirtyNote(); renderShapeList(); if (simLike()) buildSim(false); }
 function updateDirtyNote() { $("simDirty").classList.toggle("hidden", !SIM.dirty); }
 
 function loadPreset(wf, i) {
   const p = SPRESETS[wf][i]; SIM.preset = i;
-  SIM.fk = p.fk; SIM.rate = p.rate; SIM.t = p.t; SIM.pre = p.pre || 0; SIM.hx = p.hx; SIM.hy = p.hy; SIM.dxMax = p.dxMax || 0;
+  SIM.fk = p.fk; SIM.rate = p.rate; SIM.t = p.t; SIM.pre = p.pre || 0; SIM.rot = 0; SIM.probes = null; SIM.cl = null; SIM.owner = "sim"; SIM.hx = p.hx; SIM.hy = p.hy; SIM.dxMax = p.dxMax || 0;
   SIM.shapes = p.shapes.map(s => Object.assign({}, s)); SIM.sel = -1; SIM.cutPos = 0; SIM.cutAxis = "y";
   $("simNote").innerHTML = p.note;
   syncSimInputs(); renderShapeList();
 }
 function syncSimInputs() {
   $("simFrame").value = SIM.fk; $("simFrameRow").classList.toggle("hidden", SFR[SIM.fk].wf !== "110");
-  $("simRate").value = SIM.rate; $("simTime").value = SIM.t; $("simPre").value = SIM.pre; $("simThick").value = SIM.thick;
+  $("simRate").value = SIM.rate; $("simTime").value = SIM.t; $("simPre").value = SIM.pre; $("simRot").value = SIM.rot || 0; $("simThick").value = SIM.thick;
   $("simHx").value = 2*SIM.hx; $("simHy").value = 2*SIM.hy; $("simQual").value = SIM.quality;
   pressed($("segCut"), "a", SIM.cutAxis); syncCutSlider();
   $("simFrameSrc").textContent = SFR[SIM.fk].src;
@@ -2636,6 +2938,7 @@ $("simPreset").addEventListener("change", e => { const i = Number(e.target.value
 $("bSimRun").addEventListener("click", () => { simRun(); buildSim(false); });
 $("simFrame").addEventListener("change", e => { SIM.fk = e.target.value; $("simFrameSrc").textContent = SFR[SIM.fk].src; markDirty(); });
 $("simRate").addEventListener("change", e => { SIM.rate = e.target.value; $("simRateSrc").textContent = SRATES[SIM.rate].src; markDirty(); });
+$("simRot").addEventListener("change", e => { SIM.rot = Number(e.target.value) || 0; markDirty(); });
 for (const [id, key, mul] of [["simTime", "t", 1], ["simPre", "pre", 1], ["simThick", "thick", 1], ["simHx", "hx", 0.5], ["simHy", "hy", 0.5]])
   $(id).addEventListener("change", e => { const v = Number(e.target.value); if (!(v >= 0)) return; SIM[key] = v*mul; if (key === "hx" || key === "hy") syncCutSlider(); markDirty(); });
 $("simQual").addEventListener("change", e => { SIM.quality = e.target.value; markDirty(); });
@@ -2645,7 +2948,7 @@ $("bSimPlay").addEventListener("click", () => {
   if (SIM.playing && SIM.tv >= SIM.tSim - 1e-6) { SIM.tv = 0; }
 });
 function stepSimPlay(now) {
-  if (!SIM.playing || S.mode !== "sim" || SIM.viewBusy || SIM.running) return;
+  if (!SIM.playing || !simLike() || SIM.viewBusy || SIM.running) return;
   if (now - (SIM.lastPlay || 0) < 60) return;
   SIM.lastPlay = now;
   SIM.tv = Math.min(SIM.tSim, SIM.tv + SIM.tSim/80);
@@ -2659,7 +2962,8 @@ $("segCut").addEventListener("click", e => { const b = e.target.closest("button"
 $("simCutPos").addEventListener("input", e => { SIM.cutPos = Number(e.target.value); syncCutSlider(); drawMaskEditor(); requestView(SIM.tv); });
 $("shapeList").addEventListener("change", e => {
   const el = e.target, i = Number(el.dataset.i), k = el.dataset.k; if (!(i >= 0) || !k) return;
-  SIM.shapes[i][k] = k === "op" ? el.value : Number(el.value); markDirty();
+  if (el.value === "" && el.tagName === "SELECT") return;
+  SIM.shapes[i][k] = k === "op" ? el.value : Number(el.value); $("simPreset").value = "-1"; markDirty();
 });
 $("shapeList").addEventListener("click", e => {
   const d = e.target.closest("[data-del]"); if (d) { SIM.shapes.splice(Number(d.dataset.del), 1); SIM.sel = -1; markDirty(); return; }
@@ -2668,7 +2972,7 @@ $("shapeList").addEventListener("click", e => {
 $("addType").innerHTML = Object.entries(SHAPE_TYPES).filter(([, v]) => !v.noAdd).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join("");
 $("bAddShape").addEventListener("click", () => {
   const type = $("addType").value, d = SHAPE_TYPES[type].d;
-  SIM.shapes.push(Object.assign(shp(type, $("addOp").value, 0, 0, d.w, d.h == null ? d.w : d.h), d, { nx: 1, ny: 1, px: 0, py: 0 }));
+  SIM.shapes.push(Object.assign(shp(type, $("addOp").value, 0, 0, d.w, d.h == null ? d.w : d.h), d, { nx: 1, ny: 1, px: 0, py: 0 }, type === "para" ? paraSides(SFR[SIM.fk].e) : {}));
   SIM.sel = SIM.shapes.length - 1; $("simPreset").value = "-1"; markDirty();
 });
 $("bDupShape").addEventListener("click", () => {
@@ -2697,7 +3001,7 @@ $("bDupShape").addEventListener("click", () => {
     const [x, y] = world(ev);
     if (SIM.shapes.some(sh => EE.isOpen([Object.assign(engineShape(sh), { op: "open" })], x, y))) return;
     const type = $("addType").value, d = SHAPE_TYPES[type].d;
-    SIM.shapes.push(Object.assign(shp(type, $("addOp").value, Math.round(x/5)*5, Math.round(y/5)*5, d.w, d.h == null ? d.w : d.h), d, { nx: 1, ny: 1, px: 0, py: 0 }));
+    SIM.shapes.push(Object.assign(shp(type, $("addOp").value, Math.round(x/5)*5, Math.round(y/5)*5, d.w, d.h == null ? d.w : d.h), d, { nx: 1, ny: 1, px: 0, py: 0 }, type === "para" ? paraSides(SFR[SIM.fk].e) : {}));
     SIM.sel = SIM.shapes.length - 1; $("simPreset").value = "-1"; markDirty();
   });
   cv.addEventListener("keydown", ev => {   // arrow keys move the selected shape, Delete removes it
@@ -2707,6 +3011,74 @@ $("bDupShape").addEventListener("click", () => {
     else if (ev.key === "Delete" || ev.key === "Backspace") { ev.preventDefault(); SIM.shapes.splice(SIM.sel, 1); SIM.sel = -1; markDirty(); }
   });
 })();
+// ---- corner lab: a mesa corner left unprotected next to one with compensation, on (100)
+const CL = { rate: "PAL30", H: 40, A: 200, type: "beam110", s1: 108, s2: 40, built: false };
+const CL_TYPES = {   // size labels and the design rules (sourced) or design choices
+  none:    { l1: null, l2: null },
+  square:  { l1: "square side a", l2: null },
+  beam110: { l1: "beam length L (from the corner)", l2: "beam width W" },
+  beam100: { l1: "beam length L (along the diagonal)", l2: "beam width W" },
+};
+function clRule(type, H) {
+  if (type === "square") return { s1: Math.round(H), s2: 0, txt: `Square side a ≈ H (Pal et al. 2007, Sec. 3.1.1, p. R114, rule given for EDP; the same paper finds the square distorts the corner in KOH).` };
+  if (type === "beam110") return { s1: Math.round(2.7*H), s2: Math.max(20, Math.round(H)), txt: `Total ⟨110⟩ beam length L = 2.7 H for 33 wt% KOH, where R{411}/R{100} ≈ 1.38 (Pal et al. 2007, p. R120). Width W = H is a design choice.` };
+  if (type === "beam100") return { s1: Math.round(3*H), s2: Math.round(2*H), txt: `⟨100⟩ beam width W = 2H, long side at 135° to the mesa side (Pal et al. 2007, Sec. 3.1.1, p. R114; Pal & Sato p. 249). Length L = 3H is a design choice.` };
+  return { s1: 0, s2: 0, txt: "No compensation: both corners are attacked." };
+}
+function clSync() {
+  const T = CL_TYPES[CL.type];
+  $("clRate").value = CL.rate; $("clH").value = CL.H; $("clA").value = CL.A; $("clType").value = CL.type; $("clS1").value = CL.s1; $("clS2").value = CL.s2;
+  $("clL1").classList.toggle("hidden", !T.l1); $("clL2").classList.toggle("hidden", !T.l2);
+  if (T.l1) $("clL1").firstChild.textContent = T.l1 + " "; if (T.l2) $("clL2").firstChild.textContent = T.l2 + " ";
+  $("clRule").textContent = clRule(CL.type, CL.H).txt;
+}
+function clBuild(run = true) {
+  const H = CL.H, A = CL.A, R100 = SRATES[CL.rate].r["100"], tT = H/R100;
+  const reach = CL.type === "square" ? CL.s1*0.75 : CL.type === "none" ? 0 : CL.s1;
+  const m = 1.6*H + 30, hx = A/2 + reach + m, Ly1 = Math.max(0.5*A, 1.5*H), Ly = Ly1 + reach + m, hy = Ly/2, yc = hy - reach - m;
+  const xL = -hx + A/2, xR = hx - A/2;   // the two corners; the domain edges are mirror planes, so each piece is half a mesa of width A
+  const sh = [shp("rect", "open", 0, 0, 2*hx + 40, 2*hy + 40),
+              shp("rect", "mask", (-hx - 20 + xL)/2, (yc - hy - 20)/2, xL + hx + 20, yc + hy + 20),
+              shp("rect", "mask", (xR + hx + 20)/2, (yc - hy - 20)/2, hx + 20 - xR, yc + hy + 20)];
+  const a = CL.s1, w = CL.s2, d = [-SQ2, SQ2];
+  if (CL.type === "square") sh.push(shp("rect", "mask", xR, yc, a, a));
+  else if (CL.type === "beam110") sh.push(shp("rect", "mask", xR - a/2, yc - w/2, a, w));
+  else if (CL.type === "beam100") sh.push(shp("rect", "mask", xR + d[0]*a/2, yc + d[1]*a/2, a, w, 135));
+  Object.assign(SIM, { fk: "100", rot: 0, rate: CL.rate, t: Math.max(5, Math.round(1.3*tT)), pre: 0, hx: Math.ceil(hx/5)*5, hy: Math.ceil(hy/5)*5, dxMax: Math.max(1, H/12),
+    shapes: sh, sel: -1, preset: -1, cutPos: Math.round(yc - 0.15*H), cutAxis: "y", owner: "corner", wfLoaded: null });
+  SIM.probes = [{ x: xL, y: yc, ux: SQ2, uy: SQ2, s0: -0.45*Math.min(A, 2*Ly1), s1: reach + m }, { x: xR, y: yc, ux: -SQ2, uy: SQ2, s0: -0.45*Math.min(A, 2*Ly1), s1: reach + m }];
+  SIM.cl = { tT, H, xL, xR, yc, type: CL.type };
+  CL.built = true; syncSimInputs(); renderShapeList();
+  if (run) { simRun(); buildSim(true); }
+}
+function clValueAt(h, k, t) {   // probe k of the history at time t (linear)
+  let i = 0; while (i < h.t.length - 2 && h.t[i + 1] < t) i++;
+  const f = Math.max(0, Math.min(1, (t - h.t[i])/Math.max(1e-9, h.t[i + 1] - h.t[i]))); return h.probe[k][i] + f*(h.probe[k][i + 1] - h.probe[k][i]);
+}
+function clReadout() {
+  if (S.mode !== "corner" || !SIM.cl) return;
+  const r = SIM.res, h = SIM.hist, cl = SIM.cl, rows = [], g = SIM.grid ? SIM.grid.dx : 1, R100 = SRATES[SIM.rate].r["100"];
+  rows.push(["target time t = H/R(100)", `${cl.tT.toFixed(1)} min (R(100) = ${(R100*60).toFixed(1)} µm/h)`]);
+  if (r && r.st && r.st.probe) rows.push([`corner at ${r.tv.toFixed(0)} min`, `left ${r.st.probe[0].toFixed(1)} µm, right ${r.st.probe[1].toFixed(1)} µm`]);
+  if (h && h.probe && h.probe.length === 2) {
+    const a = clValueAt(h, 0, cl.tT), b = clValueAt(h, 1, cl.tT);
+    rows.push(["unprotected at H", a < -g ? `attacked: corner moved ${(-a).toFixed(1)} µm along the diagonal (U/H = ${(-a/cl.H).toFixed(2)})` : `sharp within the grid (${a.toFixed(1)} µm)`]);
+    if (cl.type !== "none") {
+      rows.push(["compensated at H", Math.abs(b) <= 1.5*g ? `sharp: ${b.toFixed(1)} µm from the mask corner (grid ${g} µm)` : b > 0 ? `compensation not used up: ${b.toFixed(1)} µm of silicon left past the corner` : `compensation too small: corner eaten by ${(-b).toFixed(1)} µm`]);
+      // the corner of the mesa itself starts to be eaten when the probe drops below -1.5 cells
+      const lim = -1.5*g; let tc = null;
+      for (let i = 1; i < h.t.length; i++) if (h.probe[1][i - 1] > lim && h.probe[1][i] <= lim) { const f = (h.probe[1][i - 1] - lim)/(h.probe[1][i - 1] - h.probe[1][i]); tc = h.t[i - 1] + f*(h.t[i] - h.t[i - 1]); break; }
+      rows.push(["mesa corner first attacked", tc != null ? `at ${tc.toFixed(1)} min, depth ≈ ${(R100*tc).toFixed(1)} µm (aim: H = ${cl.H} µm${R100*tc >= cl.H ? ", protected long enough" : ""})` : h.probe[1][h.probe[1].length - 1] > lim ? "not within the run: protected" : "from the start"]);
+    }
+  } else rows.push(["corner history", SIM.running ? "when the run finishes" : "run first"]);
+  $("clReadout").innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+}
+$("clRate").innerHTML = Object.entries(SRATES).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join("");
+$("clRate").addEventListener("change", e => { CL.rate = e.target.value; clSync(); });
+$("clType").addEventListener("change", e => { CL.type = e.target.value; Object.assign(CL, clRule(CL.type, CL.H)); clSync(); clBuild(); });
+for (const [id, k] of [["clH", "H"], ["clA", "A"], ["clS1", "s1"], ["clS2", "s2"]]) $(id).addEventListener("change", e => { const v = Number(e.target.value); if (v >= 0) CL[k] = v; clSync(); });
+$("clAuto").addEventListener("click", () => { const r = clRule(CL.type, CL.H); CL.s1 = r.s1; CL.s2 = r.s2; clSync(); clBuild(); });
+$("clRun").addEventListener("click", () => clBuild());
 // hover on the 3D surface
 function simHover(ev) {
   if (!simScene || !simScene.pick) { tip.style.display = "none"; return; }
@@ -2719,7 +3091,7 @@ function simHover(ev) {
   else {
     const n = inf.qn, a = Math.acos(Math.min(1, Math.abs(n[2])))*C.DEG, c = inf.cls;
     const kind = a < 3 ? (n[2] > 0 ? "floor or top face" : "underside (faces down)") : a > 87 ? "vertical wall" : n[2] < 0 ? "overhanging wall (faces down)" : "sloping wall";
-    const [e1, e2, e3] = simFrame().e, cc = [0, 1, 2].map(i => e1[i]*n[0] + e2[i]*n[1] + e3[i]*n[2]);
+    const [e1, e2, e3] = simE(), cc = [0, 1, 2].map(i => e1[i]*n[0] + e2[i]*n[1] + e3[i]*n[2]);
     if (!SIM.rtab) SIM.rtab = EE.makeRate(SRATES[SIM.rate].r);
     const R = EE.rateC(SIM.rtab, cc[0], cc[1], cc[2]);
     tip.innerHTML = c.ang <= 4 ? `<b>${idxHTML(c.hkl)}</b> &nbsp;{${c.fam}} (within ${c.ang.toFixed(1)}°)<br>${kind}, ${a.toFixed(1)}° to the surface<br>model rate ${R.toFixed(3)} µm/min`
@@ -2730,12 +3102,426 @@ function simHover(ev) {
   tip.style.left = `${Math.min(ev.clientX - r.left + 14, r.width - 220)}px`; tip.style.top = `${ev.clientY - r.top + 12}px`; tip.style.display = "block";
 }
 
+
+// --------------------------------------------------------------------- FIND ORIENTATION scene
+// The crystal is turned by FD.delta (deg, counter-clockwise) from the flat. Test structures (slot fans, circle arcs) are etched
+// with the analytic plane model and read with a finite resolution; the estimate turns the device shapes (error reduction).
+const FD = { relW: 1, delta: 1.3, reveal: true, rate: "PAL30", final: true, t: 600, res: 0.5, items: [], sel: 0, correct: false, wfLoaded: null, mc: null, an: null };
+const FD_KINDS = { fan: "slot fan (test)", arc: "circle arc (test)" };
+function fdLecture(wf) {   // the layouts of Lec 10 p. 18 ((100)) and pp. 25-26 ((110)); positions and fan sizes are design choices
+  const fan = { kind: "fan", x: 14, y: -6, n: 11, step: 1, L: 10000, w: 20, gap: 2000, base: 0 };
+  if (wf === "110") return [fan, { kind: "arc", R: 48.9, phi0: 90, n: 41, p: 51, d: 40 },
+    Object.assign(shp("para", "open", 0, 0, 3000, 200, 0, { a1: 54.7356, a2: 125.2644 }), { kind: "shape", x: -14, y: 18 })];
+  return [fan, { kind: "arc", R: 45, phi0: 180, n: 41, p: 80, d: 75 },
+    Object.assign(shp("rect", "open", 0, 0, 8000, 200), { kind: "shape", x: 14, y: 26 })];
+}
+const fdWf = () => S.wf === "111" ? "100" : S.wf;
+const fdFrameE = () => C.FRAMES[fdWf()];
+const rot2 = (p, deg, c = [0, 0]) => { const a = deg/C.DEG, cs = Math.cos(a), sn = Math.sin(a), x = p[0] - c[0], y = p[1] - c[1]; return [c[0] + x*cs - y*sn, c[1] + x*sn + y*cs]; };
+const hsup = (P, n) => { let m = -Infinity; for (const p of P) m = Math.max(m, p[0]*n[0] + p[1]*n[1]); return m; };
+const dirv = deg => [Math.cos(deg/C.DEG), Math.sin(deg/C.DEG)];
+const quant = v => FD.res > 0 ? Math.round(v/FD.res)*FD.res : v;
+// a trench width is read to the larger of the readable length and a fraction of the width (the whole trench must fit the field)
+const quantW = v => { const r = Math.max(FD.res, FD.relW/100*Math.abs(v)); return r > 0 ? Math.round(v/r)*r : v; };
+// etched outline (z = 0) of a convex opening O (µm, wafer frame) when the crystal is turned by rot
+function fdEtch(O, rot) {
+  const c = O.reduce((a, p) => [a[0] + p[0]/O.length, a[1] + p[1]/O.length], [0, 0]), L = O.map(p => [p[0] - c[0], p[1] - c[1]]);
+  const H = C.etchH(fdWf(), L, FD.final ? { rot } : { rot, t: FD.t, rates: RATES[FD.rate].r });
+  return C.outline(H, 0).map(p => [p[0] + c[0], p[1] + c[1]]);
+}
+// geometry of the items (µm)
+function fdSlots(it) {
+  const mid = (it.n - 1)/2, nb = dirv(it.base + 90), out = [];
+  for (let k = 0; k < it.n; k++) {
+    const th = it.base + (k - mid)*it.step, cx = it.x*1000 + (k - mid)*it.gap*nb[0], cy = it.y*1000 + (k - mid)*it.gap*nb[1];
+    out.push({ th, rel: th - it.base, poly: C.rect(cx, cy, it.L, it.w, th) });
+  }
+  return out;
+}
+function fdCircles(it) {
+  const R = it.R*1000, dphi = it.p/R, mid = (it.n - 1)/2, out = [];
+  for (let k = 0; k < it.n; k++) { const ph = it.phi0/C.DEG + (k - mid)*dphi; out.push({ c: [R*Math.cos(ph), R*Math.sin(ph)], rel: (k - mid)*dphi*C.DEG }); }
+  return out;
+}
+const fdStep = it => it.kind === "fan" ? it.step : it.p/(it.R*1000)*C.DEG;   // angular step between neighbours (deg)
+// ---- estimators (also used by the random-wafer test with the long-etch formulas)
+function estFan(rel, W, step) {   // rel: slot angles from the base (deg); W: read widths
+  const n = W.length, m = Math.min(...W), ks = W.map((v, k) => v === m ? k : -1).filter(k => k >= 0);
+  if (n === 1) return { kind: "single", note: "one slot: |δ| only, sign unknown" };
+  const k0 = ks[0], k1 = ks[ks.length - 1];
+  if (k0 === 0 || k1 === n - 1) return { valid: false, note: `narrowest slot at the end of the fan: δ is beyond ${rel[k0 === 0 ? 0 : n - 1].toFixed(2)}°` };
+  const pick = (rel[k0] + rel[k1])/2, uPick = (k1 - k0)*step/2 + step/2;
+  let fit = pick, uFit = uPick;
+  if (k0 === k1) {   // V through the minimum: the higher neighbour fixes the slope
+    const a = W[k0 - 1], b = W[k0 + 1], hi = Math.max(a, b) - m;
+    if (hi > 0) { const rr = Math.max(FD.res, FD.relW/100*Math.max(a, b)); fit = rel[k0] + 0.5*step*(a - b)/hi; uFit = Math.min(uPick, step*rr/hi + 1e-4); }
+  }
+  return { valid: true, pick, uPick, fit, uFit, k: k0 };
+}
+function estArc(rel, D, step) {   // D[k]: read edge offset between circles k and k+1 (µm); rel: circle angles from the middle
+  const mids = D.map((_, k) => (rel[k] + rel[k + 1])/2), zs = D.map((v, k) => v === 0 ? k : -1).filter(k => k >= 0);
+  if (zs.length) {
+    const a = zs[0], b = zs[zs.length - 1];
+    if (a === 0 && b === D.length - 1) return { valid: false, note: "all offsets read zero: use a larger pitch or a finer reading" };
+    if (a === 0 || b === D.length - 1) return { valid: false, note: `the zero readings reach the end of the arc: δ may lie beyond ±${(Math.abs(rel[0]) + step/2).toFixed(2)}°` };
+    return { valid: true, est: (mids[a] + mids[b])/2, unc: (mids[b] - mids[a])/2 + step/2, k: Math.round((a + b)/2) };
+  }
+  for (let k = 0; k + 1 < D.length; k++) if (Math.sign(D[k]) !== Math.sign(D[k + 1])) {
+    const f = D[k]/(D[k] - D[k + 1]); return { valid: true, est: mids[k] + f*(mids[k + 1] - mids[k]), unc: step/2, k };
+  }
+  return { valid: false, note: `no aligned pair: δ is outside ±${(Math.abs(rel[0]) + step/2).toFixed(2)}° of the arc` };
+}
+// ---- analysis of the current layout at the true δ
+function fdAnalyse() {
+  const d = FD.delta, res = [];
+  FD.items.forEach((it, i) => {
+    if (it.kind === "fan") {
+      const sl = fdSlots(it), nT = dirv(it.base + d + 90);
+      const out = sl.map(s => fdEtch(s.poly, d)), W = out.map(O => hsup(O, nT) + hsup(O, [-nT[0], -nT[1]])), Wr = W.map(quantW);
+      const e = estFan(sl.map(s => s.rel), Wr, it.step);
+      if (e.kind === "single") { const x = Math.max(-1, Math.min(1, (Wr[0] - it.w)/it.L)); e.abs = Math.asin(Math.max(0, x))*C.DEG; }
+      res[i] = { it, sl, out, W, Wr, e };
+    } else if (it.kind === "arc") {
+      const cs = fdCircles(it), m = (it.n - 1)/2, tauMid = it.phi0 + 90, nT = dirv(tauMid + d + 90);
+      const base = C.circle(it.d/2, 48), out = cs.map(c => fdEtch(base.map(p => [p[0] + c.c[0], p[1] + c.c[1]]), d));
+      const h = out.map(O => hsup(O, nT)), D = h.slice(1).map((v, k) => v - h[k]);
+      // sign: positive when the next circle sits further along the true edge normal; orient so D grows with the angle
+      const Dr = D.map(quant), e = estArc(cs.map(c => c.rel), Dr, fdStep(it));
+      res[i] = { it, cs, out, D, Dr, e, tauMid, m };
+    } else res[i] = { it };
+  });
+  // best estimate: the valid one with the smallest uncertainty
+  let best = null;
+  res.forEach((r, i) => {
+    if (!r.e || !r.e.valid) return;
+    const v = r.it.kind === "fan" ? { est: r.e.fit, unc: r.e.uFit } : { est: r.e.est, unc: r.e.unc };
+    if (!best || v.unc < best.unc) best = Object.assign(v, { i });
+  });
+  // devices: widening beyond the mask edge before and after turning the mask by the estimate
+  const corr = FD.correct && best ? best.est : 0;
+  res.forEach(r => {
+    if (r.it.kind !== "shape") return;
+    const sh = Object.assign({}, r.it, { cx: r.it.x*1000, cy: r.it.y*1000 });
+    const run = turn => {
+      const pieces = shapePieces(sh).map(P => P.map(p => rot2(p, turn, [sh.cx, sh.cy])));
+      const outs = pieces.map(P => fdEtch(P, d));
+      return { pieces, outs, U: Math.max(0, ...outs.map(O => beyondAll(O, pieces))) };
+    };
+    r.before = run(0); r.after = best ? run(best.est) : null; r.now = FD.correct && best ? r.after : r.before;
+    if (sh.type === "rect" && fdWf() === "100") { const l = Math.max(sh.w, sh.h), a = Math.abs((sh.w >= sh.h ? sh.ang : sh.ang + 90) - d)/C.DEG; r.eq71 = l*Math.abs(Math.sin(a)*Math.cos(a)); }
+  });
+  FD.an = { res, best, corr };
+  return FD.an;
+}
+// ---- random wafers: long-etch formulas, readings rounded
+function fdMonteCarlo(N = 500, dmax = 5) {
+  let seed = 12345; const rnd = () => { seed = (seed*1664525 + 1013904223) >>> 0; return seed/4294967296; };
+  const stats = FD.items.map(() => ({ n: 0, ok: 0, se: 0, mx: 0, inside: 0 })), best = { n: 0, se: 0, mx: 0, inside: 0 };
+  for (let t = 0; t < N; t++) {
+    const d = (2*rnd() - 1)*dmax; let b = null;
+    FD.items.forEach((it, i) => {
+      let e = null, est, unc;
+      if (it.kind === "fan") {
+        const mid = (it.n - 1)/2, rel = [], W = [];
+        for (let k = 0; k < it.n; k++) { const th = (k - mid)*it.step, a = (it.base + th - (it.base + d))/C.DEG; rel.push(th); W.push(quantW(it.w*Math.abs(Math.cos(a)) + it.L*Math.abs(Math.sin(a)))); }
+        e = estFan(rel, W, it.step); if (e.valid) { est = e.fit; unc = e.uFit; }
+      } else if (it.kind === "arc") {
+        const st = fdStep(it), mid = (it.n - 1)/2, rel = [], D = [];
+        for (let k = 0; k < it.n; k++) rel.push((k - mid)*st);
+        for (let k = 0; k + 1 < it.n; k++) D.push(quant(it.p*Math.sin(((rel[k] + rel[k + 1])/2 - d)/C.DEG)));
+        e = estArc(rel, D, st); if (e.valid) { est = e.est; unc = e.unc; }
+      } else return;
+      const s = stats[i]; s.n++;
+      if (e && e.valid) { const err = Math.abs(est - d); s.ok++; s.se += err*err; s.mx = Math.max(s.mx, err); if (err <= unc + 1e-9) s.inside++; if (!b || unc < b.unc) b = { est, unc }; }
+    });
+    if (b) { const err = Math.abs(b.est - d); best.n++; best.se += err*err; best.mx = Math.max(best.mx, err); if (err <= b.unc + 1e-9) best.inside++; }
+  }
+  return { N, dmax, stats, best };
+}
+// ---- 3D view: the wafer with the etched outlines
+function buildFind(resetView) {
+  scene = new THREE.Scene(); scene.background = COL["scene-bg"]; clearLabels();
+  const wf = fdWf(), an = FD.an || fdAnalyse();
+  radius = 600; frameR = 0.53*WAFER.D;
+  const g = new THREE.Group(); scene.add(g);
+  g.add(waferGroup(wf, S.wtype, 0, 0, { flatLabel: idxHTML(C.FRAME_IDX[wf][0], "[", "]") + " (as drawn)" }));
+  const z = 3, lift = P => P.map(p => [p[0], p[1], z]);
+  const maskL = [], etchL = [], R = WAFER.D/2;
+  for (const r of an.res) {
+    if (!r) continue;
+    if (r.sl) { r.sl.forEach(s => maskL.push(lift(s.poly))); r.out.forEach(O => etchL.push(lift(O))); }
+    else if (r.cs) { const base = C.circle(r.it.d/2, 24); r.cs.forEach(c => maskL.push(lift(base.map(p => [p[0] + c.c[0], p[1] + c.c[1]])))); r.out.forEach(O => etchL.push(lift(O)));
+      const ends = [r.cs[0].c, r.cs[r.cs.length - 1].c]; g.add(linesFromLoops([[[ends[0][0], ends[0][1], z], [ends[1][0], ends[1][1], z]]], COL.accent)); }
+    else if (r.now) { r.now.pieces.forEach(P => maskL.push(lift(P))); r.now.outs.forEach(O => etchL.push(lift(O))); }
+  }
+  if (maskL.length) g.add(linesFromLoops(maskL, COL.mask));
+  if (etchL.length) { const L = linesFromLoops(etchL, COL.ghost); g.add(L); }
+  // nominal ⟨110⟩ (along the flat) and, if shown, the true one
+  g.add(linesFromLoops([[[-0.9*R, 0, z], [0.9*R, 0, z]]], COL["s-ink"], { dashed: true, dash: 1500, gap: 1000, opacity: 0.6 }));
+  labelTag = "wafer";
+  addLabel(new V3(-0.92*R, 0.06*R, 0), "flat direction", "");
+  if (FD.reveal) { const u = dirv(FD.delta); g.add(linesFromLoops([[[-0.9*R*u[0], -0.9*R*u[1], z], [0.9*R*u[0], 0.9*R*u[1], z]]], COL.accent)); addLabel(new V3(0.92*R*u[0], 0.92*R*u[1] - 0.05*R, 0), `true ⟨110⟩ (δ = ${FD.delta.toFixed(2)}°)`, "acc"); }
+  an.res.forEach((r, i) => {
+    if (!r) return; const p = fdPos(r.it);
+    addLabel(new V3(p[0], p[1] + 0.05*R, 0), `${i + 1}`, i === FD.sel ? "acc big" : "big");
+  });
+  labelTag = null;
+  scene.userData.center = new V3(0, 0, 0); scene.userData.die = null;
+  if (resetView) setView(dirOf(89.5, -90), scene.userData.center, true);
+  resize();
+}
+const fdPos = it => it.kind === "arc" ? [it.R*1000*Math.cos(it.phi0/C.DEG), it.R*1000*Math.sin(it.phi0/C.DEG)] : [it.x*1000, it.y*1000];
+// ---- panel: readout, device table, cards
+const fdFmt = (v, u) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(v === 0 ? 2 : Math.abs(u) < 0.01 ? 4 : 3)}° ± ${u < 0.001 ? u.toExponential(1) : u.toFixed(u < 0.01 ? 4 : 3)}°`;
+function fdReadout() {
+  const an = FD.an, rows = [];
+  rows.push(["true δ", FD.reveal ? `${FD.delta.toFixed(3)}°` : "hidden"]);
+  rows.push(["flat alone", "δ unknown within ±2–5° (Lec 10 p. 18)"]);
+  an.res.forEach((r, i) => {
+    if (!r || r.it.kind === "shape") return;
+    const e = r.e, name = r.it.kind === "fan" ? `${i + 1} · slot fan` : `${i + 1} · circle arc (${fdStep(r.it).toFixed(3)}° steps)`;
+    if (e.kind === "single") rows.push([name, `one slot, width ${r.Wr[0].toFixed(1)} µm → |δ| ≈ ${e.abs.toFixed(3)}°, sign unknown`]);
+    else if (!e.valid) rows.push([name, e.note]);
+    else if (r.it.kind === "fan") rows.push([name, `narrowest slot: ${fdFmt(e.pick, e.uPick)}<br>V-fit of 3 widths: ${fdFmt(e.fit, e.uFit)}`]);
+    else rows.push([name, `aligned pair near circle ${e.k + 1}: ${fdFmt(e.est, e.unc)}`]);
+  });
+  const b = an.best;
+  rows.push(["best estimate", b ? `${fdFmt(b.est, b.unc)} (item ${b.i + 1})` : "no valid reading"]);
+  if (b && FD.reveal) rows.push(["error of the estimate", `${(b.est - FD.delta).toFixed(4)}° (${Math.abs(b.est - FD.delta) <= b.unc + 1e-9 ? "inside" : "outside"} the stated ±)`]);
+  $("fdReadout").innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+  const dv = [];
+  an.res.forEach((r, i) => {
+    if (!r || r.it.kind !== "shape") return;
+    dv.push([`${i + 1} · ${SHAPE_TYPES[r.it.type].name}`, `beyond the mask edge: ${r.before.U.toFixed(1)} µm as drawn${r.after ? `, ${r.after.U.toFixed(1)} µm turned by the estimate` : ""}${r.eq71 != null ? `<br>eq. 7.1, l sin δ cos δ = ${r.eq71.toFixed(1)} µm (Pal & Sato p. 289)` : ""}`]);
+  });
+  if (!dv.length) dv.push(["devices", "add a shape (rectangle, L, parallelogram …) to see the error it gets"]);
+  $("fdDevice").innerHTML = dv.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+  const mc = FD.mc;
+  $("fdMCout").innerHTML = mc ? [[`random δ`, `${mc.N} wafers, δ uniform in ±${mc.dmax}° (flat alone: rms ${(mc.dmax/Math.sqrt(3)).toFixed(2)}°)`],
+    ...mc.stats.map((s, i) => s.n ? [`${i + 1} · ${FD_KINDS[FD.items[i].kind]}`, `read on ${(100*s.ok/s.n).toFixed(0)} %; rms error ${Math.sqrt(s.se/Math.max(1, s.ok)).toFixed(4)}°, max ${s.mx.toFixed(4)}°; inside its ± on ${(100*s.inside/Math.max(1, s.ok)).toFixed(0)} %`] : null).filter(Boolean),
+    ["best of the layout", `read on ${(100*mc.best.n/mc.N).toFixed(0)} %; rms ${Math.sqrt(mc.best.se/Math.max(1, mc.best.n)).toFixed(4)}°, max ${mc.best.mx.toFixed(4)}°`]].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("") : "";
+}
+function fdCards() {
+  const dirs = inPlaneDirs(fdFrameE());
+  const f = (i, k, v, lbl, st = 1) => `<label>${lbl}<input type="number" step="${st}" data-i="${i}" data-k="${k}" aria-label="${lbl}" value="${+(+(v == null ? 0 : v)).toFixed(3)}"></label>`;
+  $("fdList").innerHTML = FD.items.map((it, i) => {
+    let body;
+    if (it.kind === "fan") body = `<div class="fl">${f(i, "x", it.x, "x mm")}${f(i, "y", it.y, "y mm")}${f(i, "n", it.n, "slots")}${f(i, "step", it.step, "step°", 0.1)}${f(i, "base", it.base, "middle at°", 1)}</div><div class="fl">${f(i, "L", it.L, "length L", 500)}${f(i, "w", it.w, "width w", 5)}${f(i, "gap", it.gap, "spacing", 100)}<span class="note">µm</span></div>`;
+    else if (it.kind === "arc") body = `<div class="fl">${f(i, "R", it.R, "arc R mm", 0.5)}${f(i, "phi0", it.phi0, "at°", 90)}${f(i, "n", it.n, "circles")}</div><div class="fl">${f(i, "p", it.p, "pitch p", 1)}${f(i, "d", it.d, "Ø d", 5)}<span class="note">µm · step p/R = ${fdStep(it).toFixed(4)}°, range ±${(fdStep(it)*(it.n - 1)/2).toFixed(2)}°</span></div>`;
+    else { const T = SHAPE_TYPES[it.type]; const lab = { w: "w", h: "h", t: it.type === "ring" || it.type === "star" ? "inner" : "arm t", n: it.type === "star" ? "points" : "sides" };
+      body = `<div class="fl">${f(i, "x", it.x, "x mm")}${f(i, "y", it.y, "y mm")}${it.type === "para" ? f(i, "a1", it.a1, "side 1°") + f(i, "a2", it.a2, "side 2°") : f(i, "ang", it.ang, "angle°")}</div>${T.f.length ? `<div class="fl">${T.f.map(k => f(i, k, it[k], lab[k], k === "n" ? 1 : 5)).join("")}<span class="note">µm</span></div>` : ""}${dirSelects(it, i, dirs)}`; }
+    const name = it.kind === "shape" ? `device: ${SHAPE_TYPES[it.type].name}` : FD_KINDS[it.kind];
+    return `<div class="card${i === FD.sel ? " sel" : ""}" data-row="${i}"><div class="top"><span><b>${i + 1}. ${name}</b></span><button class="x" data-fddel="${i}" title="remove" aria-label="remove">×</button></div>${body}</div>`;
+  }).join("") || `<p class="note">Nothing on the mask. Pick an item and press Add, or double-click on the map.</p>`;
+}
+// ---- the wafer map editor
+function drawFindMap() {
+  const cv = $("fdCanvas"); if (!cv) return;
+  const ctx = cv.getContext("2d"), wcss = cv.clientWidth || 300, R = WAFER.D/2, s = (wcss - 20)/(2*R), hcss = 2*R*s + 34;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = Math.round(wcss*dpr); cv.height = Math.round(hcss*dpr); cv.style.height = `${hcss}px`;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, wcss, hcss);
+  FD.ed = { s, ox: 10 + R*s, oy: 10 + R*s }; cv.style.height = `${hcss + 14}px`; cv.height = Math.round((hcss + 14)*dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const toC = p => [FD.ed.ox + p[0]*s, FD.ed.oy - p[1]*s], col = c => "#" + COL[c].getHexString();
+  const path = P => { ctx.beginPath(); P.map(toC).forEach((q, k) => k ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1])); ctx.closePath(); };
+  const wf = fdWf(), O = waferOutline(wf, S.wtype);
+  path(O); ctx.fillStyle = col("mask"); ctx.globalAlpha = 0.28; ctx.fill(); ctx.globalAlpha = 1; ctx.strokeStyle = col("s-ink"); ctx.lineWidth = 1; ctx.stroke();
+  // flats in the accent colour
+  ctx.strokeStyle = col("accent"); ctx.lineWidth = 2.5; ctx.beginPath();
+  for (let i = 0; i < O.length; i++) { const a = O[i], b = O[(i + 1) % O.length]; if (Math.hypot(b[0] - a[0], b[1] - a[1]) > 5000) { const A = toC(a), B = toC(b); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); } }
+  ctx.stroke();
+  // nominal and true ⟨110⟩ through the centre
+  ctx.lineWidth = 1; ctx.setLineDash([5, 4]); ctx.strokeStyle = col("s-ink"); ctx.globalAlpha = 0.5; ctx.beginPath(); { const A = toC([-0.95*R, 0]), B = toC([0.95*R, 0]); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); } ctx.stroke(); ctx.globalAlpha = 1; ctx.setLineDash([]);
+  if (FD.reveal) { const u = dirv(FD.delta); ctx.strokeStyle = col("accent"); ctx.beginPath(); const A = toC([-0.95*R*u[0], -0.95*R*u[1]]), B = toC([0.95*R*u[0], 0.95*R*u[1]]); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); ctx.stroke(); }
+  const an = FD.an || fdAnalyse();
+  an.res.forEach((r, i) => {
+    if (!r) return; const sel = i === FD.sel;
+    ctx.strokeStyle = sel ? col("accent") : col("s-ink"); ctx.lineWidth = sel ? 1.8 : 1;
+    if (r.sl) { r.out.forEach(P => { path(P); ctx.fillStyle = col("ghost"); ctx.globalAlpha = 0.45; ctx.fill(); ctx.globalAlpha = 1; }); r.sl.forEach(q => { path(q.poly); ctx.stroke(); }); }
+    else if (r.cs) { ctx.beginPath(); r.cs.forEach((c, k) => { const q = toC(c.c); k ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }); ctx.lineWidth = sel ? 4 : 3; ctx.stroke(); }
+    else if (r.now) {
+      r.now.outs.forEach(P => { path(P); ctx.fillStyle = col("ghost"); ctx.globalAlpha = 0.45; ctx.fill(); ctx.globalAlpha = 1; });
+      r.now.pieces.forEach(P => { path(P); ctx.stroke(); });
+      const q = toC([r.it.x*1000, r.it.y*1000]); ctx.beginPath(); ctx.arc(q[0], q[1], 3, 0, 2*Math.PI); ctx.stroke();
+    }
+    const q = toC(fdPos(r.it)); ctx.fillStyle = sel ? col("accent") : col("s-ink"); ctx.font = "600 12px IBM Plex Sans, sans-serif"; ctx.fillText(String(i + 1), q[0] + 6, q[1] - 6);
+  });
+  ctx.font = "11px IBM Plex Sans, sans-serif"; ctx.fillStyle = col("s-ink");
+  ctx.fillText(`(${wf}) ${S.wtype}-type, Ø 100 mm. Dashed: flat direction${FD.reveal ? "; orange: true ⟨110⟩" : ""}.`, 12, 10 + 2*R*s + 16);
+  ctx.fillText("Violet: mask; blue: etched outline.", 12, 10 + 2*R*s + 30);
+  if (S.compass) drawCompass(ctx, 10 + 2*R*s - 40, 50, 28, inPlaneDirs(fdFrameE()), FD.reveal ? FD.delta : 0);
+}
+// microscope view and the reading plot of the selected item
+function drawScope() {
+  const cv = $("fdScope"), ctx = cv.getContext("2d"), wcss = cv.clientWidth || 600, hcss = 240, dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = Math.round(wcss*dpr); cv.height = Math.round(hcss*dpr); cv.style.height = `${hcss}px`;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, wcss, hcss);
+  const col = c => "#" + COL[c].getHexString(), an = FD.an, r = an && an.res[FD.sel];
+  ctx.fillStyle = col("scene-bg"); ctx.fillRect(0, 0, wcss, hcss);
+  ctx.font = "11px IBM Plex Mono, monospace"; ctx.fillStyle = col("s-ink");
+  if (!r) { ctx.fillText("Select an item on the map.", 12, 24); $("fdScopeNote").textContent = ""; return; }
+  // gather mask polygons and etched outlines in a local frame
+  let mask = [], etch = [], before = [], marks = [], note = "";
+  if (r.cs) {
+    const k0 = r.e.valid ? r.e.k : Math.floor((r.cs.length - 1)/2), ks = []; for (let k = k0 - 3; k <= k0 + 4; k++) if (k >= 0 && k < r.cs.length) ks.push(k);
+    const base = C.circle(r.it.d/2, 48);
+    for (const k of ks) { mask.push(base.map(p => [p[0] + r.cs[k].c[0], p[1] + r.cs[k].c[1]])); etch.push(r.out[k]); }
+    for (let j = 0; j + 1 < ks.length; j++) { const k = ks[j], a = r.cs[k].c, b = r.cs[k + 1].c; marks.push({ p: [(a[0] + b[0])/2, (a[1] + b[1])/2], t: `${r.Dr[k] >= 0 ? "+" : ""}${r.Dr[k].toFixed(1)}` }); }
+    note = `Circles ${ks[0] + 1}–${ks[ks.length - 1] + 1} of ${r.cs.length}. Numbers: read edge offset between neighbours (µm, ${FD.res} µm steps). The aligned pair reads 0.`;
+  } else if (r.sl) {
+    r.sl.forEach((q, k) => { mask.push(q.poly); etch.push(r.out[k]); marks.push({ p: q.poly.reduce((a, p) => [a[0] + p[0]/4, a[1] + p[1]/4], [0, 0]), t: `${r.Wr[k].toFixed(0)}` }); });
+    note = `${r.sl.length} slots; numbers: read etched width (µm). The narrowest slot is closest to ⟨110⟩.`;
+  } else if (r.now) {
+    mask = r.now.pieces; etch = r.now.outs; if (r.after && FD.correct) before = r.before.outs;
+    note = `Device ${FD.sel + 1}: mask (violet), etched outline (blue)${before.length ? ", etched outline without the correction (dashed)" : ""}. Beyond the mask edge: ${r.now.U.toFixed(1)} µm.`;
+  }
+  const all = mask.concat(etch, before).flat(); if (!all.length) return;
+  // turn so that the long direction of the view is horizontal
+  let x0 = Math.min(...all.map(p => p[0])), x1 = Math.max(...all.map(p => p[0])), y0 = Math.min(...all.map(p => p[1])), y1 = Math.max(...all.map(p => p[1]));
+  const turn = (y1 - y0) > (x1 - x0) ? 90 : 0, c0 = [(x0 + x1)/2, (y0 + y1)/2], T = p => turn ? [-(p[1] - c0[1]), p[0] - c0[0]] : [p[0] - c0[0], p[1] - c0[1]];
+  const tAll = all.map(T); x0 = Math.min(...tAll.map(p => p[0])); x1 = Math.max(...tAll.map(p => p[0])); y0 = Math.min(...tAll.map(p => p[1])); y1 = Math.max(...tAll.map(p => p[1]));
+  const sc = Math.min((wcss - 40)/Math.max(1, x1 - x0), (hcss - 50)/Math.max(1, y1 - y0)), X = p => 20 + (T(p)[0] - x0)*sc + ((wcss - 40) - (x1 - x0)*sc)/2, Y = p => 25 + (y1 - T(p)[1])*sc;
+  const path = P => { ctx.beginPath(); P.forEach((p, k) => k ? ctx.lineTo(X(p), Y(p)) : ctx.moveTo(X(p), Y(p))); ctx.closePath(); };
+  ctx.fillStyle = col("mask"); ctx.globalAlpha = 0.25; ctx.fillRect(0, 0, wcss, hcss); ctx.globalAlpha = 1;
+  for (const P of etch) { path(P); ctx.fillStyle = col("s-top"); ctx.fill(); ctx.strokeStyle = col("ghost"); ctx.lineWidth = 1.4; ctx.stroke(); }
+  ctx.setLineDash([4, 3]); for (const P of before) { path(P); ctx.strokeStyle = col("ghost"); ctx.lineWidth = 1; ctx.stroke(); } ctx.setLineDash([]);
+  for (const P of mask) { path(P); ctx.strokeStyle = col("mask"); ctx.lineWidth = 1.2; ctx.stroke(); }
+  ctx.fillStyle = col("accent"); ctx.font = "600 11px IBM Plex Mono, monospace"; ctx.textAlign = "center";
+  for (const m of marks) ctx.fillText(m.t, X(m.p), Math.min(hcss - 6, Y(m.p) + (r.cs ? -0.6*r.it.d*sc - 6 : 4)));
+  ctx.textAlign = "left"; ctx.fillStyle = col("s-ink"); ctx.font = "11px IBM Plex Mono, monospace";
+  const bar = niceStep((x1 - x0)/5); ctx.fillRect(20, hcss - 12, bar*sc, 2); ctx.fillText(`${bar >= 1000 ? bar/1000 + " mm" : bar + " µm"}`, 24 + bar*sc, hcss - 8);
+  $("fdScopeNote").textContent = note + (turn ? " (view turned by 90°)" : "");
+}
+function drawFdPlot() {
+  const cv = $("fdPlot"), ctx = cv.getContext("2d"), wcss = cv.clientWidth || 600, hcss = 200, dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = Math.round(wcss*dpr); cv.height = Math.round(hcss*dpr); cv.style.height = `${hcss}px`;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, wcss, hcss);
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim(), ink = css("--ink"), mut = css("--muted"), line = css("--line");
+  const an = FD.an, r = an && an.res[FD.sel], leg = $("fdPlotLeg");
+  ctx.font = "11px IBM Plex Mono, monospace"; ctx.fillStyle = mut;
+  if (!r || !(r.sl || r.cs)) { ctx.fillText("Select a test structure (slot fan or circle arc) to see its reading.", 8, 24); leg.innerHTML = ""; return; }
+  const xs = r.sl ? r.sl.map(q => q.rel) : r.cs.slice(1).map((c, k) => (c.rel + r.cs[k].rel)/2), ys = r.sl ? r.Wr : r.Dr;
+  const L = 52, Rm = 12, T = 10, B = 30, W = wcss - L - Rm, H = hcss - T - B;
+  let xa = Math.min(...xs), xb = Math.max(...xs); const pad = 0.04*(xb - xa || 1); xa -= pad; xb += pad;
+  let ya = Math.min(0, ...ys), yb = Math.max(0, ...ys); if (yb - ya < 1e-9) yb = ya + 1; const py = 0.08*(yb - ya); ya -= ya < 0 ? py : 0; yb += py;
+  const X = x => L + (x - xa)/(xb - xa)*W, Y = y => T + H - (y - ya)/(yb - ya)*H;
+  ctx.strokeStyle = line; ctx.textAlign = "right";
+  const ys0 = niceStep((yb - ya)/4); for (let v = Math.ceil(ya/ys0)*ys0; v <= yb; v += ys0) { ctx.beginPath(); ctx.moveTo(L, Y(v)); ctx.lineTo(L + W, Y(v)); ctx.stroke(); ctx.fillText(v.toFixed(ys0 < 1 ? 1 : 0), L - 5, Y(v) + 4); }
+  ctx.textAlign = "center"; const xs0 = niceStep((xb - xa)/6); for (let v = Math.ceil(xa/xs0)*xs0; v <= xb; v += xs0) ctx.fillText(v.toFixed(xs0 < 0.1 ? 2 : xs0 < 1 ? 1 : 0), X(v), T + H + 14);
+  ctx.fillText(r.sl ? "slot angle from the middle slot (°)" : "angle of the line between neighbours, from the middle (°)", L + W/2, hcss - 2);
+  ctx.save(); ctx.translate(11, T + H/2); ctx.rotate(-Math.PI/2); ctx.fillText(r.sl ? "etched width (µm)" : "edge offset (µm)", 0, 0); ctx.restore();
+  ctx.strokeStyle = ink; ctx.beginPath(); ctx.moveTo(L, T); ctx.lineTo(L, T + H); ctx.moveTo(L, Y(0)); ctx.lineTo(L + W, Y(0)); ctx.stroke();
+  const acc = "#" + COL.accent.getHexString(), gh = "#" + COL.ghost.getHexString();
+  ctx.fillStyle = gh; xs.forEach((x, k) => { ctx.beginPath(); ctx.arc(X(x), Y(ys[k]), 3, 0, 2*Math.PI); ctx.fill(); });
+  const vline = (x, c, dash) => { if (x < xa || x > xb) return; ctx.strokeStyle = c; ctx.setLineDash(dash); ctx.beginPath(); ctx.moveTo(X(x), T); ctx.lineTo(X(x), T + H); ctx.stroke(); ctx.setLineDash([]); };
+  const e = r.e, est = e.valid ? (r.sl ? e.fit : e.est) : null;
+  if (est != null) vline(est, acc, []);
+  if (FD.reveal) vline(FD.delta, ink, [4, 3]);
+  leg.innerHTML = `<span><i style="background:${gh}"></i>reading</span>${est != null ? `<span><i style="background:${acc}"></i>estimate ${est.toFixed(4)}°</span>` : ""}${FD.reveal ? `<span><i style="background:${ink}"></i>true δ ${FD.delta.toFixed(4)}°</span>` : ""}`;
+}
+function findChanged(resetView) { fdAnalyse(); fdCards(); fdReadout(); drawFindMap(); drawScope(); drawFdPlot(); if (S.mode === "find") buildFind(!!resetView); }
+function fdSync() { $("fdDelta").value = FD.reveal ? FD.delta : ""; $("fdDelta").disabled = !FD.reveal; $("fdReveal").checked = FD.reveal; $("fdRate").value = FD.rate; $("fdFinal").checked = FD.final; $("fdTime").value = FD.t; $("fdRes").value = FD.res; $("fdRelW").value = FD.relW; $("fdCorrect").checked = FD.correct; }
+$("fdRate").innerHTML = Object.entries(RATES).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join("");
+$("fdType").innerHTML = Object.entries(FD_KINDS).map(([k, v]) => `<option value="${k}">${v}</option>`).join("") + Object.entries(SHAPE_TYPES).filter(([, v]) => !v.noAdd).map(([k, v]) => `<option value="${k}">device: ${v.name}</option>`).join("");
+$("fdDelta").addEventListener("change", e => { const v = Number(e.target.value); if (isFinite(v)) FD.delta = v; FD.mc = null; findChanged(); });
+$("fdRandom").addEventListener("click", () => { FD.delta = Math.round((Math.random()*10 - 5)*1000)/1000; FD.reveal = false; FD.mc = null; fdSync(); findChanged(); });
+$("fdReveal").addEventListener("change", e => { FD.reveal = e.target.checked; fdSync(); findChanged(); });
+$("fdRate").addEventListener("change", e => { FD.rate = e.target.value; findChanged(); });
+$("fdFinal").addEventListener("change", e => { FD.final = e.target.checked; findChanged(); });
+$("fdTime").addEventListener("change", e => { const v = Number(e.target.value); if (v > 0) FD.t = v; findChanged(); });
+$("fdRes").addEventListener("change", e => { const v = Number(e.target.value); if (v >= 0) FD.res = v; FD.mc = null; findChanged(); });
+$("fdRelW").addEventListener("change", e => { const v = Number(e.target.value); if (v >= 0) FD.relW = v; FD.mc = null; findChanged(); });
+$("fdCorrect").addEventListener("change", e => { FD.correct = e.target.checked; findChanged(); });
+$("fdMC").addEventListener("click", () => { FD.mc = fdMonteCarlo(500, 5); fdReadout(); });
+function fdNew(type, x, y) {
+  if (type === "fan") return { kind: "fan", x, y, n: 11, step: 1, L: 10000, w: 20, gap: 2000, base: 0 };
+  if (type === "arc") { const R = Math.max(5, Math.min(48, Math.hypot(x, y))); return { kind: "arc", R: Math.round(R*10)/10, phi0: Math.round(Math.atan2(y, x)*C.DEG/90)*90, n: 41, p: 80, d: 75 }; }
+  const d = SHAPE_TYPES[type].d, o = { w: 10*d.w, h: 10*(d.h || d.w) }; if (d.t) o.t = 10*d.t; if (d.n) o.n = d.n;
+  return Object.assign(shp(type, "open", 0, 0, o.w, o.h), d, o, { kind: "shape", x: Math.round(x), y: Math.round(y) }, type === "para" ? paraSides(fdFrameE()) : {});
+}
+$("fdAdd").addEventListener("click", () => { FD.items.push(fdNew($("fdType").value, -20 + 5*(FD.items.length % 6), 30)); FD.sel = FD.items.length - 1; FD.mc = null; findChanged(); });
+$("fdDup").addEventListener("click", () => { const it = FD.items[FD.sel]; if (!it) return; const c = JSON.parse(JSON.stringify(it)); if (c.kind === "arc") c.phi0 = (c.phi0 + 90) % 360; else { c.x += 5; c.y -= 5; } FD.items.push(c); FD.sel = FD.items.length - 1; FD.mc = null; findChanged(); });
+$("fdDel").addEventListener("click", () => { if (!FD.items[FD.sel]) return; FD.items.splice(FD.sel, 1); FD.sel = Math.min(FD.sel, FD.items.length - 1); FD.mc = null; findChanged(); });
+$("fdReset").addEventListener("click", () => { FD.items = fdLecture(fdWf()); FD.sel = 0; FD.mc = null; findChanged(true); });
+$("fdList").addEventListener("change", e => {
+  const el = e.target, i = Number(el.dataset.i), k = el.dataset.k; if (!(i >= 0) || !k || el.value === "") return;
+  let v = Number(el.value); if (!isFinite(v)) return;
+  if (k === "n") v = Math.max(1, Math.min(201, Math.round(v)));
+  FD.items[i][k] = v; FD.sel = i; FD.mc = null; findChanged();
+});
+$("fdList").addEventListener("click", e => {
+  const d = e.target.closest("[data-fddel]"); if (d) { FD.sel = Number(d.dataset.fddel); $("fdDel").click(); return; }
+  const r = e.target.closest("[data-row]"); if (r && !["INPUT", "LABEL", "SELECT", "OPTION"].includes(e.target.tagName)) { FD.sel = Number(r.dataset.row); findChanged(); }
+});
+(() => {
+  const cv = $("fdCanvas"); let drag = null;
+  const world = ev => { const r = cv.getBoundingClientRect(); return [(ev.clientX - r.left - FD.ed.ox)/FD.ed.s/1000, -(ev.clientY - r.top - FD.ed.oy)/FD.ed.s/1000]; };   // mm
+  const hit = (x, y) => {   // nearest item within 3 mm of its position or its drawn parts
+    let bi = -1, bd = 3;
+    (FD.an ? FD.an.res : []).forEach((r, i) => {
+      if (!r) return; const pts = [fdPos(r.it)];
+      if (r.cs) for (let k = 0; k < r.cs.length; k += 4) pts.push(r.cs[k].c); if (r.sl) r.sl.forEach(q => pts.push(...q.poly));
+      for (const p of pts) { const dd = Math.hypot(p[0]/1000 - x, p[1]/1000 - y); if (dd < bd) { bd = dd; bi = i; } }
+    });
+    return bi;
+  };
+  cv.addEventListener("pointerdown", ev => {
+    if (!FD.ed) return; const [x, y] = world(ev), i = hit(x, y);
+    FD.sel = i; if (i >= 0) { drag = { i, x0: x, y0: y, it: JSON.parse(JSON.stringify(FD.items[i])), moved: false }; cv.setPointerCapture(ev.pointerId); }
+    fdCards(); drawFindMap(); drawScope(); drawFdPlot();
+  });
+  cv.addEventListener("pointermove", ev => {
+    if (!drag) return; const [x, y] = world(ev), it = FD.items[drag.i]; drag.moved = true;
+    if (it.kind === "arc") { const R = Math.hypot(x, y); it.R = Math.round(Math.max(5, Math.min(49.5, R))*10)/10; it.phi0 = (Math.round(Math.atan2(y, x)*C.DEG/90)*90 + 360) % 360; }
+    else { it.x = Math.round((drag.it.x + x - drag.x0)*2)/2; it.y = Math.round((drag.it.y + y - drag.y0)*2)/2; }
+    fdAnalyse(); drawFindMap();
+  });
+  const end = () => { if (drag && drag.moved) { FD.mc = null; findChanged(); } drag = null; };
+  cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);
+  cv.addEventListener("dblclick", ev => { const [x, y] = world(ev); if (hit(x, y) >= 0) return; FD.items.push(fdNew($("fdType").value, x, y)); FD.sel = FD.items.length - 1; FD.mc = null; findChanged(); });
+  cv.addEventListener("keydown", ev => {
+    const it = FD.items[FD.sel]; if (!it) return;
+    const st = ev.shiftKey ? 5 : 1, mv = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, st], ArrowDown: [0, -st] }[ev.key];
+    if (mv) { ev.preventDefault(); if (it.kind === "arc") { it.R = Math.max(5, Math.min(49.5, it.R + (mv[1] || mv[0]))); } else { it.x += mv[0]; it.y += mv[1]; } FD.mc = null; findChanged(); }
+    else if (ev.key === "Delete" || ev.key === "Backspace") { ev.preventDefault(); $("fdDel").click(); }
+  });
+})();
+// the selected item, without the rest of the wafer, in the other scenes (with the same flat error)
+function fdLocalShapes(r) {
+  if (r.cs) { const k0 = r.e.valid ? r.e.k : Math.floor((r.cs.length - 1)/2), c0 = r.cs[k0].c, out = [];
+    for (let k = Math.max(0, k0 - 2); k <= Math.min(r.cs.length - 1, k0 + 3); k++) out.push(shp("circle", "open", r.cs[k].c[0] - c0[0], r.cs[k].c[1] - c0[1], r.it.d));
+    return out; }
+  if (r.sl) { const c0 = [r.it.x*1000, r.it.y*1000]; return r.sl.map(q => shp("rect", "open", q.poly.reduce((a, p) => a + p[0]/4, 0) - c0[0], q.poly.reduce((a, p) => a + p[1]/4, 0) - c0[1], r.it.L, r.it.w, q.th)); }
+  const sh = Object.assign({}, r.it, { cx: 0, cy: 0 }); delete sh.kind; delete sh.x; delete sh.y;
+  if (FD.correct && FD.an.best) { if (sh.type === "para") { sh.a1 += FD.an.best.est; sh.a2 += FD.an.best.est; } else sh.ang += FD.an.best.est; }
+  return [sh];
+}
+$("fdToPit").addEventListener("click", () => {
+  const r = FD.an && FD.an.res[FD.sel]; if (!r) return;
+  if (S.wf === "111") setWafer("100");
+  S.pitShapes = fdLocalShapes(r).map(sh => Object.assign(sh, { pre: 0 })); S.open = "custom"; S.pitSel = -1; S.rot = FD.delta; S.rate = FD.rate;
+  $("pitRot").value = S.rot; $("selRate").value = S.rate; S.final = FD.final; $("cFinal").checked = S.final;
+  S.mode = "pit"; pressed($("segM"), "m", "pit"); fillOpenings(); renderCustomList(); prepPit(); rebuild(true);
+});
+$("fdToSim").addEventListener("click", () => {
+  const r = FD.an && FD.an.res[FD.sel]; if (!r) return;
+  const shapes = fdLocalShapes(r), pts = shapes.flatMap(shapeLoops).flat();
+  const ext = Math.max(...pts.map(p => Math.abs(p[0]))), eyy = Math.max(...pts.map(p => Math.abs(p[1])));
+  if (ext > 1500 || eyy > 1500) { $("fdMCout").innerHTML = `<dt>simulator</dt><dd>This item is ${(2*ext/1000).toFixed(1)} mm wide; the 3D simulator takes up to about 3 mm. Use the Etched pit, or shorten the slots.</dd>`; return; }
+  if (S.wf === "111") setWafer("100");
+  const R = RATES[FD.rate].r, tt = FD.final ? Math.min(600, Math.round(2*Math.max(...pts.map(p => Math.hypot(...p)))/Math.max(1e-3, R["100"]))) : FD.t;
+  Object.assign(SIM, { fk: { "100": "100", "110": "110f" }[fdWf()], rate: PIT2SIM[FD.rate], rot: FD.delta, t: Math.max(5, tt), pre: 0, hx: Math.ceil((ext + 80)/10)*10, hy: Math.ceil((eyy + 80)/10)*10, dxMax: 0,
+    shapes: shapes.map(s => Object.assign(s, { nx: 1, ny: 1, px: 0, py: 0 })), sel: -1, preset: -1, cutPos: 0, cutAxis: "y", wfLoaded: S.wf, owner: "sim", probes: null, cl: null });
+  fillSimPresets(); $("simPreset").value = "-1"; $("simNote").innerHTML = `Item ${FD.sel + 1} from the “Find orientation” scene, with the flat error δ = ${FD.delta.toFixed(3)}° (the crystal is turned; the mask is as drawn).`;
+  syncSimInputs(); renderShapeList(); S.mode = "sim"; pressed($("segM"), "m", "sim"); simRun(); rebuild(true);
+});
+
 // ---- theater view (wide stage, panel below) and full screen
 function setTheater(on) {
   document.body.classList.toggle("theater", on); $("bTheater").setAttribute("aria-pressed", String(on));
   $("bTheater").textContent = on ? "Exit theater view" : "Theater view";
   try { localStorage.setItem("o3d-theater", on ? "1" : "0"); } catch (e) {}
-  requestAnimationFrame(() => { resize(); if (S.mode === "sim") { drawSection(); drawMaskEditor(); drawSimGraph(); } else if (S.mode === "pit") { drawPitGraph(); drawPitEditor(); } });
+  requestAnimationFrame(() => { resize(); if (simLike()) { drawSection(); drawMaskEditor(); drawSimGraph(); } else if (S.mode === "pit") { drawPitGraph(); drawPitEditor(); } else if (S.mode === "find") { drawFindMap(); drawScope(); drawFdPlot(); } });
 }
 $("bTheater").addEventListener("click", () => setTheater(!document.body.classList.contains("theater")));
 document.addEventListener("keydown", e => {
@@ -2765,7 +3551,8 @@ readColors(); setHold(); fillOpenings(); fillPcTypes(); renderCustomList(); $("s
 prepPit(); $("tNow").textContent = `${sliderToT().toFixed(0)} min`;
 rebuild(true);
 requestAnimationFrame(loop);
-window.__o3d = { get simScene() { return simScene; }, COL, S, C, get pit() { return pit; }, get model() { return model; }, setView, dirOf, VIEWS, selectFace, setWafer, SIM, EE, SPRESETS, loadPreset, simRun, buildSim, classifyN, vTraces };
+window.__o3d = { get simScene() { return simScene; }, COL, S, C, get pit() { return pit; }, get model() { return model; }, setView, dirOf, VIEWS, selectFace, setWafer, SIM, EE, SPRESETS, loadPreset, simRun, buildSim, classifyN, vTraces,
+  FD, fdAnalyse, fdMonteCarlo, estFan, estArc, fdEtch, waferOutline, inPlaneDirs, CL, clBuild, RATES, SRATES, simE, beyondAll, shapePieces, shp, rebuild, findChanged };
 })();
 
 </script>

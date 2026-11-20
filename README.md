@@ -2,16 +2,23 @@
 
 An interactive 3D page for anisotropic wet etching of single-crystal silicon, made for ESS5850 Micro System Design (National Tsing Hua University, fall 2026).
 
-It has three scenes:
+It has five scenes:
 
 - **Model on wafer**: the HW2 {111} octahedron held over a (100), (110) or (111) wafer. Click a face to see its trace on the surface and its angle to the surface.
 - **Etched pit**: the cavity under a convex mask opening, built as an intersection of moving crystal planes (n·x ≤ h + R·t over the {100}, {110} and {111} planes).
 - **Etched pit**: a 2D mask editor like the simulator's: add shapes, drag them, double-click to add one at a spot, arrow keys to nudge, Delete to remove, and edit sizes, angle and pre-etch in the list; editing an example turns it into your own mask. Shapes: rectangle, circle, L, U, cross, frame, ring, star and more. A non-convex opening is split into overlapping convex pieces; each piece etches on its own and the cavity drawn is their union, so concave corners stop at {111}. Convex mask corners are not undercut in this scene (they are in real KOH etching; Kovacs et al. 1998, Fig. 1(c); Pal et al. 2007, Sec. 2), so "Open in etch simulator" runs the same mask in the level-set model.
 - **Mask film**: drawn in its own colour as an opaque layer with exaggerated thickness, so it reads apart from the silicon and shows the overhang where the silicon is undercut.
-- **Etch simulator**: a 3D level-set simulation of KOH etching for any mask drawn in the mask editor. It includes 20 examples: cantilevers and bridges released by undercut, mesa corner attack with three compensation types, windows of different sizes and shapes that merge, (110) vertical walls and trenches, (111) pre-etched holes, and four (100) masks at 45° to the flat after Paul et al. (2024).
+- **Etch simulator**: a 3D level-set simulation of KOH or EDP etching for any mask drawn in the mask editor. It includes 20 examples: cantilevers and bridges released by undercut, mesa corner attack with three compensation types, windows of different sizes and shapes that merge, (110) vertical walls and trenches, (111) pre-etched holes, and four (100) masks at 45° to the flat after Paul et al. (2024).
+
+- **Corner lab**: two mesas whose convex corners face each other, etched in the level-set model, with no compensation, a square (a = H), a ⟨110⟩ beam or a ⟨100⟩ beam (Lec 10 pp. 14–16; Pal & Sato pp. 235–249; Pal et al. 2007). The readout gives the time to reach the target depth H, the unprotected undercut U/H and how much of the compensated corner is eaten; the graph follows the top corner of each mesa.
+- **Find orientation**: the wafer flat is only good to 2–5° (Lec 10 p. 18), so this scene puts alignment structures on a whole 100 mm wafer turned by a flat error δ (set or random and hidden): a fan of long slots at stepped angles (Lec 10 p. 18) and circles on an arc (Ensell on (100), Tseng and Chang on (110); Lec 10 pp. 18, 25–26; Pal & Sato Ch. 7). It reads δ from the etched structures, applies the correction to the device layout and shows the error left on a device. A random-wafer test runs 500 wafers with δ uniform in ±5°. Structures can be added, moved (drag, double-click, arrow keys) and sent to the Etched pit or the simulator.
 
 Other functions:
 
+- **Whole wafer** (pit and simulator): draws the 100 mm wafer with its primary flat (32.5 mm) and, for the chosen doping type, its secondary flat (18 mm) after Lec 10 p. 10 and the Topline drawing; the die can be placed anywhere on the wafer and the view can jump between wafer and die.
+- **Flat error** (pit and simulator): turns the crystal by δ under the mask, as when the mask is aligned to an imperfect flat.
+- **Edges along a crystal direction** (Lec 10 p. 22): each shape card has an "edges along" list of in-plane directions of the wafer surface (with the {111} traces and their wall angles marked), and a compass in the 2D editors shows them. A parallelogram can have both sides set, for example the two {111} traces of a (110) wafer.
+- **Etchants**: KOH 30, 40, 50 wt% (Pal & Sato Table 4.1), KOH 42 wt% (Lec 4-1 p. 7), KOH 57 wt% (Lec 10 p. 11), EDP Type S (Lec 10 p. 11) and EDP "F&K" 50:30:3 (Finne & Klein 1967, scaled to Lec 10 p. 11).
 - **Shapes**: rectangle, circle, ellipse, triangle, regular polygon, L, U, cross, frame, ring and star, each as opening or mask, with rotation and an nx × ny array at a set pitch.
 - **Colour scales**: colour the etched surface by crystal plane, depth, local etch rate R(n) or arrival time, with a colour bar.
 - **Graphs**: depth, undercut and released mask area against etch time (simulator), and depth and outline size against time (pit).
@@ -33,6 +40,9 @@ Huu Quoc Anh Nguyen, Student ID X1150030, Department of Engineering and System S
 - **Front motion.** The level-set equation φ_t + R(n)|∇φ| = 0 is solved on a cubic grid. It uses a first-order Lax-Friedrichs scheme with fast-marching re-initialisation, and φ never rises, because etching cannot be undone.
 - **Mask edge (assumption).** Etchant cannot reach silicon through the mask. Under the mask, the level set therefore has no downward slope at the top boundary, and where the wall there is near-vertical (|dφ/dz| < 0.35 |∇ₕφ|) the vertical gradient is set to zero so the wall moves sideways at the full {100} rate. Check (`tools/etch-engine-tests/undercut-100.js`): a 100 µm square window at 45° on (100), 40 min in 30 wt% KOH, gives 26.5 µm sideways undercut at dx = 2 µm (21.0 µm at 3 µm, 15.5 µm at 4 µm) against 0.797 × 40 = 31.9 µm (Pal & Sato Table 4.1, p. 87); the older clamp gave 23.4 µm at 2 µm. A ⟨110⟩-aligned pit still keeps 0 µm undercut (`validate-cases.js`).
 - **Check.** For a 200 µm square window on (100) in 30 wt% KOH for 60 min, the simulated depth is 47.9 µm, against 0.797 × 60 = 47.82 µm. The {111} walls come out at 54.5°, against 54.74°.
+- **EDP rates (assumption).** Lec 10 p. 11 gives EDP rates for {100}, {110} and {111} only (51, 57 and 1.25 µm/h). All other orientations use the three-rate interpolation, which equals the Hubbard three-parameter model in gnomonic coordinates (Radjenović et al. 2010, eq. 1). Lec 10 p. 16 orders EDP as (100) > (110) > (111), which the p. 11 values do not follow, so a second set "EDP F&K" uses the 50:30:3 ratio of Finne & Klein (1967, as listed in the Berkeley Microlab manual ch. 1.10) scaled to R(100) = 51 µm/h. With that set a trench along ⟨100⟩ gets 47° walls (Lec 10 p. 17: 45°); with Type S it gets 63°.
+- **Flat error check.** A 100 µm square on (100) with the crystal turned by 45° gives 32.0 µm depth (0.797 × 40 = 31.9 µm) and 23.8 µm undercut, the same as a square turned 45° on a true frame (22.2 µm), within one cell.
+- **Orientation finder (method).** In the long-etch limit a slot of length L and width w misaligned by α etches to width w cos α + L sin α; 3 cm at 1° gives 524 µm and at 0.06° 31.4 µm (Lec 10 p. 18: 524 and 33 µm). Device error is compared with U = l sin δ cos δ (Pal & Sato eq. 7.1, p. 289: 18 µm for 10 mm at 0.1°; here 17.45 µm). The full check log is in `tools/check-log-2026-11-20.md`.
 - **Known limits.** Silicon walls and beams narrower than about 8 grid cells thin slowly. This comes from numerical dissipation, not physics, and it is worst for walls oblique to the grid. Windows narrower than about 5 cells etch too slowly. Undercut on {111} walls is good to about one or two cells. Sideways undercut of vertical {100} walls lags by about 2–3 cells (see the check above), so use a fine grid when it matters.
 
 ## Wafer frames
@@ -53,6 +63,12 @@ Huu Quoc Anh Nguyen, Student ID X1150030, Department of Engineering and System S
 6. P. Pal, K. Sato, and S. Chandra, "Fabrication techniques of convex corners in a (1 0 0)-silicon wafer using bulk micromachining: a review," *J. Micromech. Microeng.*, vol. 17, no. 10, pp. R111–R133, 2007, doi: 10.1088/0960-1317/17/10/R01. Undercut at convex corners (Sec. 2) and corner compensation (Sec. 3.1).
 7. H. Q. A. Nguyen, "Origami tutorial: the {111} octahedron on (100), (110) and (111) wafers," ESS5850 study notes, Rev. 1, Oct. 2026.
 
+8. F.-G. Tseng, "Lecture 10: Bulk micromachining," *ESS 5810 Advanced Micro System Fabrication and Lab class notes* (file 16-Lec10Bulkmicromachining.pdf), National Tsing Hua University. Flats p. 10; KOH and EDP rates p. 11; corner attack pp. 14–16; ⟨100⟩ trench in EDP p. 17; flat error and alignment marks p. 18; in-plane directions p. 22; (110) alignment pp. 25–26.
+9. UC Berkeley Marvell Nanofabrication Laboratory, "Chapter 1.10: Miscellaneous etches," *Lab manual*, https://nanolab.berkeley.edu/labmanual/chap1/1.10miscetch.pdf. EDP compositions and rates after R. M. Finne and D. L. Klein, *J. Electrochem. Soc.*, vol. 114, p. 965, 1967, and A. Reisman et al., *J. Electrochem. Soc.*, vol. 126, p. 1406, 1979.
+10. B. Radjenović, M. Radmilović-Radjenović, and M. Mitrić, "Level set approach to anisotropic wet etching of silicon," *Sensors*, vol. 10, no. 5, pp. 4950–4967, 2010, doi: 10.3390/s100504950. Three-parameter rate model, eq. 1.
+11. Pal and Sato (ref. 2), Ch. 7, pp. 287–320: misalignment and eq. 7.1 (p. 289), flat accuracy (p. 294), pre-etched patterns (p. 296), Ensell's circles (pp. 297–299), mask-writer limits (p. 304).
+12. Topline Corp., "Wafer dimensions: 100 mm standard," drawing A 174004 A, https://www.topline.tv/drawings/pdf/wafers/wafer_flats_thickness.pdf. Primary and secondary flat lengths.
+
 ## Repository layout
 
 | Path | Contents |
@@ -62,4 +78,5 @@ Huu Quoc Anh Nguyen, Student ID X1150030, Department of Engineering and System S
 | `tools/etch-engine-tests/etch-engine.js` | The level-set engine as a Node module, for tests |
 | `tools/etch-engine-tests/validate-cases.js` | Depth and undercut for 5 reference cases (`npm run validate`) |
 | `tools/etch-engine-tests/undercut-100.js` | Sideways {100} undercut against grid size (`node tools/etch-engine-tests/undercut-100.js 2 40`) |
+| `tools/check-log-2026-11-20.md` | The 12 checks and the fixes made for the wafer, EDP, corner lab and finder release |
 | `tools/etch-engine-tests/browser-presets.js` | Runs every example in headless Chromium and saves screenshots (`npm run test:browser`) |

@@ -158,7 +158,7 @@ function etchEngineFactory() {
   function step(S, tEnd, maxSteps) {
     const { Nx, Ny, Nz, NXY, dx, B, phi, T, Hr, gOpen, open, RT, al } = S;
     const [e1, e2, e3] = S.e, tab = RT.tab, N = RT.N, WT = N + 1;
-    const WALL2 = Math.pow(S.cfg.wallTan || 0.35, 2);
+    const WALL2 = 0.35*0.35;
     const ax = al[0], ay = al[1], az = al[2], idx = 1/dx;
     let ns = 0;
     while (S.t < tEnd - 1e-9 && ns < maxSteps) {
@@ -173,8 +173,7 @@ function etchEngineFactory() {
         const px = 0.5*(dxm + dxp), py = 0.5*(dym + dyp);
         let zm, wall = false;
         if (k > 0) zm = phi[q-NXY]; else { zm = 2*c - zp; if (open[r]) { if (zm > gOpen[r]) zm = gOpen[r]; }
-          else if (S.cfg.ghost === "extrap") {}
-          else if ((S.cfg.ghost || "noflux") === "noflux" && dzp*dzp < WALL2*(px*px + py*py)) wall = true;   // near-vertical wall under the mask
+          else if (dzp*dzp < WALL2*(px*px + py*py)) wall = true;   // near-vertical wall under the mask: no flux through the mask, no z dissipation
           else if (zm < c) zm = c; }
         const dzm = (c - zm)*idx, pz = wall ? 0 : -0.5*(dzm + dzp);   // grid k runs downward
         const pn = Math.sqrt(px*px + py*py + pz*pz);
@@ -385,7 +384,18 @@ function etchEngineFactory() {
     }
     // release of each "mask" shape: fraction of its masked area with no silicon under it (top node row)
     const rel = (S.shapeMap || []).map(m => { let a = 0, b = 0; for (const q of m) { a++; if (T[q] <= tv) b++; } return a ? b/a : null; });
-    return { depth, under, susp: susp*dx*dx, through: through*dx*dx, rel };
+    // probes (corner lab): along a ray from (x, y) in direction (ux, uy), from s0 (inside the silicon) outward to s1, the last
+    // position s where the top node row under the mask is still silicon; s0 - dx/2 if the start is already etched
+    const probe = (S.cfg.probes || []).map(pr => {
+      let last = pr.s0 - 0.5*dx;
+      for (let s = pr.s0; s <= pr.s1; s += 0.25*dx) {
+        const i = Math.floor((pr.x + s*pr.ux - S.cfg.X0)/dx), j = Math.floor((pr.y + s*pr.uy - S.cfg.Y0)/dx);
+        if (i < 0 || j < 0 || i >= Nx || j >= Ny) break;
+        const q = j*Nx + i; if (!S.open[q] && T[q] > tv) last = s; else break;   // silicon under the mask (mesa or compensation)
+      }
+      return last;
+    });
+    return { depth, under, susp: susp*dx*dx, through: through*dx*dx, rel, probe };
   }
   function shapeMaps(S) {
     const { Nx, Ny, dx, cfg } = S; S.shapeMap = cfg.shapes.map(() => []);
@@ -421,8 +431,8 @@ function etchEngineFactory() {
             lastPost = Date.now();
             const r = view(S.t, msg.cut, msg.cutMesh); r.type = done ? "done" : "progress"; r.id = msg.id; r.ms = Date.now() - t0; r.steps = S.steps;
             if (done) {   // etch history from the arrival-time field: depth, undercut and released mask area against time
-              const nh = 48, h = { t: [], depth: [], under: [], susp: [] };
-              for (let i = 0; i <= nh; i++) { const ti = S.t*i/nh, st = stats(S, ti); h.t.push(ti); h.depth.push(st.depth); h.under.push(st.under); h.susp.push(st.susp); }
+              const nh = 48, h = { t: [], depth: [], under: [], susp: [], probe: (S.cfg.probes || []).map(() => []) };
+              for (let i = 0; i <= nh; i++) { const ti = S.t*i/nh, st = stats(S, ti); h.t.push(ti); h.depth.push(st.depth); h.under.push(st.under); h.susp.push(st.susp); st.probe.forEach((v, k) => h.probe[k].push(v)); }
               r.hist = h;
             }
             post(r, tr(r));
