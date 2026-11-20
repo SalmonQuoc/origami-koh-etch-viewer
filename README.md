@@ -1,15 +1,12 @@
-# Origami 3D viewer and KOH etch simulator
+# Origami 3D viewer: KOH and EDP etching of silicon
 
-An interactive 3D page for anisotropic wet etching of single-crystal silicon, made for ESS5850 Micro System Design (National Tsing Hua University, fall 2026).
+An interactive 3D page for anisotropic wet etching of single-crystal silicon. It was made as a study aid for ESS5850 Micro System Design and ESS 5810 Advanced Micro System Fabrication and Lab (Prof. Fan-Gang Tseng, National Tsing Hua University, fall 2026). It is not official course material: every number names its source, so check it against your own lecture notes.
 
 It has five scenes:
 
 - **Model on wafer**: the HW2 {111} octahedron held over a (100), (110) or (111) wafer. Click a face to see its trace on the surface and its angle to the surface.
-- **Etched pit**: the cavity under a convex mask opening, built as an intersection of moving crystal planes (n·x ≤ h + R·t over the {100}, {110} and {111} planes).
-- **Etched pit**: a 2D mask editor like the simulator's: add shapes, drag them, double-click to add one at a spot, arrow keys to nudge, Delete to remove, and edit sizes, angle and pre-etch in the list; editing an example turns it into your own mask. Shapes: rectangle, circle, L, U, cross, frame, ring, star and more. A non-convex opening is split into overlapping convex pieces; each piece etches on its own and the cavity drawn is their union, so concave corners stop at {111}. Convex mask corners are not undercut in this scene (they are in real KOH etching; Kovacs et al. 1998, Fig. 1(c); Pal et al. 2007, Sec. 2), so "Open in etch simulator" runs the same mask in the level-set model.
-- **Mask film**: drawn in its own colour as an opaque layer with exaggerated thickness, so it reads apart from the silicon and shows the overhang where the silicon is undercut.
+- **Etched pit**: the cavity under a mask opening, built as an intersection of moving crystal planes (n·x ≤ h + R·t over the {100}, {110} and {111} planes). It has a 2D mask editor like the simulator's: add shapes, drag them, double-click to add one at a spot, use the arrow keys to nudge, press Delete to remove, and edit sizes, angle and pre-etch in the list; editing an example turns it into your own mask. A non-convex opening is split into overlapping convex pieces; each piece etches on its own and the cavity drawn is their union, so concave corners stop at {111}. Convex mask corners are not undercut in this scene (they are in real KOH etching; Kovacs et al. 1998, Fig. 1(c); Pal et al. 2007, Sec. 2), so "Open this mask in the etch simulator" runs the same mask in the level-set model.
 - **Etch simulator**: a 3D level-set simulation of KOH or EDP etching for any mask drawn in the mask editor. It includes 20 examples: cantilevers and bridges released by undercut, mesa corner attack with three compensation types, windows of different sizes and shapes that merge, (110) vertical walls and trenches, (111) pre-etched holes, and four (100) masks at 45° to the flat after Paul et al. (2024).
-
 - **Corner lab**: two mesas whose convex corners face each other, etched in the level-set model, with no compensation, a square (a = H), a ⟨110⟩ beam or a ⟨100⟩ beam (Lec 10 pp. 14–16; Pal & Sato pp. 235–249; Pal et al. 2007). The readout gives the time to reach the target depth H, the unprotected undercut U/H and how much of the compensated corner is eaten; the graph follows the top corner of each mesa.
 - **Find orientation**: the wafer flat is only good to 2–5° (Lec 10 p. 18), so this scene puts alignment structures on a whole 100 mm wafer turned by a flat error δ (set or random and hidden): a fan of long slots at stepped angles (Lec 10 p. 18) and circles on an arc (Ensell on (100), Tseng and Chang on (110); Lec 10 pp. 18, 25–26; Pal & Sato Ch. 7). It reads δ from the etched structures, applies the correction to the device layout and shows the error left on a device. A random-wafer test runs 500 wafers with δ uniform in ±5°. Structures can be added, moved (drag, double-click, arrow keys) and sent to the Etched pit or the simulator.
 
@@ -19,6 +16,7 @@ Other functions:
 - **Flat error** (pit and simulator): turns the crystal by δ under the mask, as when the mask is aligned to an imperfect flat.
 - **Edges along a crystal direction** (Lec 10 p. 22): each shape card has an "edges along" list of in-plane directions of the wafer surface (with the {111} traces and their wall angles marked), and a compass in the 2D editors shows them. A parallelogram can have both sides set, for example the two {111} traces of a (110) wafer.
 - **Etchants**: KOH 30, 40, 50 wt% (Pal & Sato Table 4.1), KOH 42 wt% (Lec 4-1 p. 7), KOH 57 wt% (Lec 10 p. 11), EDP Type S (Lec 10 p. 11) and EDP "F&K" 50:30:3 (Finne & Klein 1967, scaled to Lec 10 p. 11).
+- **Mask film**: drawn in its own colour as an opaque layer with exaggerated thickness, so it reads apart from the silicon and shows the overhang where the silicon is undercut.
 - **Shapes**: rectangle, circle, ellipse, triangle, regular polygon, L, U, cross, frame, ring and star, each as opening or mask, with rotation and an nx × ny array at a set pitch.
 - **Colour scales**: colour the etched surface by crystal plane, depth, local etch rate R(n) or arrival time, with a colour bar.
 - **Graphs**: depth, undercut and released mask area against etch time (simulator), and depth and outline size against time (pit).
@@ -28,11 +26,15 @@ Other functions:
 
 ## Run it
 
-Open `index.html` in a browser. The page loads three.js r128 from cdnjs and jsDelivr. Nothing needs to be built.
+Open `index.html` in a browser, or use the hosted copy at https://claude.ai/artifact/7YX2ZZKDeUP4KvxNpi8PPn. The page loads three.js r128 from cdnjs and jsDelivr. Nothing needs to be built.
 
 ## Author
 
-Huu Quoc Anh Nguyen, Student ID X1150030, Department of Engineering and System Science (ESS), National Tsing Hua University.
+Huu Quoc Anh Nguyen (Student ID X1150030), undergraduate exchange student from the University of Science and Technology of Hanoi (USTH), Vietnam, at the Department of Engineering and System Science (ESS), National Tsing Hua University (NTHU), Taiwan, in fall 2026. Background: semiconductor device physics and materials; interested in semiconductor process engineering.
+
+**Found an error?** Please open an issue in this repository with the scene, the settings and the source you compared with.
+
+**How to cite.** H. Q. A. Nguyen, "Origami 3D viewer: KOH and EDP etching of silicon," National Tsing Hua University, Nov. 2026. [Online]. Available: https://github.com/SalmonQuoc/origami-koh-etch-viewer
 
 **AI use.** This viewer was written with AI help (Claude, by Anthropic). I chose the content and checked the numbers against the sources listed below. The AI wrote most of the code.
 

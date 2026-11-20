@@ -160,6 +160,8 @@ section.refs { margin-top: 18px; font-size: 13px; color: var(--muted); max-width
 section.refs h2 { font: 600 17px/1.3 "Source Serif 4", Georgia, serif; color: var(--ink); margin: 0 0 6px; }
 section.refs ol { margin: 0; padding-left: 26px; }
 section.refs li { margin: 3px 0; }
+section.refs p { margin: 5px 0; }
+section.refs b { color: var(--ink); font-weight: 600; }
 section.refs a { color: var(--accent); }
 .cards { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
 .card { border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; cursor: pointer; }
@@ -180,8 +182,8 @@ table.shapes .dsel { margin: 0; }
 <div class="wrap">
 <header>
   <h1>Origami 3D viewer</h1>
-  <p>The HW2 {111} octahedron held over a (100), (110) or (111) wafer, the KOH pit it predicts, a KOH and EDP etch simulator for any mask (cantilevers, bridges, corner attack and compensation, merging windows), a corner lab for convex-corner compensation, and an orientation finder that reads the flat error from etched alignment marks. Drag to turn, scroll or pinch to zoom.</p>
-  <p class="byline"><b>Huu Quoc Anh Nguyen</b> · Student ID X1150030 · Department of Engineering and System Science (ESS), National Tsing Hua University · ESS5850 Micro System Design, fall 2026.<br>
+  <p>The HW2 {111} octahedron held over a (100), (110) or (111) wafer, the etched pit it predicts, a KOH and EDP etch simulator for any mask (cantilevers, bridges, corner attack and compensation, merging windows), a corner lab for convex-corner compensation, and an orientation finder that reads the flat error from etched alignment marks. Drag to turn, scroll or pinch to zoom.</p>
+  <p class="byline"><b>Huu Quoc Anh Nguyen</b> · Student ID X1150030 · Department of Engineering and System Science (ESS), National Tsing Hua University (exchange student from USTH, Vietnam) · ESS5850 Micro System Design, fall 2026 · <a href="#about">About this page</a><br>
   AI use: written with help from an AI assistant (Claude, Anthropic). I chose the content and checked the numbers against the sources listed under References; the AI wrote most of the code.</p>
 </header>
 
@@ -352,10 +354,11 @@ table.shapes .dsel { margin: 0; }
         <li><b>Rates between the measured orientations</b> (assumption): linear interpolation over a triangulation of the 12 orientations in the standard triangle (gnomonic coordinates), with cubic symmetry. It keeps the cusp at {111}: rates grow linearly with the off-angle, as measured for vicinal (111) (Pal &amp; Sato p. 104).</li>
         <li><b>Corner rules</b> (sourced, not imposed): concave corners show the slowest plane and convex corners the fastest (Lec 4-1 p. 8). The simulator does not apply these rules; they come out of the rate map.</li>
         <li><b>Front motion</b> (method): every surface element moves along its normal at R(hkl); this is solved as a 3D level set (first-order Lax-Friedrichs scheme, fast-marching re-initialisation) on a cubic grid. Accuracy is about one cell; sharp edges are rounded over about two cells. Check: square window on (100), 60 min in 30 wt%: depth 47.9 µm against 0.797 × 60 = 47.82 µm; {111} wall 54.5° against 54.74°.</li>
-        <li><b>Mask edge</b> (assumption): no etchant reaches silicon through the mask, so silicon under the mask is only removed from the side. At the top row under the mask the level set has no downward slope; where the wall there is near-vertical (slope below 0.35), the vertical gradient is set to zero. Check: a 100 &micro;m square window at 45&deg; on (100), 40 min in 30 wt% KOH, gives 26.5 &micro;m sideways undercut at a 2 &micro;m grid (15.5 &micro;m at 4 &micro;m) against 0.797 &times; 40 = 31.9 &micro;m (Pal &amp; Sato Table 4.1, p. 87); a &lt;110&gt;-aligned pit keeps 0 &micro;m. Use a fine grid when {100} undercut matters.</li>
-        <li><b>Known numerical limits</b>: silicon walls and beams narrower than about 8 grid cells thin slowly (numerical dissipation, not physics), most when they are oblique to the grid; windows narrower than about 5 cells etch too slowly. Use “fine” quality or wider features when this matters. Undercut values are good to about one to two cells.</li>
-        <li><b>Mask</b> (assumption): inert and infinitely thin; etchant reaches the silicon only through openings and under released mask. The SiO₂ loss shown for 42 wt% uses 0.34 µm/h (thermal oxide, Lec 4-1 p. 7).</li>
-        <li><b>Wafer</b>: 525 µm thick by default (100 mm wafer, Pal &amp; Sato Table 2.1, p. 30); only the depth that the etch can reach is simulated, and the back side is protected (assumption). Frames: (100) x = [1̄10] along the flat (Rev 1); (110) two conventions, see above; (111) flat along [11̄0] (assumption).</li>
+        <li><b>Mask edge</b> (assumption): no etchant reaches silicon through the mask, so silicon under the mask is only removed from the side. At the top row under the mask the level set has no downward slope; where the wall there is near-vertical (slope below 0.35), the vertical gradient is set to zero. Check: a 100 &micro;m square window at 45&deg; on (100), 40 min in 30 wt% KOH, gives 26.5 &micro;m sideways undercut at a 2 &micro;m grid (15.5 &micro;m at 4 &micro;m) against 0.797 &times; 40 = 31.9 &micro;m (Pal &amp; Sato Table 4.1, p. 87); a ⟨110⟩-aligned pit keeps 0 &micro;m. Use a fine grid when {100} undercut matters.</li>
+        <li><b>Known numerical limits</b>: silicon walls and beams narrower than about 8 grid cells thin slowly (numerical dissipation, not physics), most when they are oblique to the grid; windows narrower than about 5 cells etch too slowly. Use the “fine” resolution or wider features when this matters. Undercut values are good to about one to two cells.</li>
+        <li><b>Mask</b> (assumption): inert and infinitely thin; etchant reaches the silicon only through openings and under released mask. The SiO₂ loss shown uses 0.34 µm/h for KOH 42 wt% (thermal oxide, Lec 4-1 p. 7; Lec 10 p. 11) and the Lec 10 p. 11 values for KOH 57 wt% and EDP Type S; for the other etchants the rate is not in the course files.</li>
+        <li><b>Rates from Lec 10 and EDP</b>: KOH 57 wt% at 75 °C: {100} 25, {110} 39, {111} 0.5 µm/h (Lec 10 p. 11); its other orientations are the Pal &amp; Sato 50 wt% values scaled by R(100) (assumption). EDP Type S at 110 °C: {100} 51, {110} 57, {111} 1.25 µm/h (Lec 10 p. 11). EDP F&amp;K: ratio 50:30:3 (Finne and Klein 1967, Berkeley lab manual ch. 1.10) scaled to R(100) = 51 µm/h (assumption). For EDP only three orientations are given, so all other planes use the three-rate interpolation of Radjenović et al. (2010, eq. 1) (assumption). Lec 10 p. 16 orders EDP as (100) &gt; (110) &gt; (111), which the Type S values of p. 11 do not follow; F&amp;K does.</li>
+        <li><b>Wafer</b>: 525 µm thick by default (100 mm wafer, Pal &amp; Sato Table 2.1, p. 30); only the depth that the etch can reach is simulated, and the back side is protected (assumption). Frames: (100) x = [1̄10] along the flat (origami tutorial, Rev. 1); (110) two conventions, see above; (111) flat along [11̄0] (assumption).</li>
         <li><b>Pre-etch</b> (assumption): a vertical prism of the opening shape, as by deep RIE (Lec 4-1 p. 16), before KOH.</li>
         <li><b>Compensation data</b> (sourced): ⟨100⟩ beam width W = 2d (Pal &amp; Sato p. 249); ⟨110⟩ beam d = (0.5 W cos α + L sin α)/Ur (Pal &amp; Sato p. 244); KOH turns a 90° convex corner into 150 ± 2° (Pal &amp; Sato p. 235). Example dimensions not covered by these are design choices.</li>
       </ul>
@@ -382,7 +385,7 @@ table.shapes .dsel { margin: 0; }
     <canvas id="fdCanvas" class="maskcv" tabindex="0" aria-label="Mask map of the whole wafer"></canvas>
     <div class="addrow"><select id="fdType" aria-label="item to add"></select><button class="btn primary" id="fdAdd">Add</button><button class="btn" id="fdDup">Duplicate</button><button class="btn" id="fdDel">Delete</button><button class="btn" id="fdReset">Lecture layout</button></div>
     <div id="fdList" class="cards"></div>
-    <h3>Estimate of δ</h3>
+    <h3>Estimate of <span style="text-transform:none">δ</span></h3>
     <dl class="kv" id="fdReadout"></dl>
     <h3>Error reduction</h3>
     <div class="row"><label><input type="checkbox" id="fdCorrect"> turn the device shapes by the best estimate (second mask aligned to the test structures)</label></div>
@@ -405,10 +408,19 @@ table.shapes .dsel { margin: 0; }
 </div>
 
 <footer>
-<footer>
-  Scenes 1 and 2 (model and pit): each wall is a crystal plane that moves outward at its own rate from the mask opening (n·x ≤ h + R·t over the {100}, {110} and {111} planes); the long-etch limit keeps only {111} planes with R = 0. This is the construction used in the origami tutorial; non-convex openings are split there into overlapping convex pieces whose cavities are joined, and convex mask corners are not undercut; use the etch simulator for that (its model and sources are listed in its panel).
-  Rates: Pal &amp; Sato, p. 87 (KOH 30 wt% and 40 wt%, 70 °C); Lec 4-1, p. 7 (KOH 42 wt%, 75 °C). Primary flat ⟨110⟩ for (100) and (110): Lec 4-1, p. 6. For (111) the flat is assumed along [1<span class="ob">1</span>0]. Wafer thickness 525 µm (assumption). x runs along the flat, z is the wafer normal.
+  Model on wafer and Etched pit: each wall is a crystal plane that moves outward at its own rate from the mask opening (n·x ≤ h + R·t over the {100}, {110} and {111} planes); the long-etch limit keeps only {111} planes with R = 0. This is the construction used in the origami tutorial; non-convex openings are split there into overlapping convex pieces whose cavities are joined, and convex mask corners are not undercut; use the etch simulator for that (its model and sources are listed in its panel).
+  Rates: Pal &amp; Sato, p. 87 (KOH 30 wt% and 40 wt%, 70 °C); Lec 4-1, p. 7 (KOH 42 wt%, 75 °C); Lec 10, p. 11 (KOH 57 wt%, 75 °C; EDP Type S, 110 °C); EDP 50:30:3 ratio after Finne and Klein (Berkeley lab manual ch. 1.10). Primary flat ⟨110⟩ for (100) and (110): Lec 4-1, p. 6. For (111) the flat is assumed along [1<span class="ob">1</span>0]. Wafer: 100 mm, 525 µm thick (Pal &amp; Sato Table 2.1, p. 30). x runs along the flat, z is the wafer normal. The Corner lab and Find orientation scenes list their own methods and sources in their panels.
 </footer>
+<section class="refs" id="about">
+  <h2>About this page</h2>
+  <p><b>Author.</b> Huu Quoc Anh Nguyen (Student ID X1150030), undergraduate exchange student from the University of Science and Technology of Hanoi (USTH), Vietnam, at the Department of Engineering and System Science, National Tsing Hua University (NTHU), Taiwan, in fall 2026. My background is semiconductor device physics and materials, and I am interested in semiconductor process engineering.</p>
+  <p><b>Why it exists.</b> I made this page as a study aid for two courses taught by Prof. Fan-Gang Tseng at NTHU: ESS5850 Micro System Design (Lecture 4-1 and HW2, bulk micromachining) and ESS 5810 Advanced Micro System Fabrication and Lab (Lecture 10, bulk micromachining). It shows in 3D what the lecture drawings show in 2D: which {111} planes bound a KOH pit, why convex corners are attacked and how compensation works, and how the true crystal direction is found when the wafer flat is a few degrees off.</p>
+  <p><b>For students using it.</b> This is not official course material. Every number on the page names its source (lecture and page, or book and page), and the panels separate sourced facts, design choices and assumptions. Check against your own lecture notes before you use a number in homework. The simulator is a numerical model with known limits (listed in its panel). It shows trends and shapes well; absolute depths and undercuts are good to about one or two grid cells.</p>
+  <p><b>Quick start.</b> Pick a wafer and a scene at the top. Drag in the 3D view to turn it and scroll to zoom. In the Etched pit and the simulator, draw your own mask in the 2D editor. Keys: S split view, T theater view.</p>
+  <p><b>Found an error?</b> Please open an issue on <a href="https://github.com/SalmonQuoc/origami-koh-etch-viewer/issues" target="_blank" rel="noopener">GitHub</a>, with the scene, the settings and the source you compared with.</p>
+  <p><b>How to cite.</b> H. Q. A. Nguyen, “Origami 3D viewer: KOH and EDP etching of silicon,” National Tsing Hua University, Nov. 2026. [Online]. Available: <a href="https://github.com/SalmonQuoc/origami-koh-etch-viewer" target="_blank" rel="noopener">github.com/SalmonQuoc/origami-koh-etch-viewer</a></p>
+  <p><b>AI use.</b> Written with help from an AI assistant (Claude, Anthropic). I chose the content and checked the numbers against the sources listed below; the AI wrote most of the code. Version of 20 Nov 2026.</p>
+</section>
 <section class="refs" id="references">
   <h2>References</h2>
   <ol>
@@ -1073,7 +1085,7 @@ const RATES = {
   LEC:   { name: "KOH 42 wt%, 75 °C (Lec 4-1 p. 7)", r: { "100": 42/60, "110": 66/60, "111": 0.5/60 } },
   LEC57: { name: "KOH 57 wt%, 75 °C (Lec 10 p. 11)", r: { "100": 25/60, "110": 39/60, "111": 0.5/60 } },
   EDPS:  { name: "EDP Type S, 110 °C (Lec 10 p. 11)", r: { "100": 51/60, "110": 57/60, "111": 1.25/60 } },
-  EDPFK: { name: "EDP, ratio 50:30:3 (F&K), R(100) as Lec 10", r: { "100": 51/60, "110": 30.6/60, "111": 3.06/60 } },
+  EDPFK: { name: "EDP F&K 50:30:3, 110 °C (R(100) from Lec 10)", r: { "100": 51/60, "110": 30.6/60, "111": 3.06/60 } },
 };
 const PIT2SIM = { PAL30: "PAL30", PAL40: "PAL40", LEC: "LEC42", LEC57: "LEC57", EDPS: "EDPS", EDPFK: "EDPFK" };
 // vertical-wall trench on (110): long edges along a vertical-wall trace (54.74° from the flat), as Example 8
@@ -2294,7 +2306,7 @@ const EE = etchEngineFactory();
 const SQ2 = Math.SQRT1_2, SQ3 = 1/Math.sqrt(3), SQ6 = 1/Math.sqrt(6);
 const SFR = {   // wafer frames for the simulator: e1 along the flat, e2 in-plane (flat on the -e2 side), e3 = normal
   "100":  { wf: "100", e: [[-SQ2, SQ2, 0], [-SQ2, -SQ2, 0], [0, 0, 1]], idx: [[-1,1,0],[-1,-1,0],[0,0,1]],
-            name: "(100), flat along ⟨110⟩", src: "Lec 4-1 p. 6; Rev 1 frame: x = [1̄10] along the flat, y = [1̄1̄0]" },
+            name: "(100), flat along ⟨110⟩", src: "Lec 4-1 p. 6; tutorial frame: x = [1̄10] along the flat, y = [1̄1̄0]" },
   "110f": { wf: "110", e: [[-SQ2, SQ2, 0], [0, 0, 1], [SQ2, SQ2, 0]], idx: [[-1,1,0],[0,0,1],[1,1,0]],
             name: "(110), flat along ⟨110⟩ (Lec 4-1 p. 6)", src: "Lec 4-1 p. 6: flat edge along [1̄10], flat normal [001̄]" },
   "110a": { wf: "110", e: [[SQ6, -SQ6, -2*SQ6], [-SQ3, SQ3, -SQ3], [SQ2, SQ2, 0]], idx: [[1,-1,-2],[-1,1,-1],[1,1,0]], arrow: [1,-1,1],
@@ -2325,7 +2337,7 @@ const SRATES = {
   LEC57: { name: "KOH 57 wt%, 75 °C (Lec 10)", r: LEC57, src: "Lec 10 p. 11: {100} 25, {110} 39, {111} 0.5 µm/h; other orientations scaled from Pal & Sato 50 wt% by R(100) (assumption)", sio2: 0.62/60, sio2src: "Lec 10 p. 11" },
   EDPS:  { name: "EDP Type S, 110 °C (Lec 10)", r: { "100": 51/60, "110": 57/60, "111": 1.25/60 }, sio2: 0.004/60, sio2src: "Lec 10 p. 11",
            src: "Lec 10 p. 11: {100} 51, {110} 57, {111} 1.25 µm/h, SiO₂ 0.004 µm/h. Only three orientations are given; all other planes use the linear three-rate interpolation (Radjenović et al. 2010, eq. 1) (assumption). Note: here {110} > {100}, while Lec 10 p. 16 orders EDP as (100) > (110) > (111)." },
-  EDPFK: { name: "EDP, 50:30:3 (F&K ratio)", r: { "100": 51/60, "110": 30.6/60, "111": 3.06/60 }, sio2: null,
+  EDPFK: { name: "EDP F&K 50:30:3, 110 °C", r: { "100": 51/60, "110": 30.6/60, "111": 3.06/60 }, sio2: null,
            src: "Ratio R(100):R(110):R(111) = 50:30:3 for EDP 'F&K' at 110 °C (Finne & Klein 1967, as listed in the Berkeley Microlab manual ch. 1.10); scaled so that R(100) = 51 µm/h as in Lec 10 p. 11 (assumption). Matches the order (100) > (110) > (111) of Lec 10 p. 16. Other planes: linear three-rate interpolation (assumption)." },
 };
 const T_WAFER_SIM = 525;   // Pal & Sato Table 2.1, p. 30: 100 mm wafer
