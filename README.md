@@ -22,7 +22,9 @@ Other functions:
 - **Shapes**: rectangle, circle, ellipse, triangle, regular polygon, L, U, cross, frame, ring and star, each as opening or mask, with rotation and an nx × ny array at a set pitch.
 - **Colour scales**: colour the etched surface by crystal plane, depth, local etch rate R(n) or arrival time, with a colour bar.
 - **Graphs**: depth, undercut and released mask area against etch time (simulator), and depth and outline size against time (pit).
+- **Split view** (key S): the 3D view and the controls sit side by side and scroll separately, under a toolbar that stays at the top. Drag the divider to resize the panes (arrow keys also work when it has focus); double-click it to reset. **Swap sides** moves the controls to the left. The page remembers these settings. Split view is off below 900 px width.
 - **Theater view** (key T) widens the 3D view; **Full screen** fills the screen.
+- **Flat arrows**: the die view has one arrow along the flat and one perpendicular to it (the inward flat normal), each labelled with its crystal direction. The whole-wafer view has an arrow from the middle of the primary flat.
 
 ## Run it
 
