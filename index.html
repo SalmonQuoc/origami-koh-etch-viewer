@@ -1337,6 +1337,7 @@ function waferOutline(wf, type, m = 360) {
 }
 const secFlatText = (wf, type) => { const sf = SEC_FLAT[wf][type]; return sf == null ? "primary flat only" : `secondary flat ${sf}° clockwise from the primary`; };
 // 3D wafer: top face (with the die box cut out), rim, bottom; centred at (ox, oy); flats drawn in the accent colour
+const negIdx = v => v.map(x => (x === 0 ? 0 : -x));   // opposite direction (outward flat normal = -wafer y)
 // a flat arrow drawn on top of everything (mask film included)
 function topArrow(dir, origin, len, head, width) {
   const a = new THREE.ArrowHelper(dir, origin, len, COL.accent.getHex(), head, width);
@@ -1363,16 +1364,16 @@ function waferGroup(wf, type, ox, oy, opts = {}) {
   const flats = [];
   for (let i = 0; i < O.length; i++) { const a = O[i], b = O[(i + 1) % O.length]; if (Math.hypot(b[0] - a[0], b[1] - a[1]) > 5000) flats.push([[a[0], a[1], 1], [b[0], b[1], 1]]); }
   grp.add(linesFromLoops(flats, COL.accent, { clip }));
-  // arrow from the middle of the primary flat, along its inward normal (wafer +y)
-  const Rw = WAFER.D/2, yF = -Math.sqrt(Rw*Rw - WAFER.Lp*WAFER.Lp/4), aL = 0.3*Rw;
-  const arw = new THREE.ArrowHelper(new V3(0, 1, 0), new V3(ox, oy + yF, 3), aL, COL.accent.getHex(), 0.07*Rw, 0.04*Rw);
+  // arrow from the middle of the primary flat, perpendicular to it and pointing outward (wafer -y, away from the centre)
+  const Rw = WAFER.D/2, yF = -Math.sqrt(Rw*Rw - WAFER.Lp*WAFER.Lp/4), aL = 0.22*Rw;
+  const arw = new THREE.ArrowHelper(new V3(0, -1, 0), new V3(ox, oy + yF, 3), aL, COL.accent.getHex(), 0.07*Rw, 0.04*Rw);
   if (clip) { arw.line.material.clippingPlanes = clip; arw.cone.material.clippingPlanes = clip; }
   grp.add(arw);
   labelTag = "wafer";
-  if (opts.labels !== false && opts.normalLabel) addLabel(new V3(ox + 0.03*Rw, oy + yF + aL + 0.05*Rw, 0), `${opts.normalLabel} ⊥ flat (flat normal)`, "acc");
+  if (opts.labels !== false && opts.normalLabel) addLabel(new V3(ox + 0.04*Rw, oy + yF - aL - 0.06*Rw, 0), `${opts.normalLabel} ⊥ flat, outward`, "acc");
   if (opts.labels !== false) {
     const R = WAFER.D/2, yp = -Math.sqrt(R*R - WAFER.Lp*WAFER.Lp/4);
-    addLabel(new V3(ox - 0.12*R, oy + yp - 0.1*R, 0), `primary flat ${opts.flatLabel || ""}`, "acc");
+    addLabel(new V3(ox - 0.33*R, oy + yp - 0.05*R, 0), `primary flat ${opts.flatLabel || ""}`, "acc");
     const sf = SEC_FLAT[wf][type];
     if (sf != null) { const a = (-90 - sf)/C.DEG, d = Math.sqrt(R*R - WAFER.Ls*WAFER.Ls/4) + 0.07*R; addLabel(new V3(ox + d*Math.cos(a), oy + d*Math.sin(a), 0), "secondary flat", "acc"); }
   }
@@ -1485,6 +1486,9 @@ function buildModel() {
   g.add(new THREE.ArrowHelper(new V3(1, 0, 0), new V3(0.1, YF + 0.16, 0), 0.6, COL["s-ink"].getHex(), 0.1, 0.06));
   addLabel(new V3(0.92, YF + 0.16, 0), idxHTML(e[0], "[", "]"), "", camDir => Math.abs(camDir.x) < 0.9);
   addLabel(new V3(-xf*0.45, YF - 0.14, 0), "primary flat", "acc");
+  // perpendicular to the flat, pointing outward (away from the centre)
+  g.add(topArrow(new V3(0, -1, 0), new V3(0, YF, 0), 0.4, 0.1, 0.06));
+  addLabel(new V3(0.05, YF - 0.5, 0), idxHTML(negIdx(e[1]), "[", "]") + " ⊥ flat, outward", "acc");
   g.add(new THREE.ArrowHelper(new V3(0, 0, 1), new V3(0, 0, 1.03), 0.4, COL["s-ink"].getHex(), 0.1, 0.06));
   addLabel(new V3(0, 0, 1.6), idxHTML(e[2], "[", "]") + " up");
   // corner labels (crystal directions of the six corners)
@@ -1886,12 +1890,12 @@ function buildPit() {
   const zArr = (S.mask && S.block ? maskThick() : 0) + 0.004*zb;
   g.add(topArrow(new V3(1, 0, 0), new V3(x0, yA, zArr), (x1 - x0)*0.25, radius*0.06, radius*0.035));
   addLabel(new V3(x0 + (x1 - x0)*0.3, yA - radius*0.04, 0), idxHTML(e[0], "[", "]") + " along flat", "acc");
-  // perpendicular to the flat (inward flat normal, wafer +y)
-  g.add(topArrow(new V3(0, 1, 0), new V3(x0, yA, zArr), (yB - yA)*0.35, radius*0.06, radius*0.035));
-  addLabel(new V3(x0 - radius*0.02, yA + (yB - yA)*0.42, 0), idxHTML(e[1], "[", "]") + " ⊥ flat", "acc");
+  // perpendicular to the flat, pointing outward (wafer -y, away from the centre), from the flat-side edge
+  g.add(topArrow(new V3(0, -1, 0), new V3(x0 + (x1 - x0)*0.5, yA, zArr), radius*0.35, radius*0.06, radius*0.035));
+  addLabel(new V3(x0 + (x1 - x0)*0.5 + radius*0.04, yA - radius*0.42, 0), idxHTML(negIdx(e[1]), "[", "]") + " ⊥ flat, outward", "acc");
   scene.userData.center = new V3(cx, cy, -zb/2); scene.userData.die = scene.userData.center.clone();
   frameR = S.waferOn ? 0.53*WAFER.D : 0;
-  if (S.waferOn) { g.add(waferGroup(S.wf, S.wtype, -S.dieX*1000, -S.dieY*1000, { hole: [x0, x1, y0, y1b], clip, flatLabel: idxHTML(e[0], "[", "]"), normalLabel: idxHTML(e[1], "[", "]") })); scene.userData.center = new V3(-S.dieX*1000, -S.dieY*1000, 0); }
+  if (S.waferOn) { g.add(waferGroup(S.wf, S.wtype, -S.dieX*1000, -S.dieY*1000, { hole: [x0, x1, y0, y1b], clip, flatLabel: idxHTML(e[0], "[", "]"), normalLabel: idxHTML(negIdx(e[1]), "[", "]") })); scene.userData.center = new V3(-S.dieX*1000, -S.dieY*1000, 0); }
   updateReadout(cavs);
   drawPitGraph(); drawPitEditor();
   resize();
@@ -2754,18 +2758,13 @@ function buildSim(resetView) {
   const F = simFrame();
   g.add(topArrow(new V3(1, 0, 0), new V3(X0, Y0, zMask + 0.5), (X1 - X0)*0.25, radius*0.06, radius*0.035));
   addLabel(new V3(X0 + (X1 - X0)*0.13, Y0 - radius*0.06, 0), idxHTML(F.idx[0], "[", "]") + " along flat", "acc");
-  if (!F.arrow) {   // perpendicular to the flat (inward flat normal, wafer +y); the (110) arrow convention draws its own below
-    g.add(topArrow(new V3(0, 1, 0), new V3(X0, Y0, zMask + 0.5), (Y1 - Y0)*0.35, radius*0.06, radius*0.035));
-    addLabel(new V3(X0 - radius*0.02, Y0 + (Y1 - Y0)*0.42, 0), idxHTML(F.idx[1], "[", "]") + " ⊥ flat", "acc");
-  }
-  if (F.arrow) {
-    g.add(new THREE.ArrowHelper(new V3(0, -1, 0), new V3(X1 - (X1 - X0)*0.08, Y0, 0), radius*0.25, COL.accent.getHex(), radius*0.05, radius*0.03));
-    addLabel(new V3(X1 - (X1 - X0)*0.08, Y0 - radius*0.32, 0), "⟨111⟩ " + idxHTML(F.arrow, "[", "]") + " flat normal", "acc");
-  }
+  // perpendicular to the flat, pointing outward (wafer -y, away from the centre); for the (110) arrow convention this is the ⟨111⟩ arrow
+  g.add(topArrow(new V3(0, -1, 0), new V3((X0 + X1)/2, Y0, zMask + 0.5), radius*0.35, radius*0.06, radius*0.035));
+  addLabel(new V3((X0 + X1)/2 + radius*0.04, Y0 - radius*0.42, 0), (F.arrow ? "⟨111⟩ " : "") + idxHTML(negIdx(F.idx[1]), "[", "]") + " ⊥ flat, outward", "acc");
   addLabel(new V3(X1, Y1, 0), idxHTML(F.idx[2], "(", ")") + " surface", "", camDir => camDir.z > 0.1);
   scene.userData.center = new V3((X0 + X1)/2, (Y0 + Y1)/2, -zb/2); scene.userData.die = scene.userData.center.clone();
   frameR = S.waferOn ? 0.53*WAFER.D : 0;
-  if (S.waferOn) { g.add(waferGroup(F.wf, S.wtype, -S.dieX*1000, -S.dieY*1000, { hole: [X0, X1, Y0, Y1], clip, flatLabel: idxHTML(F.idx[0], "[", "]"), normalLabel: idxHTML(F.idx[1], "[", "]") })); scene.userData.center = new V3(-S.dieX*1000, -S.dieY*1000, 0); }
+  if (S.waferOn) { g.add(waferGroup(F.wf, S.wtype, -S.dieX*1000, -S.dieY*1000, { hole: [X0, X1, Y0, Y1], clip, flatLabel: idxHTML(F.idx[0], "[", "]"), normalLabel: idxHTML(negIdx(F.idx[1]), "[", "]") })); scene.userData.center = new V3(-S.dieX*1000, -S.dieY*1000, 0); }
   if (resetView) setView(dirOf(30, -62), scene.userData.center, true);
   if (S.mode === "corner" && SIM.cl) {
     addLabel(new V3(SIM.cl.xL, SIM.cl.yc + 0.25*SIM.hy, 2), "no compensation", "acc");
@@ -3283,7 +3282,7 @@ function buildFind(resetView) {
   const wf = fdWf(), an = FD.an || fdAnalyse();
   radius = 600; frameR = 0.53*WAFER.D;
   const g = new THREE.Group(); scene.add(g);
-  g.add(waferGroup(wf, S.wtype, 0, 0, { flatLabel: idxHTML(C.FRAME_IDX[wf][0], "[", "]") + " (as drawn)", normalLabel: idxHTML(C.FRAME_IDX[wf][1], "[", "]") }));
+  g.add(waferGroup(wf, S.wtype, 0, 0, { flatLabel: idxHTML(C.FRAME_IDX[wf][0], "[", "]") + " (as drawn)", normalLabel: idxHTML(negIdx(C.FRAME_IDX[wf][1]), "[", "]") }));
   const z = 3, lift = P => P.map(p => [p[0], p[1], z]);
   const maskL = [], etchL = [], R = WAFER.D/2;
   for (const r of an.res) {
@@ -3356,7 +3355,7 @@ function fdCards() {
 // ---- the wafer map editor
 function drawFindMap() {
   const cv = $("fdCanvas"); if (!cv) return;
-  const ctx = cv.getContext("2d"), wcss = cv.clientWidth || 300, R = WAFER.D/2, s = (wcss - 20)/(2*R), hcss = 2*R*s + 34;
+  const ctx = cv.getContext("2d"), wcss = cv.clientWidth || 300, R = WAFER.D/2, s = (wcss - 20)/(2*R), PB = Math.round(0.2*R*s), hcss = 2*R*s + 34 + PB;
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   cv.width = Math.round(wcss*dpr); cv.height = Math.round(hcss*dpr); cv.style.height = `${hcss}px`;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, wcss, hcss);
@@ -3369,11 +3368,11 @@ function drawFindMap() {
   ctx.strokeStyle = col("accent"); ctx.lineWidth = 2.5; ctx.beginPath();
   for (let i = 0; i < O.length; i++) { const a = O[i], b = O[(i + 1) % O.length]; if (Math.hypot(b[0] - a[0], b[1] - a[1]) > 5000) { const A = toC(a), B = toC(b); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); } }
   ctx.stroke();
-  // arrow from the middle of the primary flat along its inward normal
-  { const yF = -Math.sqrt(R*R - WAFER.Lp*WAFER.Lp/4), A = toC([0, yF]), B = toC([0, yF + 0.3*R]), h = 7;
-    ctx.strokeStyle = ctx.fillStyle = col("accent"); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1] + h); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(B[0], B[1]); ctx.lineTo(B[0] - h*0.6, B[1] + h*1.3); ctx.lineTo(B[0] + h*0.6, B[1] + h*1.3); ctx.closePath(); ctx.fill();
-    ctx.font = "500 11px IBM Plex Sans, sans-serif"; ctx.fillText(`${plainIdx(C.FRAME_IDX[wf][1])} flat normal`, B[0] + 6, B[1] + 10); }
+  // arrow from the middle of the primary flat, perpendicular to it and pointing outward (away from the centre)
+  { const yF = -Math.sqrt(R*R - WAFER.Lp*WAFER.Lp/4), A = toC([0, yF]), B = toC([0, yF - 0.2*R]), h = 7;
+    ctx.strokeStyle = ctx.fillStyle = col("accent"); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1] - h); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(B[0], B[1]); ctx.lineTo(B[0] - h*0.6, B[1] - h*1.3); ctx.lineTo(B[0] + h*0.6, B[1] - h*1.3); ctx.closePath(); ctx.fill();
+    ctx.font = "500 11px IBM Plex Sans, sans-serif"; ctx.fillText(`${plainIdx(negIdx(C.FRAME_IDX[wf][1]))} ⊥ flat, outward`, B[0] + 6, B[1] - 4); }
   // nominal and true ⟨110⟩ through the centre
   ctx.lineWidth = 1; ctx.setLineDash([5, 4]); ctx.strokeStyle = col("s-ink"); ctx.globalAlpha = 0.5; ctx.beginPath(); { const A = toC([-0.95*R, 0]), B = toC([0.95*R, 0]); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); } ctx.stroke(); ctx.globalAlpha = 1; ctx.setLineDash([]);
   if (FD.reveal) { const u = dirv(FD.delta); ctx.strokeStyle = col("accent"); ctx.beginPath(); const A = toC([-0.95*R*u[0], -0.95*R*u[1]]), B = toC([0.95*R*u[0], 0.95*R*u[1]]); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); ctx.stroke(); }
@@ -3391,9 +3390,9 @@ function drawFindMap() {
     const q = toC(fdPos(r.it)); ctx.fillStyle = sel ? col("accent") : col("s-ink"); ctx.font = "600 12px IBM Plex Sans, sans-serif"; ctx.fillText(String(i + 1), q[0] + 6, q[1] - 6);
   });
   ctx.font = "11px IBM Plex Sans, sans-serif"; ctx.fillStyle = col("s-ink");
-  ctx.fillText(`(${wf}) ${S.wtype}-type, Ø 100 mm. Arrow: flat normal.`, 12, 10 + 2*R*s + 16);
-  ctx.fillText(`Dashed: flat direction${FD.reveal ? "; orange: true ⟨110⟩" : ""}.`, 12, 10 + 2*R*s + 30);
-  ctx.fillText("Violet: mask; blue: etched outline.", 12, 10 + 2*R*s + 44);
+  ctx.fillText(`(${wf}) ${S.wtype}-type, Ø 100 mm. Arrow: ⊥ flat, outward.`, 12, 10 + 2*R*s + PB + 16);
+  ctx.fillText(`Dashed: flat direction${FD.reveal ? "; orange: true ⟨110⟩" : ""}.`, 12, 10 + 2*R*s + PB + 30);
+  ctx.fillText("Violet: mask; blue: etched outline.", 12, 10 + 2*R*s + PB + 44);
   if (S.compass) drawCompass(ctx, 10 + 2*R*s - 40, 50, 28, inPlaneDirs(fdFrameE()), FD.reveal ? FD.delta : 0);
 }
 // microscope view and the reading plot of the selected item

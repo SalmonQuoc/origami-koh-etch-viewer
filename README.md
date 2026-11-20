@@ -24,7 +24,7 @@ Other functions:
 - **Graphs**: depth, undercut and released mask area against etch time (simulator), and depth and outline size against time (pit).
 - **Split view** (key S): the 3D view and the controls sit side by side and scroll separately, under a toolbar that stays at the top. Drag the divider to resize the panes (arrow keys also work when it has focus); double-click it to reset. **Swap sides** moves the controls to the left. The page remembers these settings. Split view is off below 900 px width.
 - **Theater view** (key T) widens the 3D view; **Full screen** fills the screen.
-- **Flat arrows**: the die view has one arrow along the flat and one perpendicular to it (the inward flat normal), each labelled with its crystal direction. The whole-wafer view has an arrow from the middle of the primary flat.
+- **Flat arrows**: the die view has one arrow along the flat and one perpendicular to it pointing outward, away from the centre (the outward flat normal), each labelled with its crystal direction. Every scene that shows a wafer (Model on wafer, the whole-wafer views and the finder map) has the outward arrow from the middle of the primary flat.
 
 ## Run it
 
