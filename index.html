@@ -48,16 +48,16 @@ header p { margin: 0; color: var(--muted); max-width: 70ch; }
 @media (max-width: 600px) { #segM button { padding: 7px 9px; } #segM button + button { border-left: 1px solid var(--line); } }
 .seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
 .lbl { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-right: 8px; }
-.grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) var(--panelW, 340px); gap: 16px; align-items: start; }
 @media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
 .stage { position: relative; background: var(--scene-bg); border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
-  height: min(68vh, 620px); min-height: 360px; touch-action: none; }
+  height: var(--stageHt, min(68vh, 620px)); min-height: 360px; touch-action: none; }
 .stage canvas { display: block; width: 100%; height: 100%; }
 .labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
-.labels div { position: absolute; transform: translate(-50%, -50%); font: 12px/1.2 "IBM Plex Mono", monospace; color: var(--ink);
+.labels div { position: absolute; transform: translate(-50%, -50%); font: var(--lblFs, 12px)/1.2 "IBM Plex Mono", monospace; color: var(--ink);
   background: color-mix(in srgb, var(--scene-bg) 80%, transparent); padding: 1px 4px; border-radius: 3px; white-space: nowrap; }
 .labels div.acc { color: var(--accent); font-weight: 500; }
-.labels div.big { font-size: 13px; }
+.labels div.big { font-size: calc(var(--lblFs, 12px) + 1px); }
 .tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px;
   font: 12.5px/1.35 "IBM Plex Sans", sans-serif; display: none; max-width: 260px; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
 .hint { position: absolute; left: 10px; bottom: 8px; font-size: 12px; color: var(--muted); pointer-events: none; }
@@ -144,6 +144,39 @@ body.theater aside.panel > * { break-inside: avoid; }
   body.split.dragging { cursor: col-resize; user-select: none; }
 }
 @media (max-width: 900px) { #bSplit, #bSwap { display: none; } }
+
+/* one-column layout */
+body.stacked .grid { grid-template-columns: minmax(0, 1fr); }
+body.stacked aside.panel { columns: 2 340px; column-gap: 28px; }
+body.stacked aside.panel > * { break-inside: avoid; }
+body.lbl-off .labels { display: none; }
+/* enlarged editor or panel: a large window over the page */
+.enl { position: relative; }
+.enlBtn { position: absolute; top: 0; right: 0; z-index: 2; font-size: 12px !important; padding: 2px 8px !important; }
+.enl.enlarged { position: fixed; inset: 3vh 3vw; z-index: 70; background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  padding: 46px 22px 22px; overflow: auto; box-shadow: 0 12px 48px rgba(0, 0, 0, .35); margin: 0 !important; }
+.enl.enlarged > .enlBtn { top: 10px; right: 14px; }
+.enl.enlarged::before { content: attr(data-title); position: absolute; top: 12px; left: 22px; font: 600 17px/1.3 "Source Serif 4", Georgia, serif; color: var(--ink); }
+.enl.enlarged.hidden { display: block !important; }
+#enlBack { position: fixed; inset: 0; z-index: 69; background: rgba(0, 0, 0, .45); }
+body.enl-open { overflow: hidden; }
+.enl.enlarged .maskcv { margin: 0 auto; }
+/* drawing a free outline */
+.drawhelp { margin: 4px 0; padding: 6px 8px; border-radius: 6px; background: var(--chip); font-size: 12.5px; color: var(--ink); }
+.btn.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+canvas.drawing { cursor: crosshair !important; }
+/* dialogs (settings, custom etchant) */
+dialog.dlg { max-width: min(680px, 94vw); width: 100%; max-height: 90vh; overflow: auto; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--panel); color: var(--ink); padding: 16px 20px 18px; box-shadow: 0 12px 48px rgba(0, 0, 0, .35); }
+dialog.dlg::backdrop { background: rgba(0, 0, 0, .45); }
+.dlghead { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.dlghead h2 { margin: 0; }
+.dlghead .x { border: 0; background: none; color: var(--muted); font-size: 22px; cursor: pointer; }
+dialog.dlg select, dialog.dlg input[type="text"] { font: 14px "IBM Plex Sans", sans-serif; padding: 5px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); max-width: 100%; }
+dialog.dlg input[type="number"] { width: 80px; font: 13px "IBM Plex Mono", monospace; padding: 4px 5px; border: 1px solid var(--line); border-radius: 5px; background: var(--bg); color: var(--ink); }
+.ceGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 4px 12px; margin-top: 6px; }
+.ceGrid label { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 13px; }
+.stval { font: 12px "IBM Plex Mono", monospace; color: var(--muted); min-width: 52px; display: inline-block; }
 .stage:fullscreen { height: 100vh; border-radius: 0; border: 0; }
 .cbar { position: absolute; right: 10px; bottom: 30px; background: color-mix(in srgb, var(--scene-bg) 88%, transparent); border: 1px solid var(--line);
   border-radius: 6px; padding: 5px 8px 3px; font: 11.5px/1.3 "IBM Plex Sans", sans-serif; color: var(--ink); pointer-events: none; }
@@ -192,7 +225,7 @@ table.shapes .dsel { margin: 0; }
     <button data-w="100" aria-pressed="true">(100)</button><button data-w="110" aria-pressed="false">(110)</button><button data-w="111" aria-pressed="false">(111)</button></span></div>
   <div><span class="lbl">Scene</span><span class="seg" id="segM">
     <button data-m="model" aria-pressed="true">Model on wafer</button><button data-m="pit" aria-pressed="false">Etched pit</button><button data-m="sim" aria-pressed="false">Etch simulator</button><button data-m="corner" aria-pressed="false">Corner lab</button><button data-m="find" aria-pressed="false">Find orientation</button></span></div>
-  <div class="tools"><button class="btn" id="bSplit" aria-pressed="false" title="3D view and controls side by side, each scrolling on its own; drag the divider to resize (key S)">Split view</button><button class="btn hidden" id="bSwap" title="Put the controls on the other side">Swap sides</button><button class="btn" id="bTheater" aria-pressed="false" title="Wide stage with the panel below (key T)">Theater view</button><button class="btn" id="bFull" title="Full screen 3D view (Esc to leave)">Full screen</button></div>
+  <div class="tools"><button class="btn" id="bSettings" title="Layout, theme, editor and simulator settings">⚙ Settings</button><button class="btn" id="bSplit" aria-pressed="false" title="3D view and controls side by side, each scrolling on its own; drag the divider to resize (key S)">Split view</button><button class="btn hidden" id="bSwap" title="Put the controls on the other side">Swap sides</button><button class="btn" id="bTheater" aria-pressed="false" title="Wide stage with the panel below (key T)">Theater view</button><button class="btn" id="bFull" title="Full screen 3D view (Esc to leave)">Full screen</button></div>
 </div>
 
 <div class="grid">
@@ -212,14 +245,14 @@ table.shapes .dsel { margin: 0; }
       <button data-v="below">From below</button>
       <button data-v="along" id="vAlong" disabled>Along the selected line</button>
     </div>
-    <div class="panel hidden" id="simBelow" style="margin-top:12px">
+    <div class="panel hidden enl" data-title="Cross-section and etch history" id="simBelow" style="margin-top:12px">
       <h2 style="margin-bottom:4px">Cross-section</h2>
       <canvas id="secCanvas" class="seccv"></canvas>
       <h2 style="margin:14px 0 4px">Etch history</h2>
       <canvas id="simGraph" class="graphcv"></canvas>
       <div class="glegend" id="simGraphLeg"></div>
     </div>
-    <div class="panel hidden" id="findBelow" style="margin-top:12px">
+    <div class="panel hidden enl" data-title="Microscope view and reading" id="findBelow" style="margin-top:12px">
       <h2 style="margin-bottom:4px">Microscope view of the selected item</h2>
       <canvas id="fdScope" class="seccv"></canvas>
       <p class="note" id="fdScopeNote" style="margin:4px 0 0"></p>
@@ -227,7 +260,7 @@ table.shapes .dsel { margin: 0; }
       <canvas id="fdPlot" class="graphcv"></canvas>
       <div class="glegend" id="fdPlotLeg"></div>
     </div>
-    <div class="panel hidden" id="pitBelow" style="margin-top:12px">
+    <div class="panel hidden enl" data-title="Etch history" id="pitBelow" style="margin-top:12px">
       <h2 style="margin-bottom:4px">Etch history</h2>
       <canvas id="pitGraph" class="graphcv"></canvas>
       <div class="glegend" id="pitGraphLeg"></div>
@@ -250,18 +283,21 @@ table.shapes .dsel { margin: 0; }
     <h2>Etch</h2>
     <h3>Mask</h3>
     <div class="row"><span class="lbl">Start from</span><select id="selOpen" style="flex:1;min-width:0"></select></div>
-    <p class="note" style="margin:4px 0 6px"><b>Drag</b> a shape to move it, <b>click</b> to select it, <b>double-click</b> an empty spot to add the chosen shape there. With the editor focused, the <span class="kbd">←</span><span class="kbd">→</span><span class="kbd">↑</span><span class="kbd">↓</span> keys move the selected shape by 5 µm (with Shift, 25 µm) and <span class="kbd">Delete</span> removes it. The 3D view updates when you let go.</p>
+    <div class="enl" data-title="Mask editor: Etched pit">
+    <p class="note" style="margin:4px 0 6px"><b>Drag</b> a shape to move it (<b>Alt</b>-drag moves a copy), <b>click</b> to select it, <b>double-click</b> an empty spot to add the chosen shape there. With the editor focused, the <span class="kbd">←</span><span class="kbd">→</span><span class="kbd">↑</span><span class="kbd">↓</span> keys move the selected shape by one snap step (with Shift, five), <span class="kbd">Ctrl</span>+<span class="kbd">D</span> duplicates it and <span class="kbd">Delete</span> removes it. <b>Draw</b> lets you draw your own outline. The 3D view updates when you let go.</p>
+    <p class="drawhelp hidden" id="pcDrawHelp"></p>
     <canvas id="pitCanvas" class="maskcv" tabindex="0" aria-label="Mask editor for the etched pit"></canvas>
     <div class="legend" style="margin-top:4px"><span><i class="sw" style="background:var(--mask)"></i>mask</span><span><i class="sw" style="background:var(--scene-bg);border:1px solid var(--s-ink)"></i>opening</span><span><i class="sw" style="background:var(--ghost)"></i>cavity edge at the surface now</span><label><input type="checkbox" class="cCompass" checked> crystal compass (orange: {111} traces)</label></div>
-    <div class="addrow"><select id="pcType" aria-label="shape to add"></select><button class="btn primary" id="pcAdd">Add shape</button><button class="btn" id="pcDup">Duplicate</button><button class="btn" id="pcDel">Delete</button><button class="btn" id="pcClear">Clear all</button></div>
+    <div class="addrow"><select id="pcType" aria-label="shape to add"></select><button class="btn primary" id="pcAdd">Add shape</button><button class="btn" id="pcDraw" title="Click to place corners or drag to draw freely">✎ Draw</button><button class="btn" id="pcDup">Duplicate</button><button class="btn" id="pcDel">Delete</button><button class="btn" id="pcClear">Clear all</button></div>
     <div id="pcList" class="cards"></div>
     <p class="warn hidden" id="pcWarn"></p>
     <div class="row" style="margin-top:6px"><button class="btn" id="pcToSim">Open this mask in the etch simulator</button></div>
+    </div>
     <details class="srcs"><summary>How this scene etches a shape</summary>
-      <p class="note">Each wall is a crystal plane that moves out from the opening at its own rate (n·x ≤ h + R·t). A non-convex shape (L, U, cross, frame, ring, star) is split into overlapping convex pieces; each piece etches as a convex opening and the cavity shown is their union. Concave corners therefore stop at {111} as they should, but convex mask corners (the inside corner of an L or U, the tips of a star) are <b>not</b> undercut here, although they are in real KOH etching (Kovacs et al. 1998, Fig. 1(c); Pal et al. 2007, Sec. 2). Openings that grow into each other are overlaid, not merged. The etch simulator handles both.</p>
+      <p class="note">Each wall is a crystal plane that moves out from the opening at its own rate (n·x ≤ h + R·t). A non-convex shape (L, U, cross, frame, ring, star) is split into overlapping convex pieces; each piece etches as a convex opening and the cavity shown is their union. Concave corners therefore stop at {111} as they should. A drawn outline is split into convex pieces by triangulation (a design choice); where two pieces meet along a ⟨110⟩ line, a thin ridge can stay between their cavities. Convex mask corners (the inside corner of an L or U, the tips of a star) are <b>not</b> undercut here, although they are in real KOH etching (Kovacs et al. 1998, Fig. 1(c); Pal et al. 2007, Sec. 2). Openings that grow into each other are overlaid, not merged. The etch simulator handles both.</p>
     </details>
     <h3>Etchant</h3>
-    <select id="selRate"></select>
+    <div class="row"><select id="selRate" style="flex:1;min-width:0"></select><button class="btn" data-etch-open="pit">Custom etchant…</button></div>
     <div class="fields"><label>flat error δ (crystal turned from the flat) <span><input type="number" id="pitRot" step="0.5" value="0"> °</span></label></div>
     <p class="note src">δ = 0: edges drawn along the flat lie exactly on ⟨110⟩. Lec 10 p. 18: the flat itself is only good to 2–5°; see the “Find orientation” scene.</p>
     <h3>Time</h3>
@@ -312,7 +348,7 @@ table.shapes .dsel { margin: 0; }
       <select id="simFrame"><option value="110f">Flat along ⟨110⟩ (Lec 4-1 p. 6)</option><option value="110a">⟨111⟩ arrow = flat normal (Lec 4-1 p. 11, HW2 P5)</option><option value="100" hidden>(100)</option><option value="111" hidden>(111)</option></select></div>
     <p class="note src" id="simFrameSrc"></p>
     <h3>Process</h3>
-    <select id="simRate"></select>
+    <div class="row"><select id="simRate" style="flex:1;min-width:0"></select><button class="btn" data-etch-open="sim">Custom etchant…</button></div>
     <p class="note src" id="simRateSrc"></p>
     <div class="fields">
       <label>etch time <span><input type="number" id="simTime" min="1" step="5"> min</span></label>
@@ -342,12 +378,15 @@ table.shapes .dsel { margin: 0; }
     <div class="legend" id="simPlaneLegend" style="margin-top:6px"><span><i class="sw" style="background:var(--f111)"></i>{111}</span><span><i class="sw" style="background:var(--f100)"></i>{100}</span><span><i class="sw" style="background:var(--f110)"></i>{110}</span><span><i class="sw" style="background:var(--fhi)"></i>higher index ({311}, {211}, {411} …)</span><span><i class="sw" style="background:var(--s-side)"></i>no plane within 4°</span><span><i class="sw" style="background:var(--s-cut)"></i>cut face</span></div>
     <div class="waferUI"></div>
     <h3>Mask editor</h3>
-    <p class="note" style="margin:0 0 4px">Shapes are applied top to bottom: “open” removes the mask, “mask” puts it back (solid outline: open; dashed: mask). <b>Drag</b> a shape to move it, <b>double-click</b> an empty spot to add the chosen shape there; with the editor focused, the arrow keys move the selected shape by 5 µm (Shift: 25 µm) and <span class="kbd">Delete</span> removes it. Press Run to etch the new mask.</p>
+    <div class="enl" data-title="Mask editor: etch simulator">
+    <p class="note" style="margin:0 0 4px">Shapes are applied top to bottom: “open” removes the mask, “mask” puts it back (solid outline: open; dashed: mask). <b>Drag</b> a shape to move it (<b>Alt</b>-drag moves a copy), <b>double-click</b> an empty spot to add the chosen shape there; with the editor focused, the arrow keys move the selected shape by one snap step (Shift: five), <span class="kbd">Ctrl</span>+<span class="kbd">D</span> duplicates it and <span class="kbd">Delete</span> removes it. <b>Draw</b> lets you draw your own outline. Press Run to etch the new mask.</p>
+    <p class="drawhelp hidden" id="simDrawHelp"></p>
     <canvas id="maskCanvas" class="maskcv"></canvas>
     <div class="legend"><label><input type="checkbox" class="cCompass" checked> crystal compass (orange: {111} traces)</label></div>
-    <div class="addrow"><select id="addType"></select><select id="addOp"><option value="open">as opening</option><option value="mask">as mask</option></select><button class="btn" id="bAddShape">Add shape</button><button class="btn" id="bDupShape">Duplicate selected</button></div>
+    <div class="addrow"><select id="addType"></select><select id="addOp"><option value="open">as opening</option><option value="mask">as mask</option></select><button class="btn" id="bAddShape">Add shape</button><button class="btn" id="bDraw" title="Click to place corners or drag to draw freely">✎ Draw</button><button class="btn" id="bDupShape">Duplicate selected</button></div>
     <p class="note" style="margin:4px 0 0">Columns: w, h = size; t = arm width (L, U, cross, frame) or inner size (ring, star); n = sides or points; array = copies nx × ny at pitch px, py (µm).</p>
     <div class="tblwrap"><table class="shapes" id="shapeList"></table></div>
+    </div>
     <details class="srcs"><summary>Model, sources and assumptions</summary>
       <ul>
         <li><b>Rates</b> (sourced): KOH 30, 40, 50 wt% at 70 °C for 12 orientations, Pal &amp; Sato Table 4.1, p. 87. KOH 42 wt% at 75 °C: {100} 42, {110} 66, {111} 0.5 µm/h, Lec 4-1 p. 7; its other 9 orientations are the Pal &amp; Sato 40 wt% values scaled by R(100) (assumption).</li>
@@ -381,10 +420,12 @@ table.shapes .dsel { margin: 0; }
     </div>
     <p class="note src">Readings are rounded to these steps: Pal &amp; Sato (pp. 299–300, 303) note that sub-micron offsets are hard to see in an optical microscope. 0.5 µm and 1 % are design choices.</p>
     <h3>Mask on the wafer</h3>
-    <p class="note" style="margin:0 0 4px"><b>Drag</b> an item to move it, <b>double-click</b> an empty spot to add the chosen item there. With the map focused, the arrow keys move the selected item by 1 mm (Shift: 5 mm) and <span class="kbd">Delete</span> removes it. Test structures: slot fan and circle arc; everything else is a device shape (µm).</p>
+    <div class="enl" data-title="Mask on the wafer">
+    <p class="note" style="margin:0 0 4px"><b>Drag</b> an item to move it (<b>Alt</b>-drag moves a copy), <b>double-click</b> an empty spot to add the chosen item there. With the map focused, the arrow keys move the selected item by 1 mm (Shift: 5 mm), <span class="kbd">Ctrl</span>+<span class="kbd">D</span> duplicates it and <span class="kbd">Delete</span> removes it. Test structures: slot fan and circle arc; everything else is a device shape (µm).</p>
     <canvas id="fdCanvas" class="maskcv" tabindex="0" aria-label="Mask map of the whole wafer"></canvas>
     <div class="addrow"><select id="fdType" aria-label="item to add"></select><button class="btn primary" id="fdAdd">Add</button><button class="btn" id="fdDup">Duplicate</button><button class="btn" id="fdDel">Delete</button><button class="btn" id="fdReset">Lecture layout</button></div>
     <div id="fdList" class="cards"></div>
+    </div>
     <h3>Estimate of <span style="text-transform:none">δ</span></h3>
     <dl class="kv" id="fdReadout"></dl>
     <h3>Error reduction</h3>
@@ -411,6 +452,72 @@ table.shapes .dsel { margin: 0; }
   Model on wafer and Etched pit: each wall is a crystal plane that moves outward at its own rate from the mask opening (n·x ≤ h + R·t over the {100}, {110} and {111} planes); the long-etch limit keeps only {111} planes with R = 0. This is the construction used in the origami tutorial; non-convex openings are split there into overlapping convex pieces whose cavities are joined, and convex mask corners are not undercut; use the etch simulator for that (its model and sources are listed in its panel).
   Rates: Pal &amp; Sato, p. 87 (KOH 30 wt% and 40 wt%, 70 °C); Lec 4-1, p. 7 (KOH 42 wt%, 75 °C); Lec 10, p. 11 (KOH 57 wt%, 75 °C; EDP Type S, 110 °C); EDP 50:30:3 ratio after Finne and Klein (Berkeley lab manual ch. 1.10). Primary flat ⟨110⟩ for (100) and (110): Lec 4-1, p. 6. For (111) the flat is assumed along [1<span class="ob">1</span>0]. Wafer: 100 mm, 525 µm thick (Pal &amp; Sato Table 2.1, p. 30). x runs along the flat, z is the wafer normal. The Corner lab and Find orientation scenes list their own methods and sources in their panels.
 </footer>
+<dialog id="dlgSet" class="dlg panel" aria-labelledby="stTitle">
+  <div class="dlghead"><h2 id="stTitle">Settings</h2><button class="x" data-close aria-label="close">×</button></div>
+  <h3>Layout</h3>
+  <div class="fields">
+    <label>page layout <select id="stLayout">
+      <option value="standard">Standard: 3D view left, controls right</option>
+      <option value="split">Split view: two panes that scroll on their own, controls right</option>
+      <option value="split-left">Split view, controls left</option>
+      <option value="theater">Theater: wide 3D view, controls below in two columns</option>
+      <option value="stacked">One column: 3D view, then the controls</option></select></label>
+    <label>controls panel width (standard layout) <span><input type="range" id="stPanelW" min="280" max="620" step="10"><span class="stval" id="stPanelWv"></span></span></label>
+    <label>3D view height (standard and one-column layouts) <span><input type="range" id="stStageH" min="40" max="90" step="2"><span class="stval" id="stStageHv"></span></span></label>
+  </div>
+  <p class="note">Any editor or graph panel can also be opened in a large window with its <b>⤢ Enlarge</b> button (Esc closes it).</p>
+  <h3>Look</h3>
+  <div class="fields">
+    <label>theme <select id="stTheme"><option value="auto">follow the system</option><option value="light">light</option><option value="dark">dark</option></select></label>
+    <label>labels in the 3D view <select id="stLabels"><option value="small">small</option><option value="normal">normal</option><option value="large">large</option><option value="off">hidden</option></select></label>
+    <label>camera moves <select id="stAnim"><option value="1">animated</option><option value="0">instant</option></select></label>
+    <label>3D render quality <select id="stPixel"><option value="auto">sharp (screen resolution)</option><option value="fast">fast (lower resolution)</option></select></label>
+  </div>
+  <h3>Mask editors</h3>
+  <div class="fields">
+    <label>snap step for moving, adding and drawing <select id="stSnap"><option value="1">1 µm</option><option value="2">2 µm</option><option value="5">5 µm</option><option value="10">10 µm</option><option value="25">25 µm</option></select></label>
+  </div>
+  <h3>Etch simulator</h3>
+  <div class="fields">
+    <label>resolution for new runs <select id="stQual"><option value="draft">draft (fast)</option><option value="normal">normal</option><option value="fine">fine (slow)</option></select></label>
+    <label><span><input type="checkbox" id="stAuto"> run again automatically after each edit</span></label>
+  </div>
+  <h3>Saved data</h3>
+  <div class="row"><button class="btn" id="stReset">Reset all settings</button><button class="btn" id="stClearEtch">Delete my custom etchants</button></div>
+  <p class="note">Settings and custom etchants are kept in this browser only.</p>
+</dialog>
+<dialog id="dlgEtch" class="dlg panel" aria-labelledby="ceTitle">
+  <div class="dlghead"><h2 id="ceTitle">Custom etchant</h2><button class="x" data-close aria-label="close">×</button></div>
+  <p class="note">Make an etchant for the Etched pit, the simulator, the corner lab and the orientation finder: either a listed etchant run at another temperature or concentration, or your own measured rates.</p>
+  <div class="fields">
+    <label>edit <select id="ceList"></select></label>
+    <label>name <input type="text" id="ceName" maxlength="60" placeholder="for example KOH 30 wt%, 60 °C"></label>
+    <label>start from <select id="ceMode"><option value="base">a listed etchant with another process</option><option value="own">my own etch rates</option></select></label>
+  </div>
+  <div id="ceBaseBox">
+    <div class="fields">
+      <label>listed etchant <select id="ceBase"></select></label>
+      <label>temperature <span><input type="number" id="ceT" step="1"> °C</span></label>
+      <label id="ceConcRow">KOH concentration (30 to 50) <span><input type="number" id="ceConc" min="30" max="50" step="1"> wt%</span></label>
+      <label>activation energy Q of {100} <span><input type="number" id="ceQ100" min="0" step="0.01"> eV</span></label>
+      <label>Q of {110} <span><input type="number" id="ceQ110" min="0" step="0.01"> eV</span></label>
+      <label>Q of {111} <span><input type="number" id="ceQ111" min="0" step="0.01"> eV</span></label>
+      <label>extra factor on all rates <span><input type="number" id="ceF" min="0" step="0.05"> ×</span></label>
+    </div>
+    <p class="note src">Temperature: Arrhenius law R = R₀ exp(−Q/kT); Q(100) ≈ 0.60 eV for 40 % KOH, and {111} has the smallest Q (Pal &amp; Sato p. 90). Using 0.60 eV for {110} and {111} too, and for EDP, is an assumption: enter better values if you have them. Concentration: linear between the 30, 40 and 50 wt% columns of Pal &amp; Sato Table 4.1, p. 87 (assumption between the columns). k = 8.617 × 10⁻⁵ eV/K (standard constant, not in the course files).</p>
+  </div>
+  <div id="ceOwnBox" class="hidden">
+    <p class="note">Etch rates in µm/h at your process. {100}, {110} and {111} are needed; the other planes are optional. Planes left empty are interpolated from the given ones (three-rate model, Radjenović et al. 2010, eq. 1, when only three are given).</p>
+    <div class="ceGrid" id="ceOwn"></div>
+  </div>
+  <div class="fields"><label>SiO₂ mask etch rate (optional) <span><input type="number" id="ceOx" min="0" step="0.001"> µm/h</span></label></div>
+  <h3>Result</h3>
+  <table class="walls" id="cePrev"></table>
+  <p class="note src" id="ceSrc"></p>
+  <p class="warn hidden" id="ceWarn"></p>
+  <div class="row"><button class="btn primary" id="ceSave">Save and use</button><button class="btn" id="ceNew">New</button><button class="btn" id="ceDel">Delete</button><button class="btn" id="ceExport">Export all (.json)</button><label class="btn" style="cursor:pointer">Import (.json)<input type="file" id="ceImport" accept=".json,application/json" hidden></label></div>
+  <p class="note">Saved in this browser only. Export the file to share it with classmates.</p>
+</dialog>
 <section class="refs" id="about">
   <h2>About this page</h2>
   <p><b>Author.</b> Huu Quoc Anh Nguyen (Student ID X1150030), undergraduate exchange student from the University of Science and Technology of Hanoi (USTH), Vietnam, at the Department of Engineering and System Science, National Tsing Hua University (NTHU), Taiwan, in fall 2026. My background is semiconductor device physics and materials, and I am interested in semiconductor process engineering.</p>
@@ -1079,6 +1186,17 @@ function etchEngineFactory() {
 (() => {
 const C = Core, V3 = THREE.Vector3;
 const T_WAFER = 525;
+// ---- user settings (kept in this browser only)
+const SET_DEF = { layout: "standard", panelW: 340, stageH: 68, theme: "auto", labels: "normal", anim: true, pixel: "auto", snap: 5, quality: "normal", autoRun: false };
+const SET = Object.assign({}, SET_DEF);
+try { Object.assign(SET, JSON.parse(localStorage.getItem("o3d-settings") || "{}")); } catch (e) {}
+const saveSet = () => { try { localStorage.setItem("o3d-settings", JSON.stringify(SET)); } catch (e) {} };
+let layoutBusy = false;   // true while applyLayout() switches split/theater, so they do not overwrite SET.layout
+const snapV = v => { const st = Number(SET.snap) || 1; return Math.round(v/st)*st; };
+// height limit of an editor or graph canvas: generous inside an enlarged window, none otherwise
+const bigBox = cv => !!(cv && cv.closest(".enlarged"));
+const edMaxH = cv => bigBox(cv) ? Math.max(260, window.innerHeight*0.94 - 230) : Infinity;
+const graphH = (cv, h) => bigBox(cv) ? Math.max(h, Math.round(window.innerHeight*0.33)) : h;
 const RATES = {
   PAL30: { name: "KOH 30 wt%, 70 °C (Pal & Sato p. 87)", r: { "100": 0.797, "110": 1.455, "111": 0.005 } },
   PAL40: { name: "KOH 40 wt%, 70 °C (Pal & Sato p. 87)", r: { "100": 0.599, "110": 1.293, "111": 0.009 } },
@@ -1176,7 +1294,7 @@ function showCbar(title, v0, v1, unit) {
 function hideCbar() { document.getElementById("cbar").classList.add("hidden"); }
 // line graph against time: series [{name, color, x: [], y: []}], vertical marker at tv
 function drawGraph(cv, series, { xmax, tv, ylabel = "µm", marks = [] }) {
-  const wcss = cv.clientWidth || 600, hcss = 190, dpr = Math.min(2, window.devicePixelRatio || 1), ctx = cv.getContext("2d");
+  const wcss = cv.clientWidth || 600, hcss = graphH(cv, 190), dpr = Math.min(2, window.devicePixelRatio || 1), ctx = cv.getContext("2d");
   cv.width = Math.round(wcss*dpr); cv.height = Math.round(hcss*dpr); cv.style.height = `${hcss}px`;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, wcss, hcss);
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -1218,7 +1336,7 @@ function graphLegend(el, series, vals, tv) {
 // --------------------------------------------------------------------- renderer, camera
 const stage = document.getElementById("stage"), labelsEl = document.getElementById("labels"), tip = document.getElementById("tip");
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+renderer.setPixelRatio(SET.pixel === "fast" ? 1 : Math.min(2, window.devicePixelRatio || 1));
 renderer.localClippingEnabled = true;
 stage.insertBefore(renderer.domElement, labelsEl);
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 100);
@@ -1246,6 +1364,7 @@ const VIEWS = { oblique: [30, -60], back: [30, 120], top: [89.5, -90], flat: [0,
 const dirOf = (e, a) => new V3(Math.cos(e/C.DEG)*Math.cos(a/C.DEG), Math.cos(e/C.DEG)*Math.sin(a/C.DEG), Math.sin(e/C.DEG));
 let anim = null, anim0Zoom = 1;   // anim0Zoom: zoom the next setView ends at (1 = fit)
 function setView(dir, target, instant = false) {
+  if (!SET.anim) instant = true;
   dir = dir.clone().normalize();
   const tgt = target ? target.clone() : controls.target.clone();
   if (instant) {
@@ -2127,7 +2246,7 @@ function paraSides(e) {
 function newPitShape(type, x, y) {
   const d = SHAPE_TYPES[type].d;   // the simulator defaults, doubled: pit openings are usually larger
   const o = { w: 2*d.w, h: 2*(d.h || d.w) }; if (d.t) o.t = 2*d.t; if (d.n) o.n = d.n;
-  return Object.assign(shp(type, "open", Math.round(x/5)*5, Math.round(y/5)*5, o.w, o.h), d, o, { pre: 0 }, type === "para" ? paraSides(C.FRAMES[S.wf]) : {});
+  return Object.assign(shp(type, "open", snapV(x), snapV(y), o.w, o.h), d, o, { pre: 0 }, type === "para" ? paraSides(C.FRAMES[S.wf]) : {});
 }
 let pitBusy = 0;
 function pitChanged(resetView) {   // after an edit: rebuild the pit (deferred so the editor redraws first)
@@ -2140,19 +2259,19 @@ function pitChanged(resetView) {   // after an edit: rebuild the pit (deferred s
 function dirSelects(sh, i, dirs) {
   if (sh.type === "pts") return "";
   if (sh.type === "para") return dirSelect(dirs, sh.a1, `data-i="${i}" data-k="a1"`, "side 1 along") + dirSelect(dirs, sh.a2, `data-i="${i}" data-k="a2"`, "side 2 along");
-  return dirSelect(dirs, sh.ang, `data-i="${i}" data-k="ang"`, sh.type === "circle" || sh.type === "ring" ? "turned to" : "edges along");
+  return dirSelect(dirs, sh.ang, `data-i="${i}" data-k="ang"`, sh.type === "circle" || sh.type === "ring" || sh.type === "free" ? "turned to" : "edges along");
 }
 function renderCustomList() {
   const list = pitShapesNow(), dirs = inPlaneDirs(C.FRAMES[S.wf]);
   const f = (i, k, v, lbl, st = 5) => `<label>${lbl}<input type="number" step="${st}" data-i="${i}" data-k="${k}" aria-label="${lbl}" value="${+(+(v == null ? 0 : v)).toFixed(1)}"></label>`;
   const cards = list.map((sh, i) => {
     const T = SHAPE_TYPES[sh.type] || SHAPE_TYPES.rect;
-    const lab = { w: "w", h: "h", t: sh.type === "ring" || sh.type === "star" ? "inner" : "arm t", n: sh.type === "star" ? "points" : "sides" };
-    const dims = T.f.map(k => f(i, k, sh[k], lab[k], k === "n" ? 1 : 5)).join("");
+    const lab = { w: "w", h: "h", t: sh.type === "ring" || sh.type === "star" ? "inner" : "arm t", n: sh.type === "star" ? "points" : "sides", k: "scale %" };
+    const dims = T.f.map(k => f(i, k, sh[k] == null ? 100 : sh[k], lab[k], k === "n" ? 1 : 5)).join("");
     return `<div class="card${i === S.pitSel ? " sel" : ""}" data-row="${i}">
-      <div class="top"><span><b>${i + 1}. ${T.name}</b>${S.open === "custom" ? "" : ' <span class="note">(the example; editing it makes it your own mask)</span>'}</span><button class="x" data-pcdel="${i}" title="remove" aria-label="remove">×</button></div>
+      <div class="top"><span><b>${i + 1}. ${T.name}</b>${S.open === "custom" ? "" : ' <span class="note">(the example; editing it makes it your own mask)</span>'}</span><span><button class="x" data-pcdup="${i}" title="duplicate (Ctrl+D)" aria-label="duplicate">⧉</button><button class="x" data-pcdel="${i}" title="remove" aria-label="remove">×</button></span></div>
       <div class="fl">${f(i, "cx", sh.cx, "x")}${f(i, "cy", sh.cy, "y")}${sh.type === "para" ? f(i, "a1", sh.a1, "side 1°", 1) + f(i, "a2", sh.a2, "side 2°", 1) : sh.type === "pts" ? "" : f(i, "ang", sh.ang, "angle°", 1)}${f(i, "pre", sh.pre || 0, "pre-etch")}</div>
-      ${dims ? `<div class="fl">${dims}<span class="note">µm</span></div>` : ""}${dirSelects(sh, i, dirs)}</div>`;
+      ${dims ? `<div class="fl">${dims}<span class="note">${sh.type === "free" ? sh.pts.length + " corners" : "µm"}</span></div>` : ""}${dirSelects(sh, i, dirs)}</div>`;
   }).join("");
   $("pcList").innerHTML = list.length ? cards : `<p class="note">No openings. Pick a shape and press “Add shape”, or double-click in the editor.</p>`;
   $("pcDup").disabled = $("pcDel").disabled = !(S.pitSel >= 0 && S.pitSel < list.length);
@@ -2168,7 +2287,10 @@ function drawPitEditor(keepExtent) {
     const r50 = v => Math.max(100, Math.ceil(v/50)*50), m = 0.2*Math.max(ax, ay) + 30;
     S.pitEd = { hx: r50(ax + m), hy: r50(Math.max(ay + m, 0.35*(ax + m))) };
   }
-  const { hx, hy } = S.pitEd, wcss = cv.clientWidth || 300, s = (wcss - 20)/(2*hx), hcss = 2*hy*s + 34;
+  const { hx, hy } = S.pitEd; cv.style.width = "";
+  let wcss = cv.clientWidth || 300, s = (wcss - 20)/(2*hx);
+  const sh_ = (edMaxH(cv) - 34)/(2*hy); if (sh_ < s) { s = sh_; wcss = Math.round(2*hx*s + 20); cv.style.width = `${wcss}px`; }
+  const hcss = 2*hy*s + 34;
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   cv.width = Math.round(wcss*dpr); cv.height = Math.round(hcss*dpr); cv.style.height = `${hcss}px`;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, wcss, hcss);
@@ -2207,6 +2329,7 @@ function drawPitEditor(keepExtent) {
   ctx.font = "11px IBM Plex Sans, sans-serif";
   ctx.fillText(`primary flat side; x along ${plainIdx(C.FRAME_IDX[S.wf][0])}; grid ${g} µm`, 12, 10 + 2*hy*s + 18);
   if (S.compass) drawCompass(ctx, 10 + 2*hx*s - 44, 54, 30, inPlaneDirs(C.FRAMES[S.wf]), S.rot || 0);
+  drawOverlay(ctx, "pitCanvas", toC);
 }
 (() => {
   const cv = $("pitCanvas"); let drag = null;
@@ -2216,13 +2339,17 @@ function drawPitEditor(keepExtent) {
     if (!S.pitEd) return;
     const [x, y] = world(ev), i = hit(x, y);
     S.pitSel = i; renderCustomList();
-    if (i >= 0) { const sh = pitShapesNow()[i]; drag = { i, x0: x, y0: y, cx: sh.cx, cy: sh.cy, moved: false }; cv.setPointerCapture(ev.pointerId); cv.style.cursor = "grabbing"; }
+    if (i >= 0) {
+      let j = i, dup = false;
+      if (ev.altKey) { toCustom(); S.pitShapes.push(JSON.parse(JSON.stringify(S.pitShapes[i]))); j = S.pitShapes.length - 1; S.pitSel = j; dup = true; renderCustomList(); }   // Alt-drag: drag a copy
+      const sh = pitShapesNow()[j]; drag = { i: j, x0: x, y0: y, cx: sh.cx, cy: sh.cy, moved: dup }; cv.setPointerCapture(ev.pointerId); cv.style.cursor = "grabbing"; }
     drawPitEditor(true);
   });
   cv.addEventListener("pointermove", ev => {
     if (!drag || !S.pitEd) return; const [x, y] = world(ev);
     if (!drag.moved) { toCustom(); drag.moved = true; }
-    const sh = S.pitShapes[drag.i]; sh.cx = Math.round((drag.cx + x - drag.x0)/5)*5; sh.cy = Math.round((drag.cy + y - drag.y0)/5)*5;
+    if (!S.pitShapes[drag.i]) return;
+    const sh = S.pitShapes[drag.i]; sh.cx = snapV(drag.cx + x - drag.x0); sh.cy = snapV(drag.cy + y - drag.y0);
     drawPitEditor(true); $("hint").textContent = `Moving to (${sh.cx}, ${sh.cy}) µm; let go to update the 3D view`;
   });
   const end = () => { cv.style.cursor = ""; if (drag && drag.moved) pitChanged(false); else drawPitEditor(); drag = null; };
@@ -2232,8 +2359,9 @@ function drawPitEditor(keepExtent) {
     toCustom(); S.pitShapes.push(newPitShape($("pcType").value, x, y)); S.pitSel = S.pitShapes.length - 1; pitChanged(false);
   });
   cv.addEventListener("keydown", ev => {
+    if ((ev.ctrlKey || ev.metaKey) && (ev.key === "d" || ev.key === "D")) { ev.preventDefault(); $("pcDup").click(); return; }
     if (!(S.pitSel >= 0)) return;
-    const st = ev.shiftKey ? 25 : 5, mv = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, st], ArrowDown: [0, -st] }[ev.key];
+    const st = (ev.shiftKey ? 5 : 1)*(Number(SET.snap) || 1), mv = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, st], ArrowDown: [0, -st] }[ev.key];
     if (mv) { ev.preventDefault(); toCustom(); const sh = S.pitShapes[S.pitSel]; sh.cx += mv[0]; sh.cy += mv[1]; pitChanged(false); }
     else if (ev.key === "Delete" || ev.key === "Backspace") { ev.preventDefault(); $("pcDel").click(); }
   });
@@ -2261,6 +2389,7 @@ $("pcList").addEventListener("change", e => {
 });
 $("pcList").addEventListener("click", e => {
   const d = e.target.closest("[data-pcdel]"); if (d) { S.pitSel = Number(d.dataset.pcdel); $("pcDel").click(); return; }
+  const u = e.target.closest("[data-pcdup]"); if (u) { S.pitSel = Number(u.dataset.pcdup); $("pcDup").click(); return; }
   const r = e.target.closest("[data-row]"); if (r && e.target.tagName !== "INPUT" && e.target.tagName !== "LABEL") { S.pitSel = Number(r.dataset.row); renderCustomList(); drawPitEditor(); }
 });
 $("pcToSim").addEventListener("click", () => {
@@ -2369,6 +2498,7 @@ const SHAPE_TYPES = {   // name, which size fields the editor shows, defaults fo
   star:    { name: "star",            f: ["w", "t", "n"], d: { w: 140, t: 60, n: 5 } },
   para:    { name: "parallelogram (sides along chosen directions)", f: ["w", "h"], d: { w: 120, h: 60, a1: 54.74, a2: 125.26 } },
   pts:     { name: "example outline",         f: [],              d: {}, noAdd: true },
+  free:    { name: "drawn outline",           f: ["k"],           d: { k: 100 }, noAdd: true },
 };
 const ngon = (r, n, a0 = 0) => Array.from({ length: n }, (_, i) => { const a = a0 + 2*Math.PI*i/n; return [r*Math.cos(a), r*Math.sin(a)]; });
 // polygon with a hole as one loop: outer (counter-clockwise), a zero-width slit along +x, inner reversed
@@ -2391,8 +2521,87 @@ function basePts(s) {   // shape outline before rotation and translation
     case "ring": return keyhole(ngon(w/2, 72), ngon(Math.min(t, w - 2)/2, 72));
     case "star": return Array.from({ length: 2*n }, (_, i) => { const r = i % 2 ? Math.min(t, w)/2 : w/2, a = Math.PI/2 + Math.PI*i/n; return [r*Math.cos(a), r*Math.sin(a)]; });
     case "pts": return s.pts.map(p => p.slice());
+    case "free": { const k = (s.k || 100)/100; return s.pts.map(p => [p[0]*k, p[1]*k]); }
   }
   return [[-w/2, -h/2], [w/2, -h/2], [w/2, h/2], [-w/2, h/2]];
+}
+// ---- polygon tools for drawn outlines
+const polyArea = P => { let a = 0; for (let i = 0; i < P.length; i++) { const p = P[i], q = P[(i + 1) % P.length]; a += p[0]*q[1] - q[0]*p[1]; } return a/2; };
+function polyCentroid(P) {
+  let a = 0, cx = 0, cy = 0;
+  for (let i = 0; i < P.length; i++) { const p = P[i], q = P[(i + 1) % P.length], c = p[0]*q[1] - q[0]*p[1]; a += c; cx += (p[0] + q[0])*c; cy += (p[1] + q[1])*c; }
+  return Math.abs(a) < 1e-12 ? [P.reduce((u, p) => u + p[0], 0)/P.length, P.reduce((u, p) => u + p[1], 0)/P.length] : [cx/(3*a), cy/(3*a)];
+}
+function selfCrosses(P) {   // true if two non-adjacent edges cross
+  const n = P.length, cr = (a, b, c) => (b[0] - a[0])*(c[1] - a[1]) - (b[1] - a[1])*(c[0] - a[0]);
+  for (let i = 0; i < n; i++) for (let j = i + 2; j < n; j++) {
+    if (i === 0 && j === n - 1) continue;
+    const a = P[i], b = P[(i + 1) % n], c = P[j], d = P[(j + 1) % n];
+    if (cr(a, b, c)*cr(a, b, d) < 0 && cr(c, d, a)*cr(c, d, b) < 0) return true;
+  }
+  return false;
+}
+function simplifyRDP(P, tol) {   // Ramer-Douglas-Peucker on an open polyline
+  if (P.length < 3) return P.slice();
+  const keep = new Uint8Array(P.length); keep[0] = keep[P.length - 1] = 1;
+  const st = [[0, P.length - 1]];
+  while (st.length) {
+    const [i0, i1] = st.pop(), a = P[i0], b = P[i1], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    let dm = -1, im = -1;
+    for (let i = i0 + 1; i < i1; i++) {   // distance to the chord; to the end point when the chord closes on itself
+      const p = P[i], d = L > 1e-9 ? Math.abs((b[0] - a[0])*(a[1] - p[1]) - (a[0] - p[0])*(b[1] - a[1]))/L : Math.hypot(p[0] - a[0], p[1] - a[1]);
+      if (d > dm) { dm = d; im = i; }
+    }
+    if (dm > tol) { keep[im] = 1; st.push([i0, im], [im, i1]); }
+  }
+  return P.filter((_, i) => keep[i]);
+}
+// convex pieces of a simple polygon: ear-clipping triangulation, then Hertel-Mehlhorn merging of neighbours
+function convexPieces(P0) {
+  let P = P0.map(p => p.slice()); if (P.length < 3) return [P];
+  if (polyArea(P) < 0) P.reverse();
+  const sc = Math.max(...P.map(p => Math.abs(p[0]) + Math.abs(p[1])), 1), eps = 1e-10*sc*sc;
+  const cr = (a, b, c) => (b[0] - a[0])*(c[1] - a[1]) - (b[1] - a[1])*(c[0] - a[0]);
+  const inTri = (p, a, b, c) => cr(a, b, p) > eps && cr(b, c, p) > eps && cr(c, a, p) > eps;
+  const idx = P.map((_, i) => i), tris = [];
+  let guard = 0;
+  while (idx.length > 3 && guard++ < 20000) {
+    let cut = -1;
+    for (let i = 0; i < idx.length && cut < 0; i++) {
+      const ia = idx[(i + idx.length - 1) % idx.length], ib = idx[i], ic = idx[(i + 1) % idx.length];
+      if (cr(P[ia], P[ib], P[ic]) <= eps) continue;
+      if (idx.some(j => j !== ia && j !== ib && j !== ic && inTri(P[j], P[ia], P[ib], P[ic]))) continue;
+      tris.push([ia, ib, ic]); cut = i;
+    }
+    if (cut < 0) {   // no ear (degenerate input): drop the flattest vertex
+      let best = 0, bv = Infinity;
+      for (let i = 0; i < idx.length; i++) { const v = Math.abs(cr(P[idx[(i + idx.length - 1) % idx.length]], P[idx[i]], P[idx[(i + 1) % idx.length]])); if (v < bv) { bv = v; best = i; } }
+      cut = best;
+    }
+    idx.splice(cut, 1);
+  }
+  if (idx.length === 3 && Math.abs(cr(P[idx[0]], P[idx[1]], P[idx[2]])) > eps) tris.push(idx.slice());
+  if (!tris.length) return [hull2(P)];
+  const convex = Q => { for (let i = 0; i < Q.length; i++) if (cr(P[Q[i]], P[Q[(i + 1) % Q.length]], P[Q[(i + 2) % Q.length]]) < -eps) return false; return true; };
+  const merge = (A, B) => {   // A and B share the edge (u, v) in A and (v, u) in B
+    for (let i = 0; i < A.length; i++) {
+      const u = A[i], v = A[(i + 1) % A.length], j = B.indexOf(v);
+      if (j < 0 || B[(j + 1) % B.length] !== u) continue;
+      const a = [], b = [];
+      for (let k = 0; k < A.length; k++) a.push(A[(i + 1 + k) % A.length]);   // v ... u
+      for (let k = 2; k < B.length; k++) b.push(B[(j + k) % B.length]);       // after u ... before v
+      const M = a.concat(b); return convex(M) ? M : null;
+    }
+    return null;
+  };
+  const pieces = tris.map(t => t.slice());
+  for (let again = true; again;) {
+    again = false;
+    for (let a = 0; a < pieces.length && !again; a++) for (let b = a + 1; b < pieces.length && !again; b++) {
+      const m = merge(pieces[a], pieces[b]); if (m) { pieces[a] = m; pieces.splice(b, 1); again = true; }
+    }
+  }
+  return pieces.map(Q => Q.map(i => P[i].slice()));
 }
 // the shape as overlapping convex pieces that cover it, for the Etched pit scene. Pieces overlap so that no point of the
 // opening lies only on a seam between two pieces (a seam would leave a false silicon ridge between their cavities).
@@ -2409,6 +2618,7 @@ function basePieces(s) {
       return Array.from({ length: m }, (_, i) => [I[i], O[i], O[(i + 1) % m], O[(i + 2) % m], I[(i + 2) % m]]); }
     case "star": { const P = basePts(s), inner = P.filter((_, i) => i % 2);   // centre polygon + one kite per point
       return [inner, ...Array.from({ length: n }, (_, i) => [[0, 0], P[(2*i - 1 + 2*n) % (2*n)], P[2*i], P[2*i + 1]])]; }
+    case "free": return convexPieces(basePts(s));
   }
   return [basePts(s)];
 }
@@ -2858,7 +3068,7 @@ function drawSection() {
   const sec = r && r.sec, g = SIM.grid;
   const along = SIM.cutAxis === "y" ? 2*SIM.hx : 2*SIM.hy, a0 = SIM.cutAxis === "y" ? -SIM.hx : -SIM.hy;
   const zd = g ? g.Nz*g.dx : 100;
-  const pad = 34, sc = (wcss - 2*pad)/along, hcss = Math.min(420, Math.max(120, zd*sc + 2*pad));
+  const pad = 34, sc = (wcss - 2*pad)/along, hcss = Math.min(bigBox(cv) ? Math.round(window.innerHeight*0.55) : 420, Math.max(120, zd*sc + 2*pad));
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   cv.width = Math.round(wcss*dpr); cv.height = Math.round(hcss*dpr); cv.style.height = `${hcss}px`;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, wcss, hcss);
@@ -2912,7 +3122,10 @@ function niceStep(x) { const p = Math.pow(10, Math.floor(Math.log10(x))); for (c
 // ---- mask editor
 function drawMaskEditor() {
   const cv = $("maskCanvas"), ctx = cv.getContext("2d");
-  const wcss = cv.clientWidth || 300, W = 2*SIM.hx, H = 2*SIM.hy, s = (wcss - 20)/W, hcss = H*s + 34;
+  const W = 2*SIM.hx, H = 2*SIM.hy; cv.style.width = "";
+  let wcss = cv.clientWidth || 300, s = (wcss - 20)/W;
+  const sh_ = (edMaxH(cv) - 34)/H; if (sh_ < s) { s = sh_; wcss = Math.round(W*s + 20); cv.style.width = `${wcss}px`; }
+  const hcss = H*s + 34;
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   cv.width = Math.round(wcss*dpr); cv.height = Math.round(hcss*dpr); cv.style.height = `${hcss}px`;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, wcss, hcss);
@@ -2940,6 +3153,7 @@ function drawMaskEditor() {
   ctx.font = "11px IBM Plex Sans, sans-serif";
   ctx.fillText(`primary flat side; x along ${plainIdx(simFrame().idx[0])}`, 12, 10 + H*s + 18);
   if (S.compass) drawCompass(ctx, 10 + W*s - 44, 54, 30, inPlaneDirs(SFR[SIM.fk].e), SIM.rot || 0);
+  drawOverlay(ctx, "maskCanvas", toC);
 }
 const plainIdx = v => "[" + v.map(x => x < 0 ? `${-x}̅` : `${x}`).join("") + "]";
 function renderShapeList() {
@@ -2947,15 +3161,15 @@ function renderShapeList() {
   const rows = SIM.shapes.map((sh, i) => {
     const f = (k, v, st = 5, ttl = k) => `<input type="number" step="${st}" data-i="${i}" data-k="${k}" title="${ttl}" value="${+(+(v == null ? 0 : v)).toFixed(1)}">`;
     const T = SHAPE_TYPES[sh.type] || SHAPE_TYPES.rect;
-    const dims = T.f.map(k => f(k, sh[k], k === "n" ? 1 : 5, { w: "w (µm)", h: "h (µm)", t: sh.type === "ring" || sh.type === "star" ? "inner size (µm)" : "arm width t (µm)", n: "sides or points" }[k])).join("");
+    const dims = T.f.map(k => f(k, sh[k] == null ? 100 : sh[k], k === "n" ? 1 : 5, { w: "w (µm)", h: "h (µm)", t: sh.type === "ring" || sh.type === "star" ? "inner size (µm)" : "arm width t (µm)", n: "sides or points", k: "scale (%)" }[k])).join("");
     const ang = (sh.type === "para" ? f("a1", sh.a1, 1, "side 1 angle to the flat (°)") + f("a2", sh.a2, 1, "side 2 angle to the flat (°)") : sh.type === "pts" ? "" : f("ang", sh.ang, 1, "angle to the flat (°)")) + dirSelects(sh, i, dirs);
     const arr = `${f("nx", sh.nx || 1, 1, "copies along x")}${f("ny", sh.ny || 1, 1, "copies along y")}${f("px", sh.px || 0, 5, "pitch x (µm)")}${f("py", sh.py || 0, 5, "pitch y (µm)")}`;
     return `<tr class="${i === SIM.sel ? "sel" : ""}" data-row="${i}"><td><select data-i="${i}" data-k="op"><option value="open"${sh.op === "open" ? " selected" : ""}>open</option><option value="mask"${sh.op === "mask" ? " selected" : ""}>mask</option></select></td>
-      <td class="ty">${T.name}</td><td>${f("cx", sh.cx)}${f("cy", sh.cy)}</td><td>${dims}</td><td>${ang}</td><td>${arr}</td><td><button class="x" data-del="${i}" title="remove">×</button></td></tr>`;
+      <td class="ty">${T.name}</td><td>${f("cx", sh.cx)}${f("cy", sh.cy)}</td><td>${dims}</td><td>${ang}</td><td>${arr}</td><td style="white-space:nowrap"><button class="x" data-dup="${i}" title="duplicate (Ctrl+D)" aria-label="duplicate">⧉</button><button class="x" data-del="${i}" title="remove">×</button></td></tr>`;
   }).join("");
   $("shapeList").innerHTML = `<tr class="hd"><td>layer</td><td>shape</td><td>centre x, y</td><td>size</td><td>angle°</td><td>array nx, ny, px, py</td><td></td></tr>` + rows;
 }
-function markDirty() { SIM.dirty = true; updateDirtyNote(); renderShapeList(); if (simLike()) buildSim(false); }
+function markDirty() { SIM.dirty = true; updateDirtyNote(); renderShapeList(); if (simLike()) buildSim(false); autoRunMaybe(); }
 function updateDirtyNote() { $("simDirty").classList.toggle("hidden", !SIM.dirty); }
 
 function loadPreset(wf, i) {
@@ -3017,6 +3231,7 @@ $("shapeList").addEventListener("change", e => {
 });
 $("shapeList").addEventListener("click", e => {
   const d = e.target.closest("[data-del]"); if (d) { SIM.shapes.splice(Number(d.dataset.del), 1); SIM.sel = -1; markDirty(); return; }
+  const u = e.target.closest("[data-dup]"); if (u) { SIM.sel = Number(u.dataset.dup); $("bDupShape").click(); return; }
   const r = e.target.closest("tr[data-row]"); if (r && e.target.tagName !== "INPUT" && e.target.tagName !== "SELECT") { SIM.sel = Number(r.dataset.row); drawMaskEditor(); renderShapeList(); }
 });
 $("addType").innerHTML = Object.entries(SHAPE_TYPES).filter(([, v]) => !v.noAdd).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join("");
@@ -3037,13 +3252,14 @@ $("bDupShape").addEventListener("click", () => {
   cv.addEventListener("pointerdown", ev => {
     const [x, y] = world(ev);
     for (let i = SIM.shapes.length - 1; i >= 0; i--) if (EE.isOpen([Object.assign(engineShape(SIM.shapes[i]), { op: "open" })], x, y)) {
-      SIM.sel = i; drag = { i, x0: x, y0: y, cx: SIM.shapes[i].cx, cy: SIM.shapes[i].cy, moved: false }; cv.setPointerCapture(ev.pointerId); drawMaskEditor(); renderShapeList(); return;
+      let j = i; if (ev.altKey) { const c = JSON.parse(JSON.stringify(SIM.shapes[i])); delete c.name; SIM.shapes.push(c); j = SIM.shapes.length - 1; }   // Alt-drag: drag a copy
+      SIM.sel = j; drag = { i: j, x0: x, y0: y, cx: SIM.shapes[j].cx, cy: SIM.shapes[j].cy, moved: j !== i }; cv.setPointerCapture(ev.pointerId); drawMaskEditor(); renderShapeList(); return;
     }
     SIM.sel = -1; drawMaskEditor(); renderShapeList();
   });
   cv.addEventListener("pointermove", ev => {
     if (!drag) return; const [x, y] = world(ev);
-    const sh = SIM.shapes[drag.i]; sh.cx = Math.round((drag.cx + x - drag.x0)/5)*5; sh.cy = Math.round((drag.cy + y - drag.y0)/5)*5; drag.moved = true; drawMaskEditor();
+    const sh = SIM.shapes[drag.i]; sh.cx = snapV(drag.cx + x - drag.x0); sh.cy = snapV(drag.cy + y - drag.y0); drag.moved = true; drawMaskEditor();
   });
   cv.addEventListener("pointerup", () => { if (drag && drag.moved) { $("simPreset").value = "-1"; markDirty(); } drag = null; });
   cv.setAttribute("tabindex", "0");
@@ -3051,12 +3267,13 @@ $("bDupShape").addEventListener("click", () => {
     const [x, y] = world(ev);
     if (SIM.shapes.some(sh => EE.isOpen([Object.assign(engineShape(sh), { op: "open" })], x, y))) return;
     const type = $("addType").value, d = SHAPE_TYPES[type].d;
-    SIM.shapes.push(Object.assign(shp(type, $("addOp").value, Math.round(x/5)*5, Math.round(y/5)*5, d.w, d.h == null ? d.w : d.h), d, { nx: 1, ny: 1, px: 0, py: 0 }, type === "para" ? paraSides(SFR[SIM.fk].e) : {}));
+    SIM.shapes.push(Object.assign(shp(type, $("addOp").value, snapV(x), snapV(y), d.w, d.h == null ? d.w : d.h), d, { nx: 1, ny: 1, px: 0, py: 0 }, type === "para" ? paraSides(SFR[SIM.fk].e) : {}));
     SIM.sel = SIM.shapes.length - 1; $("simPreset").value = "-1"; markDirty();
   });
   cv.addEventListener("keydown", ev => {   // arrow keys move the selected shape, Delete removes it
     const sh = SIM.shapes[SIM.sel]; if (!sh) return;
-    const st = ev.shiftKey ? 25 : 5, mv = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, st], ArrowDown: [0, -st] }[ev.key];
+    if ((ev.ctrlKey || ev.metaKey) && (ev.key === "d" || ev.key === "D")) { ev.preventDefault(); $("bDupShape").click(); return; }
+    const st = (ev.shiftKey ? 5 : 1)*(Number(SET.snap) || 1), mv = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, st], ArrowDown: [0, -st] }[ev.key];
     if (mv) { ev.preventDefault(); sh.cx += mv[0]; sh.cy += mv[1]; $("simPreset").value = "-1"; markDirty(); }
     else if (ev.key === "Delete" || ev.key === "Backspace") { ev.preventDefault(); SIM.shapes.splice(SIM.sel, 1); SIM.sel = -1; markDirty(); }
   });
@@ -3361,13 +3578,16 @@ function fdCards() {
     else { const T = SHAPE_TYPES[it.type]; const lab = { w: "w", h: "h", t: it.type === "ring" || it.type === "star" ? "inner" : "arm t", n: it.type === "star" ? "points" : "sides" };
       body = `<div class="fl">${f(i, "x", it.x, "x mm")}${f(i, "y", it.y, "y mm")}${it.type === "para" ? f(i, "a1", it.a1, "side 1°") + f(i, "a2", it.a2, "side 2°") : f(i, "ang", it.ang, "angle°")}</div>${T.f.length ? `<div class="fl">${T.f.map(k => f(i, k, it[k], lab[k], k === "n" ? 1 : 5)).join("")}<span class="note">µm</span></div>` : ""}${dirSelects(it, i, dirs)}`; }
     const name = it.kind === "shape" ? `device: ${SHAPE_TYPES[it.type].name}` : FD_KINDS[it.kind];
-    return `<div class="card${i === FD.sel ? " sel" : ""}" data-row="${i}"><div class="top"><span><b>${i + 1}. ${name}</b></span><button class="x" data-fddel="${i}" title="remove" aria-label="remove">×</button></div>${body}</div>`;
+    return `<div class="card${i === FD.sel ? " sel" : ""}" data-row="${i}"><div class="top"><span><b>${i + 1}. ${name}</b></span><span><button class="x" data-fddup="${i}" title="duplicate (Ctrl+D)" aria-label="duplicate">⧉</button><button class="x" data-fddel="${i}" title="remove" aria-label="remove">×</button></span></div>${body}</div>`;
   }).join("") || `<p class="note">Nothing on the mask. Pick an item and press Add, or double-click on the map.</p>`;
 }
 // ---- the wafer map editor
 function drawFindMap() {
   const cv = $("fdCanvas"); if (!cv) return;
-  const ctx = cv.getContext("2d"), wcss = cv.clientWidth || 300, R = WAFER.D/2, s = (wcss - 20)/(2*R), PB = Math.round(0.2*R*s), hcss = 2*R*s + 34 + PB;
+  cv.style.width = "";
+  const ctx = cv.getContext("2d"), R = WAFER.D/2; let wcss = cv.clientWidth || 300, s = (wcss - 20)/(2*R);
+  { const sh_ = (edMaxH(cv) - 90)/(2.2*R); if (sh_ < s) { s = sh_; wcss = Math.round(2*R*s + 20); cv.style.width = `${wcss}px`; } }
+  const PB = Math.round(0.2*R*s), hcss = 2*R*s + 34 + PB;
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   cv.width = Math.round(wcss*dpr); cv.height = Math.round(hcss*dpr); cv.style.height = `${hcss}px`;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, wcss, hcss);
@@ -3409,7 +3629,7 @@ function drawFindMap() {
 }
 // microscope view and the reading plot of the selected item
 function drawScope() {
-  const cv = $("fdScope"), ctx = cv.getContext("2d"), wcss = cv.clientWidth || 600, hcss = 240, dpr = Math.min(2, window.devicePixelRatio || 1);
+  const cv = $("fdScope"), ctx = cv.getContext("2d"), wcss = cv.clientWidth || 600, hcss = graphH(cv, 240), dpr = Math.min(2, window.devicePixelRatio || 1);
   cv.width = Math.round(wcss*dpr); cv.height = Math.round(hcss*dpr); cv.style.height = `${hcss}px`;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, wcss, hcss);
   const col = c => "#" + COL[c].getHexString(), an = FD.an, r = an && an.res[FD.sel];
@@ -3507,6 +3727,7 @@ $("fdList").addEventListener("change", e => {
 });
 $("fdList").addEventListener("click", e => {
   const d = e.target.closest("[data-fddel]"); if (d) { FD.sel = Number(d.dataset.fddel); $("fdDel").click(); return; }
+  const u = e.target.closest("[data-fddup]"); if (u) { FD.sel = Number(u.dataset.fddup); $("fdDup").click(); return; }
   const r = e.target.closest("[data-row]"); if (r && !["INPUT", "LABEL", "SELECT", "OPTION"].includes(e.target.tagName)) { FD.sel = Number(r.dataset.row); findChanged(); }
 });
 (() => {
@@ -3523,7 +3744,8 @@ $("fdList").addEventListener("click", e => {
   };
   cv.addEventListener("pointerdown", ev => {
     if (!FD.ed) return; const [x, y] = world(ev), i = hit(x, y);
-    FD.sel = i; if (i >= 0) { drag = { i, x0: x, y0: y, it: JSON.parse(JSON.stringify(FD.items[i])), moved: false }; cv.setPointerCapture(ev.pointerId); }
+    let j = i; if (i >= 0 && ev.altKey) { FD.items.push(JSON.parse(JSON.stringify(FD.items[i]))); j = FD.items.length - 1; FD.mc = null; }   // Alt-drag: drag a copy
+    FD.sel = j; if (j >= 0) { drag = { i: j, x0: x, y0: y, it: JSON.parse(JSON.stringify(FD.items[j])), moved: j !== i }; cv.setPointerCapture(ev.pointerId); }
     fdCards(); drawFindMap(); drawScope(); drawFdPlot();
   });
   cv.addEventListener("pointermove", ev => {
@@ -3537,6 +3759,7 @@ $("fdList").addEventListener("click", e => {
   cv.addEventListener("dblclick", ev => { const [x, y] = world(ev); if (hit(x, y) >= 0) return; FD.items.push(fdNew($("fdType").value, x, y)); FD.sel = FD.items.length - 1; FD.mc = null; findChanged(); });
   cv.addEventListener("keydown", ev => {
     const it = FD.items[FD.sel]; if (!it) return;
+    if ((ev.ctrlKey || ev.metaKey) && (ev.key === "d" || ev.key === "D")) { ev.preventDefault(); $("fdDup").click(); return; }
     const st = ev.shiftKey ? 5 : 1, mv = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, st], ArrowDown: [0, -st] }[ev.key];
     if (mv) { ev.preventDefault(); if (it.kind === "arc") { it.R = Math.max(5, Math.min(49.5, it.R + (mv[1] || mv[0]))); } else { it.x += mv[0]; it.y += mv[1]; } FD.mc = null; findChanged(); }
     else if (ev.key === "Delete" || ev.key === "Backspace") { ev.preventDefault(); $("fdDel").click(); }
@@ -3576,8 +3799,8 @@ $("fdToSim").addEventListener("click", () => {
 function setTheater(on) {
   document.body.classList.toggle("theater", on); $("bTheater").setAttribute("aria-pressed", String(on));
   $("bTheater").textContent = on ? "Exit theater view" : "Theater view";
-  try { localStorage.setItem("o3d-theater", on ? "1" : "0"); } catch (e) {}
   if (on && document.body.classList.contains("split")) setSplit(false);
+  if (!layoutBusy) { if (on) document.body.classList.remove("stacked"); SET.layout = on ? "theater" : (SET.layout === "theater" ? "standard" : SET.layout); saveSet(); }
   requestAnimationFrame(redrawPanes);
 }
 function redrawPanes() { resize(); if (simLike()) { drawSection(); drawMaskEditor(); drawSimGraph(); } else if (S.mode === "pit") { drawPitGraph(); drawPitEditor(); } else if (S.mode === "find") { drawFindMap(); drawScope(); drawFdPlot(); } }
@@ -3585,8 +3808,8 @@ function redrawPanes() { resize(); if (simLike()) { drawSection(); drawMaskEdito
 function setSplit(on) {
   document.body.classList.toggle("split", on); $("bSplit").setAttribute("aria-pressed", String(on));
   $("bSplit").textContent = on ? "Exit split view" : "Split view"; $("bSwap").classList.toggle("hidden", !on);
-  try { localStorage.setItem("o3d-split", on ? "1" : "0"); } catch (e) {}
   if (on && document.body.classList.contains("theater")) setTheater(false);
+  if (!layoutBusy) { if (on) document.body.classList.remove("stacked"); SET.layout = on ? (document.body.classList.contains("swap") ? "split-left" : "split") : (SET.layout.startsWith("split") ? "standard" : SET.layout); saveSet(); }
   requestAnimationFrame(redrawPanes);
 }
 function setSplitW(px) {
@@ -3600,7 +3823,7 @@ const toggleSplit = () => { const on = !document.body.classList.contains("split"
 $("bSplit").addEventListener("click", toggleSplit);
 $("bSwap").addEventListener("click", () => {
   const on = !document.body.classList.contains("swap"); document.body.classList.toggle("swap", on);
-  try { localStorage.setItem("o3d-swap", on ? "1" : "0"); } catch (e) {}
+  if (document.body.classList.contains("split")) { SET.layout = on ? "split-left" : "split"; saveSet(); }
   requestAnimationFrame(redrawPanes);
 });
 {
@@ -3636,11 +3859,331 @@ $("bFull").addEventListener("click", () => {
 });
 document.addEventListener("fullscreenchange", () => { $("bFull").textContent = document.fullscreenElement ? "Exit full screen" : "Full screen"; requestAnimationFrame(resize); });
 try {
-  if (localStorage.getItem("o3d-theater") === "1") setTheater(true);
   const w = localStorage.getItem("o3d-splitW"); if (w && /^[\d.]+%$/.test(w)) document.documentElement.style.setProperty("--splitW", w);
-  if (localStorage.getItem("o3d-swap") === "1") document.body.classList.add("swap");
-  if (localStorage.getItem("o3d-split") === "1") setSplit(true);
+  if (!localStorage.getItem("o3d-settings")) {   // older versions kept the layout in separate keys
+    if (localStorage.getItem("o3d-split") === "1") SET.layout = localStorage.getItem("o3d-swap") === "1" ? "split-left" : "split";
+    else if (localStorage.getItem("o3d-theater") === "1") SET.layout = "theater";
+  }
 } catch (e) {}
+
+// =====================================================================================================
+// drawing a free outline in the mask editors (Etched pit and simulator)
+// Click to place corners; drag to draw freely; finish with a double-click, Enter or a click on the first
+// corner; Backspace removes the last corner; Esc cancels.
+var DRAW = { on: null, pts: [], cur: null, down: null, stroke: null };
+const DRAW_ED = {
+  pitCanvas: { ed: () => S.pitEd, redraw: () => drawPitEditor(true), btn: "pcDraw", help: "pcDrawHelp",
+    add: sh => { toCustom(); S.pitShapes.push(Object.assign(sh, { op: "open", pre: 0 })); S.pitSel = S.pitShapes.length - 1; pitChanged(false); } },
+  maskCanvas: { ed: () => SIM.ed, redraw: () => drawMaskEditor(), btn: "bDraw", help: "simDrawHelp",
+    add: sh => { SIM.shapes.push(Object.assign(sh, { op: $("addOp").value, nx: 1, ny: 1, px: 0, py: 0 })); SIM.sel = SIM.shapes.length - 1; $("simPreset").value = "-1"; markDirty(); } },
+};
+const DRAW_HELP = "Drawing: <b>click</b> to place corners or <b>drag</b> to draw freely. Finish with a <b>double-click</b>, <span class=\"kbd\">Enter</span> or a click on the first corner; <span class=\"kbd\">Backspace</span> removes the last corner, <span class=\"kbd\">Esc</span> cancels.";
+function drawSetHelp(id, html) { const h = $(DRAW_ED[id].help); h.innerHTML = html; h.classList.toggle("hidden", !html); }
+function drawStart(id) {
+  if (DRAW.on) drawStop();
+  Object.assign(DRAW, { on: id, pts: [], cur: null, down: null, stroke: null });
+  const d = DRAW_ED[id]; $(d.btn).classList.add("on"); $(d.btn).textContent = "✎ Drawing… (Esc)";
+  $(id).classList.add("drawing"); $(id).focus(); drawSetHelp(id, DRAW_HELP); d.redraw();
+}
+function drawStop(msg) {
+  const id = DRAW.on; if (!id) return;
+  const d = DRAW_ED[id]; DRAW.on = null; DRAW.pts = []; DRAW.stroke = null;
+  $(d.btn).classList.remove("on"); $(d.btn).textContent = "✎ Draw"; $(id).classList.remove("drawing");
+  drawSetHelp(id, msg || ""); d.redraw();
+}
+function drawWorld(id, ev) {
+  const ed = DRAW_ED[id].ed(), r = $(id).getBoundingClientRect();
+  return [(ev.clientX - r.left - ed.ox)/ed.s, -(ev.clientY - r.top - ed.oy)/ed.s];
+}
+function drawFinish(raw) {
+  const id = DRAW.on; if (!id) return;
+  const ed = DRAW_ED[id].ed(), tolPx = 2;
+  let P = [];
+  for (const p of raw) if (!P.length || Math.hypot(p[0] - P[P.length - 1][0], p[1] - P[P.length - 1][1])*ed.s > tolPx) P.push(p);
+  while (P.length > 3 && Math.hypot(P[0][0] - P[P.length - 1][0], P[0][1] - P[P.length - 1][1])*ed.s <= 6) P.pop();
+  if (P.length < 3 || Math.abs(polyArea(P)) < 4) { drawStop("The outline needs at least three corners that enclose an area. Press ✎ Draw to try again."); return; }
+  if (selfCrosses(P)) { drawStop("The outline crosses itself, so it has no clear inside. Press ✎ Draw and draw it again without crossing."); return; }
+  if (polyArea(P) < 0) P.reverse();
+  const c = polyCentroid(P), cx = Math.round(c[0]*10)/10, cy = Math.round(c[1]*10)/10;
+  const pts = P.map(p => [Math.round((p[0] - cx)*10)/10, Math.round((p[1] - cy)*10)/10]);
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const sh = shp("free", "open", cx, cy, Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys), 0, { pts, k: 100 });
+  const add = DRAW_ED[id].add; drawStop(`Added a drawn outline with ${pts.length} corners. Change its scale or angle in the list.`); add(sh);
+}
+// drawing overlay, called at the end of each editor's draw function
+function drawOverlay(ctx, id, toC) {
+  if (DRAW.on !== id) return;
+  const col = c => "#" + COL[c].getHexString(), path = DRAW.stroke ? DRAW.stroke : DRAW.pts;
+  ctx.save(); ctx.strokeStyle = col("accent"); ctx.fillStyle = col("accent"); ctx.lineWidth = 2;
+  if (path.length) {
+    ctx.beginPath(); path.map(toC).forEach((q, k) => k ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]));
+    if (!DRAW.stroke && DRAW.cur) { const q = toC(DRAW.cur); ctx.lineTo(q[0], q[1]); }
+    ctx.stroke();
+    if (path.length >= 2) { ctx.setLineDash([4, 4]); ctx.globalAlpha = 0.6; ctx.beginPath(); const a = toC(DRAW.stroke ? path[path.length - 1] : (DRAW.cur || path[path.length - 1])), b = toC(path[0]); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }
+    if (!DRAW.stroke) DRAW.pts.forEach((p, k) => { const q = toC(p); ctx.beginPath(); ctx.arc(q[0], q[1], k ? 3 : 5, 0, 2*Math.PI); k ? ctx.fill() : ctx.stroke(); });
+  }
+  if (DRAW.cur && !DRAW.stroke) { const q = toC(DRAW.cur); ctx.globalAlpha = 0.8; ctx.beginPath(); ctx.moveTo(q[0] - 6, q[1]); ctx.lineTo(q[0] + 6, q[1]); ctx.moveTo(q[0], q[1] - 6); ctx.lineTo(q[0], q[1] + 6); ctx.lineWidth = 1; ctx.stroke(); }
+  ctx.restore();
+}
+for (const id of Object.keys(DRAW_ED)) {
+  const cv = $(id), host = cv.parentElement;
+  // capture on the parent: these run before the editor's own handlers and stop them while drawing
+  const mine = ev => DRAW.on === id && ev.target === cv;
+  host.addEventListener("pointerdown", ev => {
+    if (!mine(ev)) return; ev.stopPropagation(); ev.preventDefault();
+    DRAW.down = { x: ev.clientX, y: ev.clientY, w: drawWorld(id, ev) }; DRAW.stroke = null; cv.setPointerCapture(ev.pointerId);
+  }, true);
+  host.addEventListener("pointermove", ev => {
+    if (!mine(ev)) return; ev.stopPropagation();
+    const w = drawWorld(id, ev); DRAW.cur = [snapV(w[0]), snapV(w[1])];
+    if (DRAW.down && (ev.buttons & 1)) {
+      if (!DRAW.stroke && Math.hypot(ev.clientX - DRAW.down.x, ev.clientY - DRAW.down.y) > 6) DRAW.stroke = [DRAW.down.w];
+      if (DRAW.stroke) { const l = DRAW.stroke[DRAW.stroke.length - 1], s = DRAW_ED[id].ed().s; if (Math.hypot(w[0] - l[0], w[1] - l[1])*s > 2.5) DRAW.stroke.push(w); }
+    }
+    DRAW_ED[id].redraw();
+  }, true);
+  host.addEventListener("pointerup", ev => {
+    if (!mine(ev)) return; ev.stopPropagation();
+    if (DRAW.stroke) {   // free stroke: simplify (1.2 px) and close it
+      const s = DRAW_ED[id].ed().s; let P = simplifyRDP(DRAW.stroke.concat([drawWorld(id, ev)]), 1.2/s);
+      for (let tol = 2.4; P.length > 120; tol *= 1.5) P = simplifyRDP(P, tol/s);
+      DRAW.down = null; DRAW.stroke = null; drawFinish(P.map(p => [Math.round(p[0]*2)/2, Math.round(p[1]*2)/2])); return;
+    }
+    if (!DRAW.down) return;
+    const w = DRAW.down.w, q = [snapV(w[0]), snapV(w[1])], s = DRAW_ED[id].ed().s; DRAW.down = null;
+    if (DRAW.pts.length >= 3 && Math.hypot(q[0] - DRAW.pts[0][0], q[1] - DRAW.pts[0][1])*s < 9) { drawFinish(DRAW.pts); return; }
+    const l = DRAW.pts[DRAW.pts.length - 1]; if (!l || Math.hypot(q[0] - l[0], q[1] - l[1])*s > 2) DRAW.pts.push(q);
+    DRAW_ED[id].redraw();
+  }, true);
+  host.addEventListener("dblclick", ev => { if (!mine(ev)) return; ev.stopPropagation(); ev.preventDefault(); if (DRAW.pts.length >= 3) drawFinish(DRAW.pts); }, true);
+  host.addEventListener("pointerleave", ev => { if (DRAW.on === id) { DRAW.cur = null; DRAW_ED[id].redraw(); } }, true);
+  $(DRAW_ED[id].btn).addEventListener("click", () => DRAW.on === id ? drawStop() : drawStart(id));
+}
+document.addEventListener("keydown", ev => {
+  if (!DRAW.on) return;
+  if (ev.key === "Escape") { ev.preventDefault(); ev.stopPropagation(); drawStop(); }
+  else if (ev.key === "Enter") { ev.preventDefault(); if (DRAW.pts.length >= 3) drawFinish(DRAW.pts); }
+  else if (ev.key === "Backspace" || ev.key === "Delete") { ev.preventDefault(); ev.stopPropagation(); DRAW.pts.pop(); DRAW_ED[DRAW.on].redraw(); }
+}, true);
+
+// =====================================================================================================
+// enlarge an editor or a graph panel into a large window over the page (Esc or the button closes it)
+let enlOpen = null;
+function redrawAll() { redrawPanes(); if (S.mode === "pit") drawPitEditor(true); if (simLike()) drawMaskEditor(); if (S.mode === "find") drawFindMap(); }
+function enlarge(el, on) {
+  if (on && enlOpen && enlOpen.el !== el) enlarge(enlOpen.el, false);
+  if (on) {
+    const ph = document.createComment("enlarged"); el.parentNode.insertBefore(ph, el);
+    const back = document.createElement("div"); back.id = "enlBack"; back.addEventListener("click", () => enlarge(el, false));
+    document.body.append(back, el); el.classList.add("enlarged"); document.body.classList.add("enl-open");
+    enlOpen = { el, ph, back };
+  } else if (enlOpen && enlOpen.el === el) {
+    enlOpen.ph.replaceWith(el); enlOpen.back.remove(); el.classList.remove("enlarged"); document.body.classList.remove("enl-open"); enlOpen = null;
+  }
+  const b = el.querySelector(":scope > .enlBtn"); if (b) { b.textContent = on ? "✕ Close" : "⤢ Enlarge"; b.title = on ? "Back to the page (Esc)" : "Open in a large window"; }
+  requestAnimationFrame(redrawAll);
+}
+for (const el of document.querySelectorAll(".enl")) {
+  const b = document.createElement("button"); b.className = "btn enlBtn"; b.type = "button"; b.textContent = "⤢ Enlarge"; b.title = "Open in a large window";
+  b.addEventListener("click", () => enlarge(el, !el.classList.contains("enlarged"))); el.prepend(b);
+}
+document.addEventListener("keydown", ev => { if (ev.key === "Escape" && enlOpen && !DRAW.on && !document.querySelector("dialog[open]")) enlarge(enlOpen.el, false); });
+window.addEventListener("resize", () => { if (enlOpen) requestAnimationFrame(redrawAll); });
+
+// =====================================================================================================
+// settings and layouts
+function applyLayout() {
+  const L = SET.layout, b = document.body.classList, root = document.documentElement.style;
+  layoutBusy = true;
+  b.toggle("stacked", L === "stacked"); b.toggle("swap", L === "split-left");
+  setSplit(L === "split" || L === "split-left"); setTheater(L === "theater");
+  layoutBusy = false;
+  root.setProperty("--panelW", `${SET.panelW}px`);
+  if (Number(SET.stageH) === SET_DEF.stageH) root.removeProperty("--stageHt"); else root.setProperty("--stageHt", `${SET.stageH}vh`);
+  requestAnimationFrame(redrawPanes);
+}
+function applyLook() {
+  const root = document.documentElement;
+  if (SET.theme === "auto") root.removeAttribute("data-theme"); else root.setAttribute("data-theme", SET.theme);
+  document.body.classList.toggle("lbl-off", SET.labels === "off");
+  root.style.setProperty("--lblFs", { small: "10.5px", normal: "12px", large: "14px", off: "12px" }[SET.labels] || "12px");
+  renderer.setPixelRatio(SET.pixel === "fast" ? 1 : Math.min(2, window.devicePixelRatio || 1)); resize();
+}
+function syncSettingsUI() {
+  $("stLayout").value = SET.layout; $("stPanelW").value = SET.panelW; $("stPanelWv").textContent = `${SET.panelW} px`;
+  $("stStageH").value = SET.stageH; $("stStageHv").textContent = `${SET.stageH} %`;
+  $("stTheme").value = SET.theme; $("stLabels").value = SET.labels; $("stAnim").value = SET.anim ? "1" : "0"; $("stPixel").value = SET.pixel;
+  $("stSnap").value = String(SET.snap); $("stQual").value = SET.quality; $("stAuto").checked = !!SET.autoRun;
+}
+let autoT = 0;
+function autoRunMaybe() {
+  if (!SET.autoRun || !simLike()) return;
+  clearTimeout(autoT); autoT = setTimeout(() => { if (simLike()) { simRun(); buildSim(false); } }, 700);
+}
+$("bSettings").addEventListener("click", () => { syncSettingsUI(); $("dlgSet").showModal(); });
+for (const d of document.querySelectorAll("dialog.dlg")) {
+  d.addEventListener("click", ev => { if (ev.target.closest("[data-close]") || ev.target === d) d.close(); });
+}
+$("dlgSet").addEventListener("input", ev => {
+  const t = ev.target;
+  if (t.id === "stPanelW") { SET.panelW = Number(t.value); $("stPanelWv").textContent = `${SET.panelW} px`; applyLayout(); }
+  else if (t.id === "stStageH") { SET.stageH = Number(t.value); $("stStageHv").textContent = `${SET.stageH} %`; applyLayout(); }
+  saveSet();
+});
+$("dlgSet").addEventListener("change", ev => {
+  const t = ev.target;
+  if (t.id === "stLayout") { SET.layout = t.value; applyLayout(); if (SET.layout.startsWith("split")) requestAnimationFrame(splitScroll); }
+  else if (t.id === "stTheme") { SET.theme = t.value; applyLook(); }
+  else if (t.id === "stLabels") { SET.labels = t.value; applyLook(); dirty = true; }
+  else if (t.id === "stAnim") SET.anim = t.value === "1";
+  else if (t.id === "stPixel") { SET.pixel = t.value; applyLook(); }
+  else if (t.id === "stSnap") SET.snap = Number(t.value);
+  else if (t.id === "stQual") { SET.quality = t.value; SIM.quality = t.value; syncSimInputs(); }
+  else if (t.id === "stAuto") SET.autoRun = t.checked;
+  saveSet();
+});
+$("stReset").addEventListener("click", () => {
+  Object.assign(SET, SET_DEF); saveSet(); SIM.quality = SET.quality; syncSimInputs();
+  try { localStorage.removeItem("o3d-splitW"); } catch (e) {} document.documentElement.style.removeProperty("--splitW");
+  applyLayout(); applyLook(); syncSettingsUI();
+});
+$("stClearEtch").addEventListener("click", () => { CUSTOM.length = 0; saveCustom(); registerCustom(); ceFill(); });
+
+// =====================================================================================================
+// custom etchants: a listed etchant at another temperature or KOH concentration, or the user's own rates
+const KB_EV = 8.617333262e-5;   // Boltzmann constant, eV/K (standard constant, not in the course files)
+const TBASE = { PAL30: 70, PAL40: 70, PAL50: 70, LEC42: 75, LEC57: 75, EDPS: 110, EDPFK: 110 };   // °C of the listed sets
+const PALC = { PAL30: 30, PAL40: 40, PAL50: 50 };
+const ORDER12 = ["100", "110", "111", "210", "211", "221", "310", "311", "320", "331", "530", "540"];
+const BUILTIN = new Set(Object.keys(SRATES));
+const CUSTOM = [];
+try { const a = JSON.parse(localStorage.getItem("o3d-etchants") || "[]"); if (Array.isArray(a)) CUSTOM.push(...a.filter(c => c && c.key && c.name)); } catch (e) {}
+const saveCustom = () => { try { localStorage.setItem("o3d-etchants", JSON.stringify(CUSTOM)); } catch (e) {} };
+function ceCompute(ce) {   // -> { r: µm/min by plane key, sio2: µm/min or null, src, ok, msg }
+  const out = { r: {}, sio2: null, src: "", ok: true, msg: "" };
+  if (ce.mode === "own") {
+    for (const k of ORDER12) { const v = Number(ce.own && ce.own[k]); if (ce.own && ce.own[k] !== "" && ce.own[k] != null && isFinite(v) && v >= 0) out.r[k] = v/60; }
+    if (!(out.r["100"] > 0 && out.r["110"] > 0 && out.r["111"] >= 0) || out.r["111"] == null) { out.ok = false; out.msg = "Enter the {100}, {110} and {111} rates."; }
+    const n = Object.keys(out.r).length;
+    out.src = `User rates (µm/h): ${ORDER12.filter(k => out.r[k] != null).map(k => `{${k}} ${+(out.r[k]*60).toPrecision(4)}`).join(", ")}. ${n <= 3 ? "Other planes: linear interpolation between {100}, {110} and {111} over the orientation triangle, as the engine does for the listed sets (assumption)." : "Other planes: interpolated between the given ones (assumption)."}`;
+  } else {
+    const b = SRATES[ce.base]; if (!b) { out.ok = false; out.msg = "Pick a listed etchant."; return out; }
+    const Tb = TBASE[ce.base], T = isFinite(ce.T) ? ce.T : Tb, f = isFinite(ce.factor) ? ce.factor : 1;
+    let r0 = b.r, cTxt = "";
+    if (PALC[ce.base] != null && isFinite(ce.conc) && ce.conc !== PALC[ce.base]) {
+      const c = Math.max(30, Math.min(50, ce.conc)), lo = c <= 40 ? 30 : 40, hi = lo + 10, u = (c - lo)/10; r0 = {};
+      for (const k of Object.keys(PAL[lo])) r0[k] = PAL[lo][k]*(1 - u) + PAL[hi][k]*u;
+      cTxt = ` at ${c} wt% (linear between the ${lo} and ${hi} wt% columns of Pal & Sato Table 4.1, p. 87; assumption)`;
+    }
+    const Q = k => k === "110" ? ce.Q110 : k === "111" ? ce.Q111 : ce.Q100;
+    for (const k of Object.keys(r0)) out.r[k] = r0[k]*Math.exp(-Q(k)/KB_EV*(1/(T + 273.15) - 1/(Tb + 273.15)))*f;
+    out.src = `${b.name}${cTxt}, moved from ${Tb} °C to ${T} °C with R = R₀ exp(−Q/kT): Q(100) ${ce.Q100} eV, Q(110) ${ce.Q110} eV, Q(111) ${ce.Q111} eV (Pal & Sato p. 90 gives Q(100) ≈ 0.60 eV for 40 % KOH; the other values and their use for this etchant are assumptions); other planes use Q(100) (assumption)${f !== 1 ? `; extra factor × ${f}` : ""}. Base: ${b.src}`;
+    if (T === Tb && !cTxt && f === 1 && b.sio2) out.sio2 = b.sio2;
+  }
+  if (isFinite(ce.ox) && ce.ox !== null && ce.ox !== "" && Number(ce.ox) >= 0) out.sio2 = Number(ce.ox)/60;
+  if (out.ok && !(out.r["100"] > 0)) { out.ok = false; out.msg = "The {100} rate must be above zero."; }
+  return out;
+}
+function registerCustom() {
+  for (const k of Object.keys(SRATES)) if (!BUILTIN.has(k)) delete SRATES[k];
+  for (const k of Object.keys(RATES)) if (k.startsWith("CU")) { delete RATES[k]; delete PIT2SIM[k]; }
+  for (const ce of CUSTOM) {
+    const c = ceCompute(ce); if (!c.ok) continue;
+    SRATES[ce.key] = { name: `★ ${ce.name}`, r: c.r, src: c.src, sio2: c.sio2, sio2src: c.sio2 != null ? (ce.ox != null && ce.ox !== "" ? "user value" : "from the listed etchant") : undefined, custom: true };
+    RATES[ce.key] = { name: `★ ${ce.name}`, r: { "100": c.r["100"], "110": c.r["110"], "111": c.r["111"] } }; PIT2SIM[ce.key] = ce.key;
+  }
+  if (!RATES[S.rate]) S.rate = "PAL30";
+  if (!SRATES[SIM.rate]) SIM.rate = "PAL30";
+  if (!SRATES[CL.rate]) CL.rate = "PAL30";
+  if (!RATES[FD.rate]) FD.rate = "PAL30";
+  const fill = (id, T, val) => { const el = $(id); el.innerHTML = Object.entries(T).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join(""); el.value = val; };
+  fill("selRate", RATES, S.rate); fill("fdRate", RATES, FD.rate); fill("simRate", SRATES, SIM.rate); fill("clRate", SRATES, CL.rate);
+  $("simRateSrc").textContent = SRATES[SIM.rate].src;
+}
+let ceCur = null, ceFrom = "sim";
+function ceDefault() { return { key: "", name: "", mode: "base", base: "PAL30", T: 70, conc: 30, Q100: 0.6, Q110: 0.6, Q111: 0.6, factor: 1, own: {}, ox: null }; }
+function ceFill() {   // the dialog from ceCur
+  $("ceList").innerHTML = `<option value="">new etchant</option>` + CUSTOM.map(c => `<option value="${c.key}">${c.name.replace(/</g, "&lt;")}</option>`).join("");
+  $("ceList").value = ceCur.key || "";
+  $("ceBase").innerHTML = [...BUILTIN].map(k => `<option value="${k}">${SRATES[k].name}</option>`).join("");
+  $("ceName").value = ceCur.name; $("ceMode").value = ceCur.mode; $("ceBase").value = ceCur.base;
+  $("ceT").value = ceCur.T; $("ceConc").value = ceCur.conc ?? ""; $("ceQ100").value = ceCur.Q100; $("ceQ110").value = ceCur.Q110; $("ceQ111").value = ceCur.Q111; $("ceF").value = ceCur.factor;
+  $("ceOx").value = ceCur.ox ?? "";
+  $("ceOwn").innerHTML = ORDER12.map(k => `<label>{${k}}${["100", "110", "111"].includes(k) ? " *" : ""} <input type="number" min="0" step="0.01" data-ce="${k}" value="${ceCur.own[k] ?? ""}" placeholder="${["100", "110", "111"].includes(k) ? "needed" : "optional"}"></label>`).join("");
+  $("ceDel").disabled = !ceCur.key; cePreview();
+}
+function ceRead() {
+  const num = id => { const v = $(id).value; return v === "" ? null : Number(v); };
+  Object.assign(ceCur, { name: $("ceName").value.trim(), mode: $("ceMode").value, base: $("ceBase").value, T: num("ceT"), conc: num("ceConc"), Q100: num("ceQ100") ?? 0.6, Q110: num("ceQ110") ?? 0.6, Q111: num("ceQ111") ?? 0.6, factor: num("ceF") ?? 1, ox: num("ceOx") });
+  ceCur.own = {}; for (const el of $("ceOwn").querySelectorAll("[data-ce]")) if (el.value !== "") ceCur.own[el.dataset.ce] = Number(el.value);
+}
+function cePreview() {
+  $("ceBaseBox").classList.toggle("hidden", ceCur.mode !== "base"); $("ceOwnBox").classList.toggle("hidden", ceCur.mode !== "own");
+  $("ceConcRow").classList.toggle("hidden", PALC[ceCur.base] == null);
+  const c = ceCompute(ceCur), r = c.r, h = k => r[k] != null ? (r[k]*60).toPrecision(3) : "–";
+  $("cePrev").innerHTML = `<tr><td>plane</td><td>µm/h</td><td>µm/min</td></tr>` + ["100", "110", "111"].map(k => `<tr><td>{${k}}</td><td>${h(k)}</td><td>${r[k] != null ? r[k].toPrecision(3) : "–"}</td></tr>`).join("")
+    + (r["100"] > 0 && r["111"] > 0 ? `<tr><td>R(100)/R(111)</td><td colspan="2">${(r["100"]/r["111"]).toFixed(0)}</td></tr>` : "")
+    + (r["100"] > 0 ? `<tr><td>time for 100 µm on (100)</td><td colspan="2">${(100/r["100"]).toFixed(0)} min</td></tr>` : "")
+    + `<tr><td>SiO₂ mask</td><td colspan="2">${c.sio2 != null ? (c.sio2*60).toPrecision(3) + " µm/h" : "not set"}</td></tr>`;
+  $("ceSrc").textContent = c.ok ? c.src : ""; $("ceWarn").textContent = c.msg; $("ceWarn").classList.toggle("hidden", c.ok);
+  $("ceSave").disabled = !c.ok;
+}
+function ceOpen(from) {
+  ceFrom = from;
+  const cur = from === "pit" ? S.rate : from === "corner" ? CL.rate : SIM.rate;
+  const ex = CUSTOM.find(c => c.key === cur);
+  ceCur = ex ? JSON.parse(JSON.stringify(ex)) : Object.assign(ceDefault(), BUILTIN.has(from === "pit" ? PIT2SIM[cur] || "PAL30" : cur) ? { base: from === "pit" ? PIT2SIM[cur] || "PAL30" : cur } : {});
+  if (!ex) { ceCur.T = TBASE[ceCur.base]; ceCur.conc = PALC[ceCur.base] ?? null; }
+  ceFill(); $("dlgEtch").showModal();
+}
+for (const b of document.querySelectorAll("[data-etch-open]")) b.addEventListener("click", () => ceOpen(b.dataset.etchOpen));
+$("dlgEtch").addEventListener("input", () => { ceRead(); cePreview(); });
+$("ceBase").addEventListener("change", () => { ceRead(); ceCur.T = TBASE[ceCur.base]; ceCur.conc = PALC[ceCur.base] ?? null; $("ceT").value = ceCur.T; $("ceConc").value = ceCur.conc ?? ""; cePreview(); });
+$("ceList").addEventListener("change", e => { const ex = CUSTOM.find(c => c.key === e.target.value); ceCur = ex ? JSON.parse(JSON.stringify(ex)) : ceDefault(); ceFill(); });
+$("ceNew").addEventListener("click", () => { ceCur = ceDefault(); ceFill(); });
+$("ceSave").addEventListener("click", () => {
+  ceRead(); const c = ceCompute(ceCur); if (!c.ok) return;
+  if (!ceCur.name) {
+    let nm = SRATES[ceCur.base].name.replace(/\d+(\.\d+)? °C/, `${ceCur.T} °C`);
+    if (PALC[ceCur.base] != null && ceCur.conc) nm = nm.replace(/\d+(\.\d+)? wt%/, `${ceCur.conc} wt%`);
+    ceCur.name = ceCur.mode === "own" ? "My etchant" : nm + (ceCur.factor !== 1 ? ` × ${ceCur.factor}` : "");
+  }
+  if (!ceCur.key) { let n = 1; while (CUSTOM.some(x => x.key === `CU${n}`)) n++; ceCur.key = `CU${n}`; CUSTOM.push(JSON.parse(JSON.stringify(ceCur))); }
+  else CUSTOM[CUSTOM.findIndex(x => x.key === ceCur.key)] = JSON.parse(JSON.stringify(ceCur));
+  saveCustom(); registerCustom();
+  const k = ceCur.key;
+  if (ceFrom === "pit") { S.rate = k; $("selRate").value = k; prepPit(); rebuild(false); }
+  else if (ceFrom === "corner") { CL.rate = k; $("clRate").value = k; }
+  else { SIM.rate = k; $("simRate").value = k; $("simRateSrc").textContent = SRATES[k].src; markDirty(); }
+  $("dlgEtch").close();
+});
+$("ceDel").addEventListener("click", () => {
+  const i = CUSTOM.findIndex(x => x.key === ceCur.key); if (i < 0) return;
+  CUSTOM.splice(i, 1); saveCustom(); registerCustom(); prepPit(); if (S.mode === "pit") rebuild(false); ceCur = ceDefault(); ceFill();
+});
+$("ceExport").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify({ format: "origami-etchants", version: 1, etchants: CUSTOM }, null, 2)], { type: "application/json" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "custom-etchants.json"; document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+});
+$("ceImport").addEventListener("change", async e => {
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  try {
+    const j = JSON.parse(await f.text()), list = Array.isArray(j) ? j : j.etchants;
+    let n = 0;
+    for (const c of list || []) {
+      if (!c || !c.name || !["base", "own"].includes(c.mode)) continue;
+      const ce = Object.assign(ceDefault(), c); let k = 1; while (CUSTOM.some(x => x.key === `CU${k}`)) k++; ce.key = `CU${k}`;
+      if (ceCompute(ce).ok) { CUSTOM.push(ce); n++; }
+    }
+    saveCustom(); registerCustom(); ceCur = ceDefault(); ceFill(); $("ceWarn").textContent = `Imported ${n} etchant${n === 1 ? "" : "s"}.`; $("ceWarn").classList.remove("hidden");
+  } catch (err) { $("ceWarn").textContent = "This file could not be read as an etchant list."; $("ceWarn").classList.remove("hidden"); }
+  e.target.value = "";
+});
+
+// start-up of the settings, layout and custom etchants
+SIM.quality = SET.quality;
+registerCustom(); syncSimInputs(); applyLook(); applyLayout();
 
 // theme changes: re-read colours and rebuild
 function onTheme() { readColors(); rebuild(false); }
@@ -3657,7 +4200,7 @@ prepPit(); $("tNow").textContent = `${sliderToT().toFixed(0)} min`;
 rebuild(true);
 requestAnimationFrame(loop);
 window.__o3d = { get simScene() { return simScene; }, COL, S, C, get pit() { return pit; }, get model() { return model; }, setView, dirOf, VIEWS, selectFace, setWafer, SIM, EE, SPRESETS, loadPreset, simRun, buildSim, classifyN, vTraces,
-  FD, fdAnalyse, fdMonteCarlo, estFan, estArc, fdEtch, waferOutline, inPlaneDirs, CL, clBuild, RATES, SRATES, simE, beyondAll, shapePieces, shp, rebuild, findChanged };
+  FD, fdAnalyse, fdMonteCarlo, estFan, estArc, fdEtch, waferOutline, inPlaneDirs, CL, clBuild, RATES, SRATES, simE, beyondAll, shapePieces, shp, rebuild, findChanged, SET, CUSTOM, get DRAW() { return DRAW; } };
 })();
 
 </script>
