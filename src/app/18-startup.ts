@@ -16,5 +16,5 @@ readColors(); setHold(); fillOpenings(); fillPcTypes(); renderCustomList(); $("s
 prepPit(); $("tNow").textContent = `${sliderToT().toFixed(0)} min`;
 rebuild(true);
 requestAnimationFrame(loop);
-window.__o3d = { get simScene() { return simScene; }, COL, S, C, get pit() { return pit; }, get model() { return model; }, setView, dirOf, VIEWS, selectFace, setWafer, SIM, EE, SPRESETS, loadPreset, simRun, buildSim, classifyN, vTraces,
+window.__o3d = { get simScene() { return simScene; }, COL, EDC, S, C, get pit() { return pit; }, get model() { return model; }, setView, dirOf, VIEWS, selectFace, setWafer, SIM, EE, SPRESETS, loadPreset, simRun, buildSim, classifyN, vTraces,
   FD, fdAnalyse, fdMonteCarlo, estFan, estArc, fdEtch, waferOutline, inPlaneDirs, CL, clBuild, RATES, SRATES, simE, beyondAll, shapePieces, shp, rebuild, findChanged, SET, CUSTOM, get DRAW() { return DRAW; } };

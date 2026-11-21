@@ -406,7 +406,7 @@ dl.scenes dt { font-weight: 600; margin-top: 8px; } dl.scenes dd { margin: 2px 0
       <label><input type="checkbox" id="cSimCut"> cut away at the section</label></div>
     <div class="legend"><span><i class="sw" style="background:var(--mask)"></i>mask film (drawn thicker than real)</span><span><i class="sw" style="background:var(--mask);filter:brightness(.55)"></i>mask with no silicon under it</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span></div>
     <h3>Section line</h3>
-    <div class="row"><span class="seg" id="segCut"><button data-a="y" aria-pressed="true">along x</button><button data-a="x" aria-pressed="false">along y</button></span><span class="note" id="simCutLbl"></span></div>
+    <div class="row"><span class="seg" id="segCut"><button data-a="y" aria-pressed="true">along x</button><button data-a="x" aria-pressed="false">along y</button></span><label class="note" title="position of the section line; you can also drag the line in the mask editor"><span id="simCutLbl">y</span> = <input type="number" id="simCutNum" step="1" style="width:6em"> µm</label></div>
     <input type="range" id="simCutPos" min="-100" max="100" step="1" value="0">
     <h3>Now</h3>
     <dl class="kv" id="simReadout"></dl>
@@ -546,6 +546,7 @@ dl.scenes dt { font-weight: 600; margin-top: 8px; } dl.scenes dd { margin: 2px 0
   <h3>Mask editors</h3>
   <div class="fields">
     <label>snap step for moving, adding and drawing <select id="stSnap"><option value="1">1 µm</option><option value="2">2 µm</option><option value="5">5 µm</option><option value="10">10 µm</option><option value="25">25 µm</option></select></label>
+    <label><span><input type="checkbox" id="stCoords"> coordinates: axes through the origin, tick labels and the cursor position</span></label>
   </div>
   <h3>Etch simulator</h3>
   <div class="fields">
@@ -1390,7 +1391,7 @@ function loadPitExamples(db, trench) {
 // ---- src/app/01-settings-helpers.ts
 const C = Core, V3 = THREE.Vector3;
 const T_WAFER = 525;
-const SET_DEF = { layout: "standard", panelW: 340, stageH: 68, theme: "auto", labels: "normal", anim: true, pixel: "auto", snap: 5, quality: "normal", autoRun: false, engine: "auto" };
+const SET_DEF = { layout: "standard", panelW: 340, stageH: 68, theme: "auto", labels: "normal", anim: true, pixel: "auto", snap: 5, quality: "normal", autoRun: false, engine: "auto", coords: true };
 const SET = Object.assign({}, SET_DEF);
 try {
   Object.assign(SET, JSON.parse(localStorage.getItem("o3d-settings") || "{}"));
@@ -1407,6 +1408,8 @@ const snapV = (v) => {
   const st = Number(SET.snap) || 1;
   return Math.round(v / st) * st;
 };
+const EDC = {};
+const edGrid = (W) => niceStep(W / 8);
 const bigBox = (cv) => !!(cv && cv.closest(".enlarged"));
 const edMaxH = (cv) => bigBox(cv) ? Math.max(260, window.innerHeight * 0.94 - 230) : Infinity;
 const graphH = (cv, h) => bigBox(cv) ? Math.max(h, Math.round(window.innerHeight * 0.33)) : h;
@@ -2953,7 +2956,7 @@ function drawPitEditor(keepExtent) {
   };
   ctx.fillStyle = col("scene-bg");
   ctx.fillRect(10, 10, 2 * hx * s, 2 * hy * s);
-  const g = niceStep(2 * hx / 8);
+  const g = edGrid(2 * hx);
   ctx.strokeStyle = col("s-ink");
   ctx.globalAlpha = 0.08;
   ctx.lineWidth = 1;
@@ -3020,6 +3023,8 @@ function drawPitEditor(keepExtent) {
   ctx.font = "11px IBM Plex Sans, sans-serif";
   ctx.fillText(`primary flat side; x along ${plainIdx(C.FRAME_IDX[S.wf][0])}; grid ${g} \xB5m`, 12, 10 + 2 * hy * s + 18);
   if (S.compass) drawCompass(ctx, 10 + 2 * hx * s - 44, 54, 30, inPlaneDirs(C.FRAMES[S.wf]), S.rot || 0);
+  const sel = list[S.pitSel];
+  drawCoords(ctx, "pitCanvas", { X0: -hx, X1: hx, Y0: -hy, Y1: hy, toC, g, grid: false, sel: sel ? [sel.cx, sel.cy] : null });
   drawOverlay(ctx, "pitCanvas", toC);
 }
 (() => {
@@ -4126,7 +4131,7 @@ function drawSection() {
   ctx.lineTo(X(a0 + along), Z(0));
   ctx.lineWidth = 0.5;
   ctx.stroke();
-  const step = niceStep(along / 6);
+  const step = edGrid(along);
   for (let v = Math.ceil(a0 / step) * step; v <= a0 + along + 1e-6; v += step) {
     ctx.fillRect(X(v), Z(0) + 1, 0.8, 4);
     ctx.fillText(`${v.toFixed(0)}`, X(v) - 8, Z(0) - 7);
@@ -4135,6 +4140,23 @@ function drawSection() {
   for (let v = 0; v <= zd + 1e-6; v += zs) {
     ctx.fillRect(X(a0) - 5, Z(-v), 4, 0.8);
     ctx.fillText(`${v.toFixed(0)}`, 2, Z(-v) + 4);
+  }
+  ctx.fillText(SIM.cutAxis === "y" ? "x (\xB5m)" : "y (\xB5m)", X(a0 + along) - 44, Z(0) - 20);
+  {
+    const c = EDC.maskCanvas;
+    if (c && SET.coords !== false) {
+      const v = SIM.cutAxis === "y" ? c[0] : c[1];
+      ctx.save();
+      ctx.strokeStyle = "#" + COL.accent.getHexString();
+      ctx.globalAlpha = 0.7;
+      ctx.setLineDash([3, 3]);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(X(v), Z(0) - 4);
+      ctx.lineTo(X(v), Z(-zd));
+      ctx.stroke();
+      ctx.restore();
+    }
   }
   ctx.globalAlpha = 1;
   const ci = cutSpec().index, lab = SIM.cutAxis === "y" ? `section along x at y = ${(-SIM.hy + (ci + 0.5) * dx).toFixed(0)} \xB5m` : `section along y at x = ${(-SIM.hx + (ci + 0.5) * dx).toFixed(0)} \xB5m`;
@@ -4203,11 +4225,30 @@ function drawMaskEditor() {
   }
   ctx.stroke();
   ctx.setLineDash([]);
+  {
+    const lab = `${SIM.cutAxis === "y" ? "y" : "x"} = ${+(+SIM.cutPos).toFixed(1)} \xB5m`;
+    ctx.font = "600 10px IBM Plex Mono, monospace";
+    const tw = ctx.measureText(lab).width;
+    const [gx, gy] = SIM.cutAxis === "y" ? [10 + W * s - tw - 14, SIM.ed.oy - SIM.cutPos * s] : [SIM.ed.ox + SIM.cutPos * s, 10 + 16];
+    const bx = SIM.cutAxis === "y" ? gx : Math.min(Math.max(gx + 6, 12), 10 + W * s - tw - 10), by = SIM.cutAxis === "y" ? gy - 18 < 12 ? gy + 4 : gy - 18 : gy - 7;
+    ctx.fillStyle = "#" + COL["scene-bg"].getHexString();
+    ctx.globalAlpha = 0.85;
+    ctx.fillRect(bx - 3, by, tw + 6, 14);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = "#" + COL.ghost.getHexString();
+    ctx.fillText(lab, bx, by + 10);
+    const [hx_, hy_] = SIM.cutAxis === "y" ? [10 + W * s - 6, gy] : [gx, 10 + 6];
+    ctx.beginPath();
+    ctx.arc(hx_, hy_, 4, 0, 2 * Math.PI);
+    ctx.fill();
+  }
   ctx.fillStyle = "#" + COL.accent.getHexString();
   ctx.fillRect(10, 10 + H * s + 2, W * s, 3);
   ctx.font = "11px IBM Plex Sans, sans-serif";
-  ctx.fillText(`primary flat side; x along ${plainIdx(simFrame().idx[0])}`, 12, 10 + H * s + 18);
+  ctx.fillText(`primary flat side; x along ${plainIdx(simFrame().idx[0])}${SET.coords !== false ? `; grid ${edGrid(W)} \xB5m` : ""}`, 12, 10 + H * s + 18);
   if (S.compass) drawCompass(ctx, 10 + W * s - 44, 54, 30, inPlaneDirs(SFR[SIM.fk].e), SIM.rot || 0);
+  const sel = SIM.shapes[SIM.sel];
+  drawCoords(ctx, "maskCanvas", { X0: -SIM.hx, X1: SIM.hx, Y0: -SIM.hy, Y1: SIM.hy, toC, g: edGrid(W), grid: true, sel: sel ? [sel.cx, sel.cy] : null });
   drawOverlay(ctx, "maskCanvas", toC);
 }
 const plainIdx = (v) => "[" + v.map((x) => x < 0 ? `${-x}\u0305` : `${x}`).join("") + "]";
@@ -4278,7 +4319,12 @@ function syncCutSlider() {
   $("simCutPos").min = String(-h);
   $("simCutPos").max = String(h);
   $("simCutPos").value = String(SIM.cutPos);
-  $("simCutLbl").textContent = `${SIM.cutAxis === "y" ? "y" : "x"} = ${(+SIM.cutPos).toFixed(0)} \xB5m`;
+  $("simCutLbl").textContent = SIM.cutAxis === "y" ? "y" : "x";
+  const nb = $("simCutNum");
+  nb.min = String(-h);
+  nb.max = String(h);
+  nb.step = String(Number(SET.snap) || 1);
+  if (document.activeElement !== nb) nb.value = String(+(+SIM.cutPos).toFixed(1));
 }
 function fillSimPresets() {
   $("simPreset").innerHTML = `<optgroup label="Examples">` + SPRESETS[S.wf].map((p, i) => `<option value="${i}">${p.name}</option>`).join("") + `</optgroup>` + psOptions("sim") + `<option value="-1">Custom (keep the current mask)</option>`;
@@ -4380,6 +4426,18 @@ $("simCutPos").addEventListener("input", (e) => {
   drawMaskEditor();
   requestView(SIM.tv);
 });
+$("simCutNum").addEventListener("change", (e) => {
+  setCutPos(Number(e.target.value));
+  e.target.value = String(SIM.cutPos);
+});
+function setCutPos(v) {
+  const h = SIM.cutAxis === "y" ? SIM.hy : SIM.hx;
+  if (!isFinite(v)) return;
+  SIM.cutPos = Math.max(-h, Math.min(h, v));
+  syncCutSlider();
+  drawMaskEditor();
+  requestView(SIM.tv);
+}
 $("shapeList").addEventListener("change", (e) => {
   const el = e.target, i = Number(el.dataset.i), k = el.dataset.k;
   if (!(i >= 0) || !k) return;
@@ -5094,6 +5152,8 @@ function drawFindMap() {
   ctx.fillText(`Dashed: flat direction${FD.reveal ? "; orange: true \u27E8110\u27E9" : ""}.`, 12, 10 + 2 * R * s + PB + 30);
   ctx.fillText("Violet: mask; blue: etched outline.", 12, 10 + 2 * R * s + PB + 44);
   if (S.compass) drawCompass(ctx, 10 + 2 * R * s - 40, 50, 28, inPlaneDirs(fdFrameE()), FD.reveal ? FD.delta : 0);
+  const it = FD.items && FD.items[FD.sel];
+  drawCoords(ctx, "fdCanvas", { X0: -R, X1: R, Y0: -R, Y1: R, toC, g: 1e4, grid: false, k: 1e-3, unit: "mm", snap: false, sel: it ? fdPos(it) : null });
 }
 function drawScope() {
   const cv = $("fdScope"), ctx = cv.getContext("2d"), wcss = cv.clientWidth || 600, hcss = graphH(cv, 240), dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -6051,6 +6111,7 @@ function syncSettingsUI() {
   $("stQual").value = SET.quality;
   $("stAuto").checked = !!SET.autoRun;
   $("stEngine").value = SET.engine || "auto";
+  $("stCoords").checked = SET.coords !== false;
 }
 let autoT = 0;
 function autoRunMaybe() {
@@ -6103,7 +6164,10 @@ $("dlgSet").addEventListener("change", (ev) => {
     SET.pixel = t.value;
     applyLook();
   } else if (t.id === "stSnap") SET.snap = Number(t.value);
-  else if (t.id === "stQual") {
+  else if (t.id === "stCoords") {
+    SET.coords = t.checked;
+    redrawEditors();
+  } else if (t.id === "stQual") {
     SET.quality = t.value;
     SIM.quality = t.value;
     syncSimInputs();
@@ -6724,6 +6788,7 @@ window.__o3d = {
     return simScene;
   },
   COL,
+  EDC,
   S,
   C,
   get pit() {
@@ -6769,6 +6834,215 @@ window.__o3d = {
     return DRAW;
   }
 };
+
+// ---- src/app/19-coordinates.ts
+function coordFmt(v, step) {
+  const d = step >= 1 ? 0 : step >= 0.1 ? 1 : 2, r = +v.toFixed(d);
+  return (r === 0 ? 0 : r).toFixed(d).replace("-", "\u2212");
+}
+function drawCoords(ctx, id, o) {
+  if (SET.coords === false) return;
+  const col = (c2) => "#" + COL[c2].getHexString(), k = o.k || 1, unit = o.unit || "\xB5m", g = o.g;
+  const [L, T] = o.toC([o.X0, o.Y1]), [R, B] = o.toC([o.X1, o.Y0]);
+  const ink = col("s-ink"), bg = col("scene-bg");
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(L, T, R - L, B - T);
+  ctx.clip();
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([]);
+  const xs = [], ys = [];
+  for (let x = Math.ceil(o.X0 / g - 1e-9) * g; x <= o.X1 + 1e-9; x += g) xs.push(x);
+  for (let y = Math.ceil(o.Y0 / g - 1e-9) * g; y <= o.Y1 + 1e-9; y += g) ys.push(y);
+  if (o.grid) {
+    ctx.globalAlpha = 0.08;
+    ctx.beginPath();
+    for (const x of xs) {
+      const [a] = o.toC([x, 0]);
+      ctx.moveTo(a, T);
+      ctx.lineTo(a, B);
+    }
+    for (const y of ys) {
+      const [, b] = o.toC([0, y]);
+      ctx.moveTo(L, b);
+      ctx.lineTo(R, b);
+    }
+    ctx.stroke();
+  }
+  const [ox, oy] = o.toC([0, 0]);
+  ctx.globalAlpha = 0.45;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  if (ox > L && ox < R) {
+    ctx.moveTo(ox, T);
+    ctx.lineTo(ox, B);
+  }
+  if (oy > T && oy < B) {
+    ctx.moveTo(L, oy);
+    ctx.lineTo(R, oy);
+  }
+  ctx.stroke();
+  ctx.globalAlpha = 0.85;
+  ctx.fillStyle = ink;
+  ctx.font = "10px IBM Plex Mono, monospace";
+  ctx.beginPath();
+  ctx.textAlign = "center";
+  for (const x of xs) {
+    const [a] = o.toC([x, 0]);
+    ctx.moveTo(a, B);
+    ctx.lineTo(a, B - 4);
+    if (a - L > 16 && R - a > 16) ctx.fillText(coordFmt(x * k, g * k), a, B - 6);
+  }
+  ctx.textAlign = "left";
+  for (const y of ys) {
+    const [, b] = o.toC([0, y]);
+    ctx.moveTo(L, b);
+    ctx.lineTo(L + 4, b);
+    if (b - T > 24 && B - b > 18) ctx.fillText(coordFmt(y * k, g * k), L + 6, b + 3);
+  }
+  ctx.stroke();
+  ctx.font = "italic 600 11px IBM Plex Sans, sans-serif";
+  if (oy > T + 8 && oy < B - 8) {
+    ctx.textAlign = "right";
+    ctx.fillText("x", R - 4, oy - 4);
+  }
+  if (ox > L + 8 && ox < R - 8) {
+    ctx.textAlign = "left";
+    ctx.fillText("y", ox + 4, T + 30);
+  }
+  ctx.textAlign = "left";
+  ctx.font = "10px IBM Plex Mono, monospace";
+  if (o.sel) {
+    const [a, b] = o.toC(o.sel), lab = `(${coordFmt(o.sel[0] * k, k < 1 ? 0.01 : 1)}, ${coordFmt(o.sel[1] * k, k < 1 ? 0.01 : 1)})`;
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = ctx.fillStyle = col("accent");
+    ctx.beginPath();
+    ctx.moveTo(a - 5, b);
+    ctx.lineTo(a + 5, b);
+    ctx.moveTo(a, b - 5);
+    ctx.lineTo(a, b + 5);
+    ctx.stroke();
+    const tw = ctx.measureText(lab).width, bx = Math.min(a + 7, R - tw - 4);
+    ctx.fillStyle = bg;
+    ctx.globalAlpha = 0.8;
+    ctx.fillRect(bx - 2, b + 5, tw + 4, 13);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = col("accent");
+    ctx.fillText(lab, bx, b + 15);
+  }
+  const c = EDC[id];
+  if (c && c[0] >= o.X0 && c[0] <= o.X1 && c[1] >= o.Y0 && c[1] <= o.Y1) {
+    const v = o.snap === false ? c : [snapV(c[0]), snapV(c[1])], [a, b] = o.toC(v);
+    ctx.strokeStyle = ink;
+    ctx.globalAlpha = 0.35;
+    ctx.setLineDash([3, 4]);
+    ctx.beginPath();
+    ctx.moveTo(a, T);
+    ctx.lineTo(a, B);
+    ctx.moveTo(L, b);
+    ctx.lineTo(R, b);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    const st = o.snap === false ? k < 1 ? 0.01 : 0.1 : Math.min(1, Number(SET.snap) || 1);
+    const lab = `x ${coordFmt(v[0] * k, st)}  y ${coordFmt(v[1] * k, st)} ${unit}`, tw = ctx.measureText(lab).width;
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = bg;
+    ctx.fillRect(L + 4, T + 4, tw + 10, 16);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 0.6;
+    ctx.strokeRect(L + 4, T + 4, tw + 10, 16);
+    ctx.fillStyle = ink;
+    ctx.fillText(lab, L + 9, T + 15);
+  }
+  ctx.restore();
+}
+function redrawEditors() {
+  if (S.mode === "pit") drawPitEditor();
+  if (simLike()) {
+    drawMaskEditor();
+    if (SIM.res) drawSection();
+  }
+  if (S.mode === "find") drawFindMap();
+}
+(() => {
+  const ED = {
+    pitCanvas: { ed: () => S.pitEd, k: 1, redraw: () => drawPitEditor() },
+    maskCanvas: { ed: () => SIM.ed, k: 1, redraw: () => {
+      drawMaskEditor();
+      if (SIM.res) drawSection();
+    } },
+    fdCanvas: { ed: () => FD.ed, k: 1, redraw: () => drawFindMap() }
+  };
+  let raf = 0;
+  const pending = /* @__PURE__ */ new Set();
+  const later = (id) => {
+    pending.add(id);
+    if (!raf) raf = requestAnimationFrame(() => {
+      raf = 0;
+      for (const p of pending) ED[p].redraw();
+      pending.clear();
+    });
+  };
+  const world = (id, ev) => {
+    const ed = ED[id].ed(), r = $(id).getBoundingClientRect();
+    return ed ? [(ev.clientX - r.left - ed.ox) / ed.s, -(ev.clientY - r.top - ed.oy) / ed.s] : null;
+  };
+  const cutDist = (ev) => {
+    const ed = SIM.ed, r = $("maskCanvas").getBoundingClientRect();
+    if (!ed) return Infinity;
+    const px = ev.clientX - r.left, py = ev.clientY - r.top;
+    return SIM.cutAxis === "y" ? Math.abs(py - (ed.oy - SIM.cutPos * ed.s)) : Math.abs(px - (ed.ox + SIM.cutPos * ed.s));
+  };
+  let cutDrag = false;
+  for (const id of Object.keys(ED)) {
+    const cv = $(id);
+    if (!cv) continue;
+    const host = cv.parentElement, mine = (ev) => ev.target === cv;
+    host.addEventListener("pointermove", (ev) => {
+      if (!mine(ev)) return;
+      const w = world(id, ev);
+      if (!w) return;
+      EDC[id] = w;
+      if (id === "maskCanvas") {
+        if (cutDrag) {
+          ev.stopPropagation();
+          setCutPos(snapV(SIM.cutAxis === "y" ? w[1] : w[0]));
+          return;
+        }
+        cv.style.cursor = DRAW.on !== id && ev.buttons === 0 && cutDist(ev) <= 5 ? SIM.cutAxis === "y" ? "ns-resize" : "ew-resize" : "";
+      }
+      if (ev.buttons === 0 && DRAW.on !== id) later(id);
+    }, true);
+    host.addEventListener("pointerleave", (ev) => {
+      if (!mine(ev) || cutDrag) return;
+      delete EDC[id];
+      later(id);
+    }, true);
+    cv.addEventListener("pointerleave", () => {
+      if (cutDrag) return;
+      delete EDC[id];
+      later(id);
+    });
+    if (id === "maskCanvas") {
+      host.addEventListener("pointerdown", (ev) => {
+        if (!mine(ev) || DRAW.on === id || cutDist(ev) > 5) return;
+        ev.stopPropagation();
+        ev.preventDefault();
+        cutDrag = true;
+        cv.setPointerCapture(ev.pointerId);
+      }, true);
+      const end = (ev) => {
+        if (!cutDrag) return;
+        ev.stopPropagation();
+        cutDrag = false;
+      };
+      host.addEventListener("pointerup", end, true);
+      host.addEventListener("pointercancel", end, true);
+    }
+  }
+})();
 
 })();
 </script>

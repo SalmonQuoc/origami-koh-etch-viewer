@@ -41,6 +41,21 @@ test("page: scenes, simulator kernel, drawing, settings, custom etchant, presets
     assert.equal(await ev(() => window.__o3d.SIM.shapes.length), n0 + 1);
   });
 
+  await t.test("coordinates: cursor position and dragging the section line", async () => {
+    const m = p.locator("#maskCanvas"); await m.scrollIntoViewIfNeeded();
+    const bb = await m.boundingBox(), ed = await ev(() => window.__o3d.SIM.ed);
+    await p.mouse.move(bb.x + ed.ox + 50*ed.s, bb.y + ed.oy - 30*ed.s); await p.waitForTimeout(100);
+    const c = await ev(() => window.__o3d.EDC.maskCanvas);
+    assert.ok(Math.abs(c[0] - 50) < 1 && Math.abs(c[1] - 30) < 1, JSON.stringify(c));
+    await ev(() => { window.__o3d.SIM.cutAxis = "y"; window.__o3d.SIM.cutPos = 0; });
+    const x = bb.x + ed.ox - 20*ed.s, y = bb.y + ed.oy;
+    await p.mouse.move(x, y); await p.mouse.down(); await p.mouse.move(x, y + 40*ed.s, { steps: 6 }); await p.mouse.up();
+    assert.equal(await ev(() => window.__o3d.SIM.cutPos), -40);
+    assert.equal(await p.inputValue("#simCutNum"), "-40");
+    await p.fill("#simCutNum", "25"); await p.dispatchEvent("#simCutNum", "change");
+    assert.equal(await ev(() => window.__o3d.SIM.cutPos), 25);
+  });
+
   await t.test("custom etchant at 80 °C is faster than the 70 °C table (Arrhenius)", async () => {
     await p.click('[data-etch-open="sim"]'); await p.selectOption("#ceBase", "PAL40");
     await p.fill("#ceT", "80"); await p.dispatchEvent("#ceT", "input"); await p.click("#ceSave");

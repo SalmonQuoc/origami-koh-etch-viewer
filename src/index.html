@@ -406,7 +406,7 @@ dl.scenes dt { font-weight: 600; margin-top: 8px; } dl.scenes dd { margin: 2px 0
       <label><input type="checkbox" id="cSimCut"> cut away at the section</label></div>
     <div class="legend"><span><i class="sw" style="background:var(--mask)"></i>mask film (drawn thicker than real)</span><span><i class="sw" style="background:var(--mask);filter:brightness(.55)"></i>mask with no silicon under it</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span></div>
     <h3>Section line</h3>
-    <div class="row"><span class="seg" id="segCut"><button data-a="y" aria-pressed="true">along x</button><button data-a="x" aria-pressed="false">along y</button></span><span class="note" id="simCutLbl"></span></div>
+    <div class="row"><span class="seg" id="segCut"><button data-a="y" aria-pressed="true">along x</button><button data-a="x" aria-pressed="false">along y</button></span><label class="note" title="position of the section line; you can also drag the line in the mask editor"><span id="simCutLbl">y</span> = <input type="number" id="simCutNum" step="1" style="width:6em"> µm</label></div>
     <input type="range" id="simCutPos" min="-100" max="100" step="1" value="0">
     <h3>Now</h3>
     <dl class="kv" id="simReadout"></dl>
@@ -546,6 +546,7 @@ dl.scenes dt { font-weight: 600; margin-top: 8px; } dl.scenes dd { margin: 2px 0
   <h3>Mask editors</h3>
   <div class="fields">
     <label>snap step for moving, adding and drawing <select id="stSnap"><option value="1">1 µm</option><option value="2">2 µm</option><option value="5">5 µm</option><option value="10">10 µm</option><option value="25">25 µm</option></select></label>
+    <label><span><input type="checkbox" id="stCoords"> coordinates: axes through the origin, tick labels and the cursor position</span></label>
   </div>
   <h3>Etch simulator</h3>
   <div class="fields">

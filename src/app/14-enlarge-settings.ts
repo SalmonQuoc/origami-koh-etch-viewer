@@ -45,7 +45,7 @@ function syncSettingsUI() {
   $("stLayout").value = SET.layout; $("stPanelW").value = SET.panelW; $("stPanelWv").textContent = `${SET.panelW} px`;
   $("stStageH").value = SET.stageH; $("stStageHv").textContent = `${SET.stageH} %`;
   $("stTheme").value = SET.theme; $("stLabels").value = SET.labels; $("stAnim").value = SET.anim ? "1" : "0"; $("stPixel").value = SET.pixel;
-  $("stSnap").value = String(SET.snap); $("stQual").value = SET.quality; $("stAuto").checked = !!SET.autoRun; $("stEngine").value = SET.engine || "auto";
+  $("stSnap").value = String(SET.snap); $("stQual").value = SET.quality; $("stAuto").checked = !!SET.autoRun; $("stEngine").value = SET.engine || "auto"; $("stCoords").checked = SET.coords !== false;
 }
 let autoT = 0;
 function autoRunMaybe() {
@@ -70,6 +70,7 @@ $("dlgSet").addEventListener("change", ev => {
   else if (t.id === "stAnim") SET.anim = t.value === "1";
   else if (t.id === "stPixel") { SET.pixel = t.value; applyLook(); }
   else if (t.id === "stSnap") SET.snap = Number(t.value);
+  else if (t.id === "stCoords") { SET.coords = t.checked; redrawEditors(); }
   else if (t.id === "stQual") { SET.quality = t.value; SIM.quality = t.value; syncSimInputs(); }
   else if (t.id === "stAuto") SET.autoRun = t.checked;
   else if (t.id === "stEngine") { SET.engine = t.value; if (simLike()) markDirty(); }

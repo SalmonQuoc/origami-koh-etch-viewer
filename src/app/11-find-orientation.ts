@@ -254,6 +254,8 @@ function drawFindMap() {
   ctx.fillText(`Dashed: flat direction${FD.reveal ? "; orange: true ⟨110⟩" : ""}.`, 12, 10 + 2*R*s + PB + 30);
   ctx.fillText("Violet: mask; blue: etched outline.", 12, 10 + 2*R*s + PB + 44);
   if (S.compass) drawCompass(ctx, 10 + 2*R*s - 40, 50, 28, inPlaneDirs(fdFrameE()), FD.reveal ? FD.delta : 0);
+  const it = FD.items && FD.items[FD.sel];
+  drawCoords(ctx, "fdCanvas", { X0: -R, X1: R, Y0: -R, Y1: R, toC, g: 10000, grid: false, k: 1e-3, unit: "mm", snap: false, sel: it ? fdPos(it) : null });
 }
 // microscope view and the reading plot of the selected item
 function drawScope() {

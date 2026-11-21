@@ -1,12 +1,14 @@
 const C = Core, V3 = THREE.Vector3;
 const T_WAFER = 525;
 // ---- user settings (kept in this browser only)
-const SET_DEF = { layout: "standard", panelW: 340, stageH: 68, theme: "auto", labels: "normal", anim: true, pixel: "auto", snap: 5, quality: "normal", autoRun: false, engine: "auto" };
+const SET_DEF = { layout: "standard", panelW: 340, stageH: 68, theme: "auto", labels: "normal", anim: true, pixel: "auto", snap: 5, quality: "normal", autoRun: false, engine: "auto", coords: true };
 const SET = Object.assign({}, SET_DEF);
 try { Object.assign(SET, JSON.parse(localStorage.getItem("o3d-settings") || "{}")); } catch (e) {}
 const saveSet = () => { try { localStorage.setItem("o3d-settings", JSON.stringify(SET)); } catch (e) {} };
 let layoutBusy = false;   // true while applyLayout() switches split/theater, so they do not overwrite SET.layout
 const snapV = v => { const st = Number(SET.snap) || 1; return Math.round(v/st)*st; };
+const EDC: Record<string, number[]> = {};   // cursor position in each 2D editor (world µm), set in 19-coordinates.ts
+const edGrid = (W: number) => niceStep(W/8);  // grid and tick step of an editor W µm wide
 // height limit of an editor or graph canvas: generous inside an enlarged window, none otherwise
 const bigBox = cv => !!(cv && cv.closest(".enlarged"));
 const edMaxH = cv => bigBox(cv) ? Math.max(260, window.innerHeight*0.94 - 230) : Infinity;

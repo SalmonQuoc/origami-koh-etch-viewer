@@ -66,7 +66,7 @@ function drawPitEditor(keepExtent?: boolean) {
   const path = (c, P) => { P.map(toC).forEach((q, k) => k ? c.lineTo(q[0], q[1]) : c.moveTo(q[0], q[1])); c.closePath(); };
   ctx.fillStyle = col("scene-bg"); ctx.fillRect(10, 10, 2*hx*s, 2*hy*s);
   // grid
-  const g = niceStep(2*hx/8); ctx.strokeStyle = col("s-ink"); ctx.globalAlpha = 0.08; ctx.lineWidth = 1; ctx.beginPath();
+  const g = edGrid(2*hx); ctx.strokeStyle = col("s-ink"); ctx.globalAlpha = 0.08; ctx.lineWidth = 1; ctx.beginPath();
   for (let x = -Math.floor(hx/g)*g; x <= hx; x += g) { const [a] = toC([x, 0]); ctx.moveTo(a, 10); ctx.lineTo(a, 10 + 2*hy*s); }
   for (let y = -Math.floor(hy/g)*g; y <= hy; y += g) { const [, b] = toC([0, y]); ctx.moveTo(10, b); ctx.lineTo(10 + 2*hx*s, b); }
   ctx.stroke(); ctx.globalAlpha = 1;
@@ -96,6 +96,8 @@ function drawPitEditor(keepExtent?: boolean) {
   ctx.font = "11px IBM Plex Sans, sans-serif";
   ctx.fillText(`primary flat side; x along ${plainIdx(C.FRAME_IDX[S.wf][0])}; grid ${g} µm`, 12, 10 + 2*hy*s + 18);
   if (S.compass) drawCompass(ctx, 10 + 2*hx*s - 44, 54, 30, inPlaneDirs(C.FRAMES[S.wf]), S.rot || 0);
+  const sel = list[S.pitSel];
+  drawCoords(ctx, "pitCanvas", { X0: -hx, X1: hx, Y0: -hy, Y1: hy, toC, g, grid: false, sel: sel ? [sel.cx, sel.cy] : null });
   drawOverlay(ctx, "pitCanvas", toC);
 }
 (() => {
