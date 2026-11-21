@@ -1,7 +1,7 @@
 const C = Core, V3 = THREE.Vector3;
 const T_WAFER = 525;
 // ---- user settings (kept in this browser only)
-const SET_DEF = { layout: "standard", panelW: 340, stageH: 68, theme: "auto", labels: "normal", anim: true, pixel: "auto", snap: 5, quality: "normal", autoRun: false, engine: "auto", coords: true };
+const SET_DEF = { layout: "standard", panelW: 340, stageH: 68, theme: "auto", labels: "normal", anim: true, pixel: "auto", snap: 5, quality: "normal", autoRun: false, engine: "auto", coords: true, explain: false };
 const SET = Object.assign({}, SET_DEF);
 try { Object.assign(SET, JSON.parse(localStorage.getItem("o3d-settings") || "{}")); } catch (e) {}
 const saveSet = () => { try { localStorage.setItem("o3d-settings", JSON.stringify(SET)); } catch (e) {} };

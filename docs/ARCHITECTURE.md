@@ -65,7 +65,7 @@ The two time steps are the same algorithm with the same arithmetic (f64, stored 
 | `11-find-orientation.ts` | Find orientation |
 | `12-layout-views.ts` | theater, split view, full screen |
 | `13-draw-tool.ts` | freehand drawing in the mask editors |
-| `14-enlarge-settings.ts` | enlarged windows, Settings dialog and layouts |
+| `14-enlarge-settings.ts` | enlarged windows, Settings dialog and layouts, the ⓘ Explanations switch |
 | `15-custom-etchants.ts` | custom etchants (Arrhenius, concentration, own rates) and file saving |
 | `16-guidance.ts` | scene tips, Quick start dialog, Run button on the stage |
 | `17-user-presets.ts` | the user's own presets (save, load, export, import) |

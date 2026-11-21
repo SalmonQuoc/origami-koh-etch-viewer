@@ -22,7 +22,8 @@ Commit `index.html` together with the source change: GitHub Pages serves that fi
 
 ## Rules for content
 
-- Every number shown on the page names its source (book or lecture, page). Anything that is not from a source is marked as an assumption.
+- Every number shown on the page names its source (book or lecture, page). Anything that is not from a source is marked as an assumption. Source notes under the controls use `class="note src"` and per-setting help uses `class="xinfo"`: both are hidden until the reader turns on ⓘ Explanations, so put nothing there that is needed to use the page.
+- Longer explanations go in the How it works section (`<section id="learn">` in `src/index.html`), one `<details class="learn">` per topic, closed by default.
 - Data goes in `data/` (see `docs/DATA.md`), not in the code.
 - If you change the etch scheme, change the Rust kernel and the JavaScript reference together and keep `tests/engine-parity.test.mjs` passing (see `docs/ARCHITECTURE.md`).
 

@@ -45,7 +45,7 @@ function syncSettingsUI() {
   $("stLayout").value = SET.layout; $("stPanelW").value = SET.panelW; $("stPanelWv").textContent = `${SET.panelW} px`;
   $("stStageH").value = SET.stageH; $("stStageHv").textContent = `${SET.stageH} %`;
   $("stTheme").value = SET.theme; $("stLabels").value = SET.labels; $("stAnim").value = SET.anim ? "1" : "0"; $("stPixel").value = SET.pixel;
-  $("stSnap").value = String(SET.snap); $("stQual").value = SET.quality; $("stAuto").checked = !!SET.autoRun; $("stEngine").value = SET.engine || "auto"; $("stCoords").checked = SET.coords !== false;
+  $("stSnap").value = String(SET.snap); $("stQual").value = SET.quality; $("stAuto").checked = !!SET.autoRun; $("stEngine").value = SET.engine || "auto"; $("stCoords").checked = SET.coords !== false; $("stExplain").checked = !!SET.explain;
 }
 let autoT = 0;
 function autoRunMaybe() {
@@ -71,6 +71,7 @@ $("dlgSet").addEventListener("change", ev => {
   else if (t.id === "stPixel") { SET.pixel = t.value; applyLook(); }
   else if (t.id === "stSnap") SET.snap = Number(t.value);
   else if (t.id === "stCoords") { SET.coords = t.checked; redrawEditors(); }
+  else if (t.id === "stExplain") setExplain(t.checked);
   else if (t.id === "stQual") { SET.quality = t.value; SIM.quality = t.value; syncSimInputs(); }
   else if (t.id === "stAuto") SET.autoRun = t.checked;
   else if (t.id === "stEngine") { SET.engine = t.value; if (simLike()) markDirty(); }
@@ -79,7 +80,23 @@ $("dlgSet").addEventListener("change", ev => {
 $("stReset").addEventListener("click", () => {
   Object.assign(SET, SET_DEF); saveSet(); SIM.quality = SET.quality; syncSimInputs();
   try { localStorage.removeItem("o3d-splitW"); } catch (e) {} document.documentElement.style.removeProperty("--splitW");
-  applyLayout(); applyLook(); syncSettingsUI();
+  applyLayout(); applyLook(); setExplain(SET.explain); redrawEditors(); syncSettingsUI();
 });
 $("stClearEtch").addEventListener("click", () => { CUSTOM.length = 0; saveCustom(); registerCustom(); ceCur = ceDefault(); ceFill(); prepPit(); rebuild(false); });
 
+
+// ---- explanations: source notes under the controls and the help of each custom-etchant setting (off at first)
+function setExplain(on: boolean) {
+  SET.explain = !!on; saveSet();
+  document.body.classList.toggle("explain", SET.explain);
+  $("bExplain").setAttribute("aria-pressed", String(SET.explain));
+  $("ceExplain").checked = SET.explain; $("stExplain").checked = SET.explain;
+}
+setExplain(!!SET.explain);
+$("bExplain").addEventListener("click", () => setExplain(!SET.explain));
+$("ceExplain").addEventListener("change", (e: Event) => setExplain((e.target as HTMLInputElement).checked));
+document.addEventListener("keydown", (e: KeyboardEvent) => {
+  if (e.key.toLowerCase() !== "i" || e.ctrlKey || e.metaKey || e.altKey) return;
+  const tg = (e.target as HTMLElement).tagName; if (tg === "INPUT" || tg === "SELECT" || tg === "TEXTAREA" || tg === "CANVAS") return;
+  setExplain(!SET.explain);
+});

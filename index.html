@@ -118,6 +118,19 @@ details.srcs { margin-top: 14px; font-size: 13px; }
 details.srcs summary { cursor: pointer; font-weight: 600; }
 details.srcs ul { padding-left: 18px; margin: 6px 0 0; }
 details.srcs li { margin: 4px 0; }
+/* explanations: source notes and per-setting help are hidden until switched on (toolbar ⓘ, Settings) */
+body:not(.explain) .note.src, body:not(.explain) .xinfo { display: none; }
+.fhelp { font-size: 12px; color: var(--muted); margin: -2px 0 6px; line-height: 1.45; }
+section.learn > p { max-width: 110ch; }
+details.learn { border-top: 1px solid var(--line); padding: 7px 0; max-width: 110ch; }
+details.learn:last-of-type { border-bottom: 1px solid var(--line); }
+details.learn > summary { cursor: pointer; font-weight: 600; color: var(--ink); font-size: 14px; }
+details.learn ul, details.learn ol { padding-left: 22px; margin: 6px 0; }
+details.learn li { margin: 3px 0; }
+details.learn .eq { font: 15px "IBM Plex Sans", sans-serif; color: var(--ink); text-align: center; margin: 8px 0; overflow-wrap: anywhere; }
+details.ans { display: inline; margin-left: 6px; }
+details.ans > summary { display: inline; cursor: pointer; color: var(--accent); font-weight: 600; }
+details.ans[open] { display: block; margin: 4px 0 6px 0; color: var(--ink); }
 .byline { margin: 6px 0 0; font-size: 13.5px; color: var(--muted); max-width: 90ch; }
 .byline b { color: var(--ink); font-weight: 600; }
 .bar .tools { margin-left: auto; display: flex; gap: 6px; }
@@ -244,7 +257,7 @@ dl.scenes dt { font-weight: 600; margin-top: 8px; } dl.scenes dd { margin: 2px 0
     <button data-w="100" aria-pressed="true" title="(100) wafer: the usual MEMS wafer; pits have {111} walls at 54.74°">(100)</button><button data-w="110" aria-pressed="false" title="(110) wafer: vertical {111} walls along ⟨112⟩">(110)</button><button data-w="111" aria-pressed="false" title="(111) wafer: the surface itself is a slow {111} plane">(111)</button></span></div>
   <div><span class="lbl">Scene</span><span class="seg" id="segM">
     <button data-m="model" aria-pressed="true" title="How to hold the HW2 paper octahedron over the wafer; click a face for its plane">Model on wafer</button><button data-m="pit" aria-pressed="false" title="Fast analytic pit: openings in a mask, {111}-bounded walls, any time">Etched pit</button><button data-m="sim" aria-pressed="false" title="Full 3D etch of any mask with 12 measured plane rates: undercut, corners, release">Etch simulator</button><button data-m="corner" aria-pressed="false" title="Convex-corner attack and compensation patterns, side by side">Corner lab</button><button data-m="find" aria-pressed="false" title="Read the flat error δ from etched alignment marks on the whole wafer">Find orientation</button></span></div>
-  <div class="tools"><button class="btn" id="bHelp" title="Quick start, mouse and keys (key ?)">? Help</button><button class="btn" id="bSettings" title="Layout, theme, editor and simulator settings">⚙ Settings</button><button class="btn" id="bSplit" aria-pressed="false" title="3D view and controls side by side, each scrolling on its own; drag the divider to resize (key S)">Split view</button><button class="btn hidden" id="bSwap" title="Put the controls on the other side">Swap sides</button><button class="btn" id="bTheater" aria-pressed="false" title="Wide stage with the panel below (key T)">Theater view</button><button class="btn" id="bFull" title="Full screen 3D view (Esc to leave)">Full screen</button></div>
+  <div class="tools"><button class="btn" id="bHelp" title="Quick start, mouse and keys (key ?)">? Help</button><button class="btn" id="bSettings" title="Layout, theme, editor and simulator settings">⚙ Settings</button><button class="btn" id="bExplain" aria-pressed="false" title="Show the explanations and source notes under the controls (key I)">ⓘ Explanations</button><button class="btn" id="bSplit" aria-pressed="false" title="3D view and controls side by side, each scrolling on its own; drag the divider to resize (key S)">Split view</button><button class="btn hidden" id="bSwap" title="Put the controls on the other side">Swap sides</button><button class="btn" id="bTheater" aria-pressed="false" title="Wide stage with the panel below (key T)">Theater view</button><button class="btn" id="bFull" title="Full screen 3D view (Esc to leave)">Full screen</button></div>
 </div>
 <div class="guide hidden" id="guide" role="note"><span class="gico" aria-hidden="true">i</span><div id="guideTxt"></div><button class="x" id="guideX" title="Hide this tip (Settings can show the tips again)" aria-label="hide this tip">×</button></div>
 
@@ -419,7 +432,7 @@ dl.scenes dt { font-weight: 600; margin-top: 8px; } dl.scenes dd { margin: 2px 0
         <li><b>Rates</b> (sourced): KOH 30, 40, 50 wt% at 70 °C for 12 orientations, Pal &amp; Sato Table 4.1, p. 87. KOH 42 wt% at 75 °C: {100} 42, {110} 66, {111} 0.5 µm/h, Lec 4-1 p. 7; its other 9 orientations are the Pal &amp; Sato 40 wt% values scaled by R(100) (assumption).</li>
         <li><b>Rates between the measured orientations</b> (assumption): linear interpolation over a triangulation of the 12 orientations in the standard triangle (gnomonic coordinates), with cubic symmetry. It keeps the cusp at {111}: rates grow linearly with the off-angle, as measured for vicinal (111) (Pal &amp; Sato p. 104).</li>
         <li><b>Corner rules</b> (sourced, not imposed): concave corners show the slowest plane and convex corners the fastest (Lec 4-1 p. 8). The simulator does not apply these rules; they come out of the rate map.</li>
-        <li><b>Front motion</b> (method): every surface element moves along its normal at R(hkl); this is solved as a 3D level set (first-order Lax-Friedrichs scheme, fast-marching re-initialisation) on a cubic grid. Accuracy is about one cell; sharp edges are rounded over about two cells. Check: square window on (100), 60 min in 30 wt%: depth 47.9 µm against 0.797 × 60 = 47.82 µm; {111} wall 54.5° against 54.74°.</li>
+        <li><b>Front motion</b> (method): every surface element moves along its normal at R(hkl); this is solved as a 3D level set (first-order Lax-Friedrichs scheme, fast-marching re-initialisation) on a cubic grid. Accuracy is about one cell; sharp edges are rounded over about two cells. Check: 200 µm square window on (100), 60 min in 30 wt%: depth 47.85 µm against 0.797 × 60 = 47.82 µm; {111} wall 54.2° (4 µm grid) and 54.8° (2 µm grid) against 54.74°.</li>
         <li><b>Mask edge</b> (assumption): no etchant reaches silicon through the mask, so silicon under the mask is only removed from the side. At the top row under the mask the level set has no downward slope; where the wall there is near-vertical (slope below 0.35), the vertical gradient is set to zero. Check: a 100 &micro;m square window at 45&deg; on (100), 40 min in 30 wt% KOH, gives 26.5 &micro;m sideways undercut at a 2 &micro;m grid (15.5 &micro;m at 4 &micro;m) against 0.797 &times; 40 = 31.9 &micro;m (Pal &amp; Sato Table 4.1, p. 87); a ⟨110⟩-aligned pit keeps 0 &micro;m. Use a fine grid when {100} undercut matters.</li>
         <li><b>Known numerical limits</b>: silicon walls and beams narrower than about 8 grid cells thin slowly (numerical dissipation, not physics), most when they are oblique to the grid; windows narrower than about 5 cells etch too slowly. Use the “fine” resolution or wider features when this matters. Undercut values are good to about one to two cells.</li>
         <li><b>Mask</b> (assumption): inert and infinitely thin; etchant reaches the silicon only through openings and under released mask. The SiO₂ loss shown uses 0.34 µm/h for KOH 42 wt% (thermal oxide, Lec 4-1 p. 7; Lec 10 p. 11) and the Lec 10 p. 11 values for KOH 57 wt% and EDP Type S; for the other etchants the rate is not in the course files.</li>
@@ -499,6 +512,7 @@ dl.scenes dt { font-weight: 600; margin-top: 8px; } dl.scenes dd { margin: 2px 0
     <tr><td>hover, click</td><td>name a plane, select a face</td></tr>
     <tr><td><span class="kbd">S</span></td><td>split view on or off</td></tr>
     <tr><td><span class="kbd">T</span></td><td>theater view on or off</td></tr>
+    <tr><td><span class="kbd">I</span></td><td>explanations and source notes on or off</td></tr>
     <tr><td><span class="kbd">?</span></td><td>this help</td></tr>
   </table>
   <table class="keys">
@@ -515,6 +529,7 @@ dl.scenes dt { font-weight: 600; margin-top: 8px; } dl.scenes dd { margin: 2px 0
   <h3>Good to know</h3>
   <ul class="note" style="margin:0;padding-left:18px">
     <li><b>⤢ Enlarge</b> opens an editor or a graph panel in a large window; <span class="kbd">Esc</span> closes it.</li>
+    <li><b>ⓘ Explanations</b> shows the source notes under the controls and what each setting of the custom etchant means; they are off at first. <b>How it works</b>, below the page, explains the chemistry, the rate model and the simulation step by step.</li>
     <li><b>⚙ Settings</b> sets the layout, panel width, theme, label size, snap step and simulator resolution. They are kept in this browser.</li>
     <li><b>☆ Save as my preset</b> (Etched pit and Etch simulator) keeps the mask and process under a name; your presets appear in the example list under <i>My presets</i>.</li>
     <li><b>Custom etchant…</b> (next to each etchant list) makes a listed etchant at another temperature or KOH concentration, or one from your own rates.</li>
@@ -543,6 +558,10 @@ dl.scenes dt { font-weight: 600; margin-top: 8px; } dl.scenes dd { margin: 2px 0
     <label>camera moves <select id="stAnim"><option value="1">animated</option><option value="0">instant</option></select></label>
     <label>3D render quality <select id="stPixel"><option value="auto">sharp (screen resolution)</option><option value="fast">fast (lower resolution)</option></select></label>
   </div>
+  <h3>Explanations</h3>
+  <div class="fields">
+    <label><span><input type="checkbox" id="stExplain"> show the explanations and source notes under the controls (also ⓘ in the toolbar, key I)</span></label>
+  </div>
   <h3>Mask editors</h3>
   <div class="fields">
     <label>snap step for moving, adding and drawing <select id="stSnap"><option value="1">1 µm</option><option value="2">2 µm</option><option value="5">5 µm</option><option value="10">10 µm</option><option value="25">25 µm</option></select></label>
@@ -562,40 +581,149 @@ dl.scenes dt { font-weight: 600; margin-top: 8px; } dl.scenes dd { margin: 2px 0
 <dialog id="dlgEtch" class="dlg panel" aria-labelledby="ceTitle">
   <div class="dlghead"><h2 id="ceTitle">Custom etchant</h2><button class="x" data-close aria-label="close">×</button></div>
   <p class="note">Make an etchant for the Etched pit, the simulator, the corner lab and the orientation finder: either a listed etchant run at another temperature or concentration, or your own measured rates.</p>
+  <label class="note"><input type="checkbox" id="ceExplain"> explain each setting</label>
   <div class="fields">
     <label>edit <select id="ceList"></select></label>
+    <p class="fhelp xinfo">Pick one of your saved etchants to change it, or “new etchant” to start a new one.</p>
     <label>name <input type="text" id="ceName" maxlength="60" placeholder="for example KOH 30 wt%, 60 °C"></label>
+    <p class="fhelp xinfo">Shown with a ★ in every etchant list. If you leave it empty, a name is made from the listed etchant and your temperature and concentration.</p>
     <label>start from <select id="ceMode"><option value="base">a listed etchant with another process</option><option value="own">my own etch rates</option></select></label>
+    <p class="fhelp xinfo"><b>A listed etchant</b>: keep its measured rates and move them to another temperature (and, for the Pal &amp; Sato KOH data, another concentration). <b>My own rates</b>: type rates you measured or found in a paper.</p>
   </div>
   <div id="ceBaseBox">
     <div class="fields">
       <label>listed etchant <select id="ceBase"></select></label>
+      <p class="fhelp xinfo">The data you start from. Its own temperature T₀ (and concentration) is filled in below; the rates are changed relative to it, so with the same temperature and concentration you get the listed rates back.</p>
       <label>temperature <span><input type="number" id="ceT" step="1"> °C</span></label>
+      <p class="fhelp xinfo">Your process temperature. Every rate is multiplied by exp[−(Q/k)(1/T − 1/T₀)] with T and T₀ in kelvin (Arrhenius, Pal &amp; Sato p. 90). Example: 30 wt% KOH from 70 °C to 80 °C with Q = 0.60 eV gives × 1.78, so R(100) 0.797 → 1.42 µm/min. Real solutions are limited by their boiling point (Pal &amp; Sato p. 91).</p>
       <label id="ceConcRow">KOH concentration (30 to 50) <span><input type="number" id="ceConc" min="30" max="50" step="1"> wt%</span></label>
+      <p class="fhelp xinfo">Only for the Pal &amp; Sato KOH data (Table 4.1, p. 87: 30, 40 and 50 wt% at 70 °C). Values between the columns are linear interpolations (assumption); values outside 30–50 are clamped. Above about 25 wt% the rate falls as KOH rises, because water is a reactant (Pal &amp; Sato p. 88).</p>
       <label>activation energy Q of {100} <span><input type="number" id="ceQ100" min="0" step="0.01"> eV</span></label>
+      <p class="fhelp xinfo">How strongly the {100} rate depends on temperature: a larger Q gives a steeper change. About 0.60 eV for 40 % KOH (Pal &amp; Sato p. 90). It is also used for the nine higher-index planes (assumption).</p>
       <label>Q of {110} <span><input type="number" id="ceQ110" min="0" step="0.01"> eV</span></label>
+      <p class="fhelp xinfo">No value in the course files; 0.60 eV is the default (assumption). If you have a measured value, enter it.</p>
       <label>Q of {111} <span><input type="number" id="ceQ111" min="0" step="0.01"> eV</span></label>
+      <p class="fhelp xinfo">Pal &amp; Sato (p. 90) report that {111} has the smallest Q of the orientations they measured, but give no number; 0.60 eV is the default (assumption). A smaller Q makes the {111} rate change less with temperature than the other planes.</p>
       <label>extra factor on all rates <span><input type="number" id="ceF" min="0" step="0.05"> ×</span></label>
+      <p class="fhelp xinfo">Multiplies every rate by the same number, for example to match the R(100) you measured in your own lab. It changes the speed, not the shape, because all ratios between planes stay the same.</p>
     </div>
     <p class="note src">Temperature: Arrhenius law R = R₀ exp(−Q/kT); Q(100) ≈ 0.60 eV for 40 % KOH, and {111} has the smallest Q (Pal &amp; Sato p. 90). Using 0.60 eV for {110} and {111} too, and for EDP, is an assumption: enter better values if you have them. Concentration: linear between the 30, 40 and 50 wt% columns of Pal &amp; Sato Table 4.1, p. 87 (assumption between the columns). k = 8.617 × 10⁻⁵ eV/K (standard constant, not in the course files).</p>
   </div>
   <div id="ceOwnBox" class="hidden">
-    <p class="note">Etch rates in µm/h at your process. {100}, {110} and {111} are needed; the other planes are optional. Planes left empty are interpolated from the given ones (three-rate model, Radjenović et al. 2010, eq. 1, when only three are given).</p>
+    <p class="note">Etch rates in µm/h at your process. {100}, {110} and {111} are needed; the other planes are optional. Planes left empty are interpolated linearly over the orientation triangle from the given ones (method of this page; How it works, part 7).</p>
     <div class="ceGrid" id="ceOwn"></div>
+    <p class="fhelp xinfo">Type rates in µm/h at your process. {100}, {110} and {111} are needed because they are the three corners of the orientation triangle from which every other rate is interpolated (How it works, part 7). {111} sets how fast the {111} walls move back under the mask, {100} how fast the floor of a (100) pit goes down. The other nine planes refine convex corners and curved walls; empty ones are interpolated.</p>
   </div>
-  <div class="fields"><label>SiO₂ mask etch rate (optional) <span><input type="number" id="ceOx" min="0" step="0.001"> µm/h</span></label></div>
+  <div class="fields"><label>SiO₂ mask etch rate (optional) <span><input type="number" id="ceOx" min="0" step="0.001"> µm/h</span></label>
+      <p class="fhelp xinfo">Rate at which the etchant removes thermal oxide. Used only for the “oxide lost” readout; the mask itself stays intact in the model. Empty: the listed value is kept if temperature, concentration and factor are unchanged, otherwise it is unknown. KOH removes SiO₂ about 150 times slower than Si (Pal &amp; Sato p. 83).</p></div>
   <h3>Result</h3>
   <table class="walls" id="cePrev"></table>
+  <p class="fhelp xinfo">R(100)/R(111) is the anisotropy: the larger it is, the less a {111} wall is undercut while the pit deepens. “Time for 100 µm” is 100 µm divided by R(100).</p>
   <p class="note src" id="ceSrc"></p>
   <p class="warn hidden" id="ceWarn"></p>
   <div class="row"><button class="btn primary" id="ceSave">Save and use</button><button class="btn" id="ceNew">New</button><button class="btn" id="ceDel">Delete</button><button class="btn" id="ceExport">Export all (.json)</button><label class="btn" style="cursor:pointer">Import (.json)<input type="file" id="ceImport" accept=".json,application/json" hidden></label></div>
   <p class="note">Saved in this browser only. Export the file to share it with classmates.</p>
 </dialog>
+<section class="refs learn" id="learn">
+  <h2>How it works: chemistry, physics and the model</h2>
+  <p>Study notes behind the page. Each part gives the idea, the equation, a number you can check on the page and where to see it. Click a title to open it. Sources are given in parentheses; <i>(assumption)</i> and <i>(method of this page)</i> mark what is not from a source.</p>
+
+  <details class="learn"><summary>1. What KOH does to silicon</summary>
+    <p>KOH, EDP, TMAH, NaOH and hydrazine solutions all etch silicon by the same overall reaction (Pal &amp; Sato p. 79, eq. 4.1):</p>
+    <p class="eq">Si + 2 H₂O + 2 OH⁻ → Si(OH)₂O₂²⁻ + 2 H₂ (gas)</p>
+    <p>Silicon atoms are hydroxylated (OH groups attach to them) one bond at a time, until they leave as a water-soluble ion; hydrogen bubbles form as a by-product. The reaction needs <b>both</b> OH⁻ and water (Pal &amp; Sato p. 79). Step by step (eqs. 4.2–4.5, pp. 80–82): a hydrogen-terminated surface atom gets an OH⁻ in place of an H, then a second one; the hydroxylated atom then breaks its back bonds with water and leaves as Si(OH)₄, which OH⁻ turns into the soluble Si(OH)₂O₂²⁻. The cation (K⁺) takes no part in these steps, which is why many alkaline solutions show a similar anisotropy (Pal &amp; Sato p. 82). Alkaline etchants with pH above 12 etch anisotropically; the acid mixture HNA etches isotropically (Hsu p. 326; Lec 4-1 p. 2).</p>
+  </details>
+
+  <details class="learn"><summary>2. Why the rate depends on the crystal plane</summary>
+    <p>Silicon has the diamond lattice: every atom has four bonds (Pal &amp; Sato p. 79). On a cut surface some bonds are left open (“dangling bonds”), and these are where the reaction starts (pp. 80–81):</p>
+    <ul>
+      <li><b>(100)</b>: two dangling bonds per surface atom, so it is attacked readily.</li>
+      <li><b>(110)</b>: one dangling bond, but the back bonds lie parallel to the surface and are exposed, so they are hydroxylated easily.</li>
+      <li><b>(111)</b>: one dangling bond and all three back bonds go to atoms that have no dangling bonds, so the surface atom is stable. This is why (111) is hardly etched.</li>
+    </ul>
+    <p><b>Check it:</b> in 30 wt% KOH at 70 °C, R(100) = 0.797 µm/min and R(111) = 0.005 µm/min (Pal &amp; Sato Table 4.1, p. 87), a ratio of about 160. Hsu (p. 325) quotes up to 400 : 1 for ⟨100⟩ to ⟨111⟩. The fastest orientation is not always (110): at 30 wt% (210), (320) and (530) are faster than (110) in Table 4.1, and in the measured map for 40 % KOH the maximum lies away from (110) (p. 85). <b>See it:</b> colour the simulator by “etch rate of the wall”.</p>
+  </details>
+
+  <details class="learn"><summary>3. Temperature: the Arrhenius law</summary>
+    <p>KOH etching is <b>reaction limited</b>: the slow step is the attachment of OH⁻ to surface atoms, which needs thermal energy (Pal &amp; Sato p. 90). The rate therefore follows the Arrhenius law (p. 90):</p>
+    <p class="eq">R = R₀ exp(−Q / kT)</p>
+    <p>with T the absolute temperature, Q the activation energy and k Boltzmann’s constant (8.617 × 10⁻⁵ eV/K, standard constant, not in the course files). Q(100) ≈ 0.60 eV in 40 % KOH, each orientation has a slightly different Q, and {111} has the smallest, so the anisotropy changes with temperature (p. 90). The custom-etchant dialog uses the ratio form, which removes the unknown R₀:</p>
+    <p class="eq">R(T) = R(T₀) · exp[ −(Q/k) · (1/T − 1/T₀) ]</p>
+    <p><b>Check it:</b> with Q = 0.60 eV, going from 40 °C to 80 °C multiplies the rate by 12.4; Pal &amp; Sato (p. 90) report about 10 times for 40 % KOH. Moving 30 wt% KOH from 70 °C to 80 °C multiplies by 1.78, so R(100) goes from 0.797 to 1.42 µm/min. Lec 4-1 p. 7 summarises the trend: temperature up, rate up, selectivity down, roughness up.</p>
+  </details>
+
+  <details class="learn"><summary>4. Concentration</summary>
+    <p>Above about 25 wt% KOH the rate <b>falls</b> as the concentration rises (Pal &amp; Sato p. 88). The reason is in the reaction: water is a reactant and KOH acts as a catalyst, so a more concentrated solution has less water to react (p. 88). Not all planes change alike: (100) and (221) stay almost constant from 17 to 51 wt%, while (110), (210) and (320) change more (p. 88), so the anisotropy, and with it the etched shape, depends on the concentration (p. 89). Lec 4-1 p. 7: concentration up, rate down, selectivity up, roughness down.</p>
+    <p><b>Check it:</b> Table 4.1 (p. 87) gives R(100) = 0.797, 0.599 and 0.539 µm/min at 30, 40 and 50 wt%. The custom-etchant dialog interpolates linearly between these columns <i>(assumption)</i>; at 35 wt% it gives R(100) = 0.698 µm/min.</p>
+  </details>
+
+  <details class="learn"><summary>5. The mask and selectivity</summary>
+    <p>The <b>selectivity</b> of a mask is the etch rate of silicon divided by the etch rate of the mask material in the same etchant; the higher it is, the better the mask (Hsu p. 327). KOH dissolves thermal SiO₂ noticeably: the Si to SiO₂ selectivity is about 150 under normal conditions, so 2–3 µm of oxide is not enough to etch through a 500 µm wafer, and Si₃N₄ is used instead (Pal &amp; Sato p. 83; Hsu p. 327). Hot, concentrated KOH lowers it further: 40 at 110 °C and 25 at 135 °C in 45 wt% KOH (Pal &amp; Sato p. 92).</p>
+    <p><b>Check it:</b> KOH 42 wt% etches (100) at 42 µm/h and thermal oxide at 0.34 µm/h (Lec 4-1 p. 7), a selectivity of 124. Through 500 µm takes 500/42 = 11.9 h and removes 4.0 µm of oxide, in line with Pal &amp; Sato’s warning. <b>See it:</b> the simulator readout shows the oxide lost for etchants with a known SiO₂ rate.</p>
+  </details>
+
+  <details class="learn"><summary>6. The shapes that follow: 54.74°, V-grooves and corners</summary>
+    <p>Because {111} is almost not etched, a pit in a (100) wafer ends up bounded by {111} planes, which meet the surface at 54.74° (Hsu p. 325). The angle is arccos(1/√3) = 54.74°, and tan 54.74° = √2 (geometry). A square opening of side W with edges along ⟨110⟩ therefore stops at a depth of W/√2 = 0.707 W, when the four {111} walls meet in a point.</p>
+    <p><b>Corners.</b> At a concave corner the slowest plane shows and nothing is undercut; at a convex corner the fastest plane shows and the corner is cut back under the mask (Lec 4-1 p. 8; Lec 10 p. 14; Pal &amp; Sato p. 180). Undercut is useful for releasing cantilevers and bridges, and a problem for mesas and proof masses, which need corner compensation (Pal &amp; Sato p. 180; Lec 10 pp. 15–16).</p>
+    <p><b>See it:</b> Etched pit with a 100 µm square: the final depth is 70.7 µm. Corner lab: compare an uncompensated mesa with a compensated one.</p>
+  </details>
+
+  <details class="learn"><summary>7. A rate for every orientation (the rate map)</summary>
+    <p>Rates are measured for a few orientations only. Pal &amp; Sato Table 4.1 (p. 87) lists 12, measured on hemispherical specimens that expose all orientations at once (p. 85); the lectures give {100}, {110} and {111} (Lec 4-1 p. 7; Lec 10 p. 11). The simulator needs R for any direction n, so the page fills in the gaps <i>(method of this page)</i>:</p>
+    <ol>
+      <li>Cubic symmetry: take |n₁|, |n₂|, |n₃| and sort them so that a ≥ b ≥ c. Every direction then falls in one “standard triangle” whose corners are (100), (110) and (111).</li>
+      <li>Map it to the plane u = b/a, v = c/a (gnomonic coordinates): (100) is (0, 0), (110) is (1, 0) and (111) is (1, 1).</li>
+      <li>Triangulate the measured orientations in this plane (Delaunay) and interpolate linearly inside each triangle <i>(assumption)</i>. With only three rates the whole triangle is one piece.</li>
+    </ol>
+    <p>Linear interpolation keeps the sharp minimum (cusp) at {111}: the rate grows linearly with the angle away from (111), as measured for vicinal (111) (Pal &amp; Sato p. 104). The lecture KOH etchants (42 and 57 wt%) give three rates; their other nine planes are the Pal &amp; Sato 40 or 50 wt% column scaled to the lecture R(100) <i>(assumption)</i>. EDP has three rates only and uses the single triangle. The simulator panel “Model, sources and assumptions” lists each case.</p>
+  </details>
+
+  <details class="learn"><summary>8. The Etched pit scene: moving planes</summary>
+    <p>Each plane family {100}, {110} and {111} contributes its planes with unit normals n. A plane starts where it just touches the opening, at h = max over the opening corners of n·x, and moves outward at its own rate R. The cavity after time t is the region inside all of them and below the surface <i>(method of this page)</i>:</p>
+    <p class="eq">n·x ≤ h + R t &nbsp; for every plane n, &nbsp; and z ≤ 0</p>
+    <p>This is exact for a convex opening whose walls are flat planes. For long times only the slow {111} planes are left. Shapes that are not convex are split into convex pieces and the cavities are combined, so the scene cannot show convex-corner undercut; the simulator can.</p>
+  </details>
+
+  <details class="learn"><summary>9. The etch simulator: the level-set method</summary>
+    <p>The simulator follows the silicon surface as the zero level of a function φ(x, y, z, t): φ &gt; 0 in silicon, φ &lt; 0 where silicon has been etched. Every point of the surface moves along its normal n = ∇φ/|∇φ| at the local rate R(n), which gives the level-set equation <i>(standard numerical method; not in the course files)</i>:</p>
+    <p class="eq">∂φ/∂t + R(n) |∇φ| = 0</p>
+    <p>How the page solves it <i>(method of this page)</i>:</p>
+    <ul>
+      <li><b>Grid.</b> A cubic grid of cell size dx (draft, normal or fine). φ starts as the distance from each cell to the silicon exposed by the openings; the mask edge is found by an exact distance transform of the drawn mask, sampled four times finer than the grid.</li>
+      <li><b>Time step.</b> First-order Lax-Friedrichs: H = R(n)|p| with p the central difference of φ, minus ½ Σ αᵢ (D⁺ᵢφ − D⁻ᵢφ). The αᵢ ≥ max |∂H/∂pᵢ| add the smoothing that keeps the scheme stable, and the step is dt = 0.9 dx / (α_x + α_y + α_z) (CFL condition).</li>
+      <li><b>Etching cannot be undone.</b> φ is never allowed to rise, so a wall never grows back.</li>
+      <li><b>Narrow band.</b> Only cells within 4 dx of the surface are updated; every 6 steps φ is reset to the true distance from the surface by fast marching, which keeps |∇φ| close to 1.</li>
+      <li><b>Mask.</b> No etchant passes through the mask, so silicon under it is etched only from the side <i>(assumption)</i>.</li>
+      <li><b>Arrival time.</b> Each cell stores the time the front reached it, so the time slider and the “arrival time” colouring need no new run.</li>
+      <li><b>Engine.</b> The time step runs in Rust compiled to WebAssembly; a JavaScript copy is the reference, and both give the same numbers.</li>
+    </ul>
+    <p><b>Check it:</b> a 200 µm square window on (100), 60 min in 30 wt% KOH: simulated depth 47.85 µm against R(100)·t = 0.797 × 60 = 47.82 µm (Pal &amp; Sato Table 4.1, p. 87). The {111} side walls stand at 54.2° with a 4 µm grid and 54.8° with a 2 µm grid, against 54.74°.</p>
+  </details>
+
+  <details class="learn"><summary>10. How far to trust the numbers</summary>
+    <ul>
+      <li>Depths and undercuts are good to about one or two grid cells; corners are rounded over about two cells (numerical smoothing).</li>
+      <li>Silicon walls and beams thinner than about 8 cells, and windows narrower than about 5 cells, are not resolved well. Use the fine resolution or wider features when this matters.</li>
+      <li>Rates between measured orientations, the use of one Q for planes without data, and the concentration interpolation are assumptions (see 3, 4 and 7).</li>
+      <li>Not modelled: hydrogen bubbles, stirring, surface roughness and hillocks, etch stops, mask etching except as a readout, and real KOH with additives (IPA, surfactants), which changes the anisotropy (Pal &amp; Sato pp. 82, 112–117).</li>
+    </ul>
+  </details>
+
+  <details class="learn"><summary>11. Check yourself</summary>
+    <ol>
+      <li>Why does a more concentrated KOH solution etch (100) more slowly? <details class="ans"><summary>Answer</summary>Water is a reactant in Si + 2H₂O + 2OH⁻ → Si(OH)₂O₂²⁻ + 2H₂; at higher KOH concentration there is less water (Pal &amp; Sato p. 88).</details></li>
+      <li>A square 300 µm opening on (100), edges along the flat. How deep is the pit when the {111} walls meet? <details class="ans"><summary>Answer</summary>300/√2 = 212 µm (tan 54.74° = √2). In 30 wt% KOH at 70 °C that takes 212/0.797 ≈ 266 min. Try it in the Etched pit.</details></li>
+      <li>You raise 40 wt% KOH from 70 °C to 90 °C. By how much does R(100) change, with Q = 0.60 eV? <details class="ans"><summary>Answer</summary>exp[−(0.60/8.617×10⁻⁵)(1/363.15 − 1/343.15)] = 3.06, so 0.599 → 1.83 µm/min. Make it in the Custom etchant dialog and read the result table.</details></li>
+      <li>Why is the convex corner of a mesa undercut but the concave corner of a pit is not? <details class="ans"><summary>Answer</summary>At a concave corner the slowest planes ({111}) bound the shape; at a convex corner the fastest planes take over and etch under the mask (Lec 4-1 p. 8; Lec 10 p. 14). See the Corner lab.</details></li>
+    </ol>
+  </details>
+</section>
 <section class="refs" id="about">
   <h2>About this page</h2>
   <p><b>Author.</b> Huu Quoc Anh Nguyen (Student ID X1150030), undergraduate exchange student from the University of Science and Technology of Hanoi (USTH), Vietnam, at the Department of Engineering and System Science, National Tsing Hua University (NTHU), Taiwan, in fall 2026. My background is semiconductor device physics and materials, and I am interested in semiconductor process engineering.</p>
   <p><b>Why it exists.</b> I made this page as a study aid for two courses taught by Prof. Fan-Gang Tseng at NTHU: ESS5850 Micro System Design (Lecture 4-1 and HW2, bulk micromachining) and ESS 5810 Advanced Micro System Fabrication and Lab (Lecture 10, bulk micromachining). It shows in 3D what the lecture drawings show in 2D: which {111} planes bound a KOH pit, why convex corners are attacked and how compensation works, and how the true crystal direction is found when the wafer flat is a few degrees off.</p>
   <p><b>For students using it.</b> This is not official course material. Every number on the page names its source (lecture and page, or book and page), and the panels separate sourced facts, design choices and assumptions. Check against your own lecture notes before you use a number in homework. The simulator is a numerical model with known limits (listed in its panel). It shows trends and shapes well; absolute depths and undercuts are good to about one or two grid cells.</p>
+  <p><b>How it works.</b> The section above explains the chemistry of KOH etching, why the rate depends on the crystal plane, temperature and concentration, the mask, the rate map and the level-set simulation, with numbers to check and questions to try. Use <b>ⓘ Explanations</b> in the toolbar to show the source notes under the controls.</p>
   <p><b>Quick start.</b> Pick a wafer and a scene at the top. Drag in the 3D view to turn it and scroll to zoom. In the Etched pit and the simulator, draw your own mask in the 2D editor. Keys: S split view, T theater view, ? quick start and all keys.</p>
   <p><b>Web address.</b> <a href="https://salmonquoc.github.io/origami-koh-etch-viewer/" target="_blank" rel="noopener">salmonquoc.github.io/origami-koh-etch-viewer</a> (GitHub Pages, always the latest version).</p>
   <p><b>Found an error?</b> Please open an issue on <a href="https://github.com/SalmonQuoc/origami-koh-etch-viewer/issues" target="_blank" rel="noopener">GitHub</a>, with the scene, the settings and the source you compared with.</p>
@@ -605,8 +733,9 @@ dl.scenes dt { font-weight: 600; margin-top: 8px; } dl.scenes dd { margin: 2px 0
 <section class="refs" id="references">
   <h2>References</h2>
   <ol>
-    <li>F.-G. Tseng, “Lecture 4-1: Bulk micromachining,” <i>ESS5850 Micro System Design class notes</i>, National Tsing Hua University, 2016. Pages used: wafer flats p. 6; KOH rates and SiO₂ etch rate p. 7; concave and convex corners p. 8; corner compensation p. 9; ⟨100⟩ streets p. 10; (110) wafers pp. 11–12; (111) wafers p. 13; bridges p. 14; etch stop p. 15; DRIE p. 16.</li>
-    <li>P. Pal and K. Sato, <i>Silicon Wet Bulk Micromachining for MEMS</i>, 1st ed. Singapore: Jenny Stanford Publishing, 2017, doi: <a href="https://doi.org/10.1201/9781315364926" target="_blank" rel="noopener">10.1201/9781315364926</a>. Pages used: Table 2.1 p. 30 (wafer thickness); Table 4.1 p. 87 (KOH rates of 12 orientations); p. 90 (activation energy, used by custom etchants); p. 104 (vicinal (111)); pp. 235–249 (convex corners and compensation).</li>
+    <li>F.-G. Tseng, “Lecture 4-1: Bulk micromachining,” <i>ESS5850 Micro System Design class notes</i>, National Tsing Hua University, 2016. Pages used: isotropic HNA etching p. 2; wafer flats p. 6; KOH rates, SiO₂ etch rate and the effects of concentration and temperature p. 7; concave and convex corners p. 8; corner compensation p. 9; ⟨100⟩ streets p. 10; (110) wafers pp. 11–12; (111) wafers p. 13; bridges p. 14; etch stop p. 15; DRIE p. 16.</li>
+    <li>P. Pal and K. Sato, <i>Silicon Wet Bulk Micromachining for MEMS</i>, 1st ed. Singapore: Jenny Stanford Publishing, 2017, doi: <a href="https://doi.org/10.1201/9781315364926" target="_blank" rel="noopener">10.1201/9781315364926</a>. Pages used: Table 2.1 p. 30 (wafer thickness); pp. 79–82 (reaction, dangling and back bonds); p. 83 (SiO₂ selectivity); p. 85 (rate map); Table 4.1 p. 87 (KOH rates of 12 orientations); p. 88 (concentration); pp. 90–92 (temperature, activation energy, hot concentrated KOH); p. 104 (vicinal (111)); pp. 112–117 (alcohol additives); p. 180 (concave and convex corners); pp. 235–249 (convex corners and compensation).</li>
+    <li>T.-R. Hsu, <i>MEMS and Microsystems: Design, Manufacture, and Nanoscale Engineering</i>, 2nd ed. Hoboken, NJ, USA: Wiley, 2008. Pages used: p. 325 (anisotropic etching, 54.74°, ⟨100⟩ to ⟨111⟩ rate ratio); p. 326 (wet etchants); p. 327 (selectivity, mask materials).</li>
     <li>F.-G. Tseng, “HW #2,” ESS5850 Micro System Design, National Tsing Hua University, fall 2026 (octahedron net p. 3; problem 5, (110) wafer with the ⟨111⟩ arrow).</li>
     <li>N. Paul, S. Bonam, S. R. K. Vanjari, and S. G. Singh, “Silicon membranes for microbolometers: simulation and fabrication using frontend bulk micromachining,” in <i>2024 IEEE Int. Conf. Electron Devices Society Kolkata Chapter (EDKCON)</i>, Kolkata, India, 2024, pp. 623–628, doi: <a href="https://doi.org/10.1109/EDKCON62339.2024.10870751" target="_blank" rel="noopener">10.1109/EDKCON62339.2024.10870751</a>. Used for the 45° (⟨100⟩-aligned) mask examples: Fig. 1, Sec. II–III.</li>
     <li>G. T. A. Kovacs, N. I. Maluf, and K. E. Petersen, “Bulk micromachining of silicon,” <i>Proceedings of the IEEE</i>, vol. 86, no. 8, pp. 1536–1551, Aug. 1998. Used for: concave and convex corners of a (100) cavity and the undercut cantilever (Fig. 1(b), 1(c), p. 1537); comparison of wet etchants (Table 1, p. 1538).</li>
@@ -1391,7 +1520,7 @@ function loadPitExamples(db, trench) {
 // ---- src/app/01-settings-helpers.ts
 const C = Core, V3 = THREE.Vector3;
 const T_WAFER = 525;
-const SET_DEF = { layout: "standard", panelW: 340, stageH: 68, theme: "auto", labels: "normal", anim: true, pixel: "auto", snap: 5, quality: "normal", autoRun: false, engine: "auto", coords: true };
+const SET_DEF = { layout: "standard", panelW: 340, stageH: 68, theme: "auto", labels: "normal", anim: true, pixel: "auto", snap: 5, quality: "normal", autoRun: false, engine: "auto", coords: true, explain: false };
 const SET = Object.assign({}, SET_DEF);
 try {
   Object.assign(SET, JSON.parse(localStorage.getItem("o3d-settings") || "{}"));
@@ -6112,6 +6241,7 @@ function syncSettingsUI() {
   $("stAuto").checked = !!SET.autoRun;
   $("stEngine").value = SET.engine || "auto";
   $("stCoords").checked = SET.coords !== false;
+  $("stExplain").checked = !!SET.explain;
 }
 let autoT = 0;
 function autoRunMaybe() {
@@ -6167,7 +6297,8 @@ $("dlgSet").addEventListener("change", (ev) => {
   else if (t.id === "stCoords") {
     SET.coords = t.checked;
     redrawEditors();
-  } else if (t.id === "stQual") {
+  } else if (t.id === "stExplain") setExplain(t.checked);
+  else if (t.id === "stQual") {
     SET.quality = t.value;
     SIM.quality = t.value;
     syncSimInputs();
@@ -6190,6 +6321,8 @@ $("stReset").addEventListener("click", () => {
   document.documentElement.style.removeProperty("--splitW");
   applyLayout();
   applyLook();
+  setExplain(SET.explain);
+  redrawEditors();
   syncSettingsUI();
 });
 $("stClearEtch").addEventListener("click", () => {
@@ -6200,6 +6333,23 @@ $("stClearEtch").addEventListener("click", () => {
   ceFill();
   prepPit();
   rebuild(false);
+});
+function setExplain(on) {
+  SET.explain = !!on;
+  saveSet();
+  document.body.classList.toggle("explain", SET.explain);
+  $("bExplain").setAttribute("aria-pressed", String(SET.explain));
+  $("ceExplain").checked = SET.explain;
+  $("stExplain").checked = SET.explain;
+}
+setExplain(!!SET.explain);
+$("bExplain").addEventListener("click", () => setExplain(!SET.explain));
+$("ceExplain").addEventListener("change", (e) => setExplain(e.target.checked));
+document.addEventListener("keydown", (e) => {
+  if (e.key.toLowerCase() !== "i" || e.ctrlKey || e.metaKey || e.altKey) return;
+  const tg = e.target.tagName;
+  if (tg === "INPUT" || tg === "SELECT" || tg === "TEXTAREA" || tg === "CANVAS") return;
+  setExplain(!SET.explain);
 });
 
 // ---- src/app/15-custom-etchants.ts

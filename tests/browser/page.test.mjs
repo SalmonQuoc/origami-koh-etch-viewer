@@ -16,6 +16,16 @@ test("page: scenes, simulator kernel, drawing, settings, custom etchant, presets
   await p.goto(PAGE); await p.waitForTimeout(1200);
   const ev = f => p.evaluate(f);
 
+  await t.test("explanations are off at first and the toolbar switch shows them", async () => {
+    assert.equal(await ev(() => document.body.classList.contains("explain")), false);
+    assert.ok(await ev(() => [...document.querySelectorAll(".note.src, .xinfo")].every(e => getComputedStyle(e).display === "none")));
+    assert.ok(await ev(() => [...document.querySelectorAll("details")].every(d => !d.open)));
+    await p.click("#bExplain");
+    assert.ok(await ev(() => document.body.classList.contains("explain") && getComputedStyle(document.querySelector(".note.src")).display !== "none"));
+    await p.click("#bExplain");
+    assert.equal(await ev(() => document.body.classList.contains("explain")), false);
+  });
+
   await t.test("every scene opens on every wafer", async () => {
     for (const w of ["100", "110", "111"]) {
       await p.click(`#segW button[data-w="${w}"]`);
