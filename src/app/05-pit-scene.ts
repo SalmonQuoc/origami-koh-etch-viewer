@@ -191,8 +191,33 @@ function meshFromPolysV(polys, vcol, matOpts) {   // per-vertex colours: vcol(po
   m.userData.tri2poly = tri2poly; return m;
 }
 
-// drawn mask thickness (µm): exaggerated so the film reads as a separate layer
-const maskThick = () => Math.max(1, 0.012*radius);
+// mask film, drawn at its true thickness (µm). A SiO₂ film thins at the oxide etch rate of the etchant.
+var MASKMAT = {
+  sio2: { name: "thermal SiO₂", t0: 1, src: "1 µm: a design choice inside the 1–2 µm thermal oxide of Pal & Sato p. 348" },
+  si3n4: { name: "LPCVD Si₃N₄", t0: 0.15, src: "0.15 µm: the upper end of the 100–150 nm nitride of Pal & Sato p. 54 (a LOCOS layer there; using it as the KOH mask is an assumption)" },
+};
+const MASK_SEL = 150;   // Si : SiO₂ etch selectivity in KOH, "about 150 under normal etching conditions" (Pal & Sato p. 83)
+function maskOxRate(simKey: string): { r: number | null; src: string; est?: boolean } {   // µm/min
+  const e = SRATES[simKey]; if (!e) return { r: null, src: "SiO₂ etch rate not in the course files" };
+  if (e.sio2 != null) return { r: e.sio2, src: e.sio2src || "" };
+  if (/KOH/.test(e.name) && e.r["100"]) return { r: e.r["100"]/MASK_SEL, src: `estimate R(100)/${MASK_SEL}, from the Si : SiO₂ selectivity of about ${MASK_SEL} (Pal & Sato p. 83)`, est: true };
+  return { r: null, src: "SiO₂ etch rate not in the course files" };
+}
+function maskFilm(simKey: string, tMin: number, final = false) {
+  const t0 = Math.max(0, Number(S.maskT0) || 0);
+  if (S.maskMat === "si3n4") return { t0, left: t0, r: null as number | null, gone: false, tGone: null as number | null, src: "Si₃N₄ etch rate in KOH and EDP not in the course files: drawn without loss (assumption)", est: false };
+  const o = maskOxRate(simKey), tGone = o.r ? t0/o.r : null;
+  const left = o.r == null || final ? t0 : Math.max(0, t0 - o.r*tMin);
+  return { t0, left, r: o.r, gone: !final && o.r != null && left <= 0, tGone, src: o.src, est: !!o.est };
+}
+function maskFilmText(mf, tMin: number, final = false) {   // one readout line
+  const nm = MASKMAT[S.maskMat].name, f = (v: number) => v.toFixed(v < 0.1 ? 3 : 2);
+  if (final) return `${nm} ${f(mf.t0)} µm (loss not shown at the long-etch limit${mf.tGone != null ? `; used up after ${mf.tGone.toFixed(0)} min` : ""})`;
+  if (mf.r == null) return `${nm} ${f(mf.t0)} µm; ${mf.src}`;
+  if (mf.gone) return `<b>used up after ${mf.tGone.toFixed(0)} min</b> (${nm} ${f(mf.t0)} µm at ${(mf.r*60).toPrecision(2)} µm/h; ${mf.src}). From then on a real wafer etches everywhere; this model keeps the mask.`;
+  return `${nm}: ${f(mf.left)} of ${f(mf.t0)} µm left after ${tMin.toFixed(0)} min (${(mf.r*60).toPrecision(2)} µm/h, ${mf.src})`;
+}
+const pitFilm = () => maskFilm(PIT2SIM[S.rate] || S.rate, S.t, S.final);
 // side faces of the mask film along the opening edges: only where one side of the edge is open and the other is masked
 function maskRim(loops, isOpenAt, tm, clip, box) {
   const pos = [], col = [], ln = [], dark = COL.mask.clone().multiplyScalar(0.62);
@@ -278,21 +303,21 @@ function buildPit() {
     g.add(linesFromLoops([[[x0, yA, 0], [x0, yA, -zb]], [[x1, yA, 0], [x1, yA, -zb]], [[x0, yl, 0], [x0, yl, -zb]], [[x1, yl, 0], [x1, yl, -zb]]], COL["s-ink"], { opacity: 0.6 }));
     if (zb < T_WAFER) addLabel(new V3(x1, yA, -zb), `depth shown: ${zb.toFixed(0)} µm`, "", camDir => camDir.z > -0.2);
     // mask
-    if (S.mask) {   // mask film on top of the silicon, thickness exaggerated; it overhangs where the silicon is undercut
-      const tm = maskThick(), opens = items.map(it => it.o);
-      const mm = holePlane(x0, x1, yA, yB, opens, COL.mask, m => { m.position.z = tm; }, { opacity: 0.88, alphaTest: 0.01 });
+    if (S.mask) {   // mask film on top of the silicon at its true thickness; it overhangs where the silicon is undercut
+      const mf = pitFilm(), tm = mf.left, opens = items.map(it => it.o);
+      const mm = holePlane(x0, x1, yA, yB, opens, COL.mask, m => { m.position.z = tm; }, { opacity: mf.gone ? 0.3 : 0.88, alphaTest: 0.01, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
       mm.renderOrder = 5; g.add(mm);
       const os = opens.map(o => ({ pts: o, op: "open" })), inOpen = (x, y) => EE.isOpen(os, x, y);
       g.add(maskRim(pitLoops(), inOpen, tm, clip, [x0, x1, yA, yB]));
     }
   }
   // mask opening outlines
-  g.add(linesFromLoops(pitLoops().map(P => P.map(p => [p[0], p[1], (S.mask && S.block ? maskThick() : 0) + 0.004*zb])), COL.mask, S.mask && S.block ? { clip } : { clip, dashed: true, dash: radius*0.03, gap: radius*0.02 }));
+  g.add(linesFromLoops(pitLoops().map(P => P.map(p => [p[0], p[1], (S.mask && S.block ? pitFilm().left : 0) + 0.004*zb])), COL.mask, S.mask && S.block ? { clip } : { clip, dashed: true, dash: radius*0.03, gap: radius*0.02 }));
   // ghost: final {111} shape
   if (S.ghost && !S.final) { const gh = linesFromLoops(unionWalls(fins.filter(c => c.faces.length), f => f.label !== "surface", eps).edges, COL.ghost, { clip, opacity: 0.55 }); gh.material.depthTest = false; gh.renderOrder = 8; g.add(gh); }
   // axes labels on the top surface
   const e = C.FRAME_IDX[S.wf];
-  const zArr = (S.mask && S.block ? maskThick() : 0) + 0.004*zb;
+  const zArr = (S.mask && S.block ? pitFilm().left : 0) + 0.004*zb;
   g.add(topArrow(new V3(1, 0, 0), new V3(x0, yA, zArr), (x1 - x0)*0.25, radius*0.06, radius*0.035));
   addLabel(new V3(x0 + (x1 - x0)*0.3, yA - radius*0.04, 0), idxHTML(e[0], "[", "]") + " along flat", "acc");
   // perpendicular to the flat, pointing outward (wafer -y, away from the centre), from the flat-side edge
@@ -337,6 +362,7 @@ function updateReadout(cavs) {
     ["flat floor", through ? "etched through" : cavs.length === 1 ? (floor ? `yes, area ${(floor.area/1e3).toFixed(1)}×10³ µm²` : "no (walls meet)") : (nf.length ? `yes, area ${(nf.reduce((a, f) => a + polyArea3(f.poly), 0)/1e3).toFixed(1)}×10³ µm² (all pieces)` : "no (walls meet)")],
   ];
   if (cavs.length === 1) rows.splice(1, 1);
+  if (S.mask) rows.push(["mask film", maskFilmText(pitFilm(), S.t, S.final)]);
   document.getElementById("readout").innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
   // walls grouped by family and angle
   const groups = new Map();

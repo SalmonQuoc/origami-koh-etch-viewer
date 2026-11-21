@@ -122,6 +122,8 @@ details.srcs li { margin: 4px 0; }
 .foldH::before { content: ""; position: absolute; left: 2px; top: 50%; margin-top: -4px; border: 4px solid transparent; border-left: 6px solid currentColor; border-right: 0; transition: transform .15s; transform-origin: 3px 4px; opacity: .7; }
 .foldH:not(.closed)::before { transform: rotate(90deg); }
 .foldH:hover { color: var(--ink); }
+.foldH:not(.closed) { color: var(--accent); }
+details[open] > summary { color: var(--accent); }
 .foldH:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .foldH.closed + .foldBody { display: none; }
 .foldAll { display: flex; justify-content: flex-end; align-items: baseline; gap: 4px; margin: -4px 0 4px; font-size: 12px; }
@@ -189,7 +191,12 @@ body.enl-open { overflow: hidden; }
 .enl.enlarged .maskcv { margin: 0 auto; }
 /* drawing a free outline */
 .drawhelp { margin: 4px 0; padding: 6px 8px; border-radius: 6px; background: var(--chip); font-size: 12.5px; color: var(--ink); }
-.btn.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+/* a switched-on toggle (Explanations, Split, Theater, Full screen, Draw, Play, Enlarge) takes the accent colour */
+.btn.on, .btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn[aria-pressed="true"]:hover, .btn.on:hover { filter: brightness(1.08); }
+.btn.primary[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+input[type=checkbox], input[type=radio] { accent-color: var(--accent); }
+label:has(> input[type=checkbox]:checked) { color: var(--ink); }
 canvas.drawing { cursor: crosshair !important; }
 /* dialogs (settings, custom etchant) */
 dialog.dlg { max-width: min(680px, 94vw); width: 100%; max-height: 90vh; overflow: auto; border: 1px solid var(--line); border-radius: 12px;
@@ -359,7 +366,8 @@ dl.scenes dt { font-weight: 600; margin-top: 8px; } dl.scenes dd { margin: 2px 0
     <div class="row"><label><input type="checkbox" id="cBlock" checked> silicon block (off: cast of the pit)</label></div>
     <div class="row"><label><input type="checkbox" id="cGhost" checked> final {111} shape (wire)</label></div>
     <div class="row"><label><input type="checkbox" id="cMask" checked> mask layer</label></div>
-    <div class="legend"><span><i class="sw" style="background:var(--mask)"></i>mask film (SiO₂ or Si₃N₄; drawn thicker than real)</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span></div>
+    <div class="legend"><span><i class="sw" style="background:var(--mask)"></i>mask film (drawn at its true thickness)</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span></div>
+    <div class="maskUI"></div>
     <div class="waferUI"></div>
     <div class="row"><span class="lbl">Colour</span><select id="pitColor" style="width:auto"><option value="plane">crystal plane family</option><option value="depth">depth below the surface</option><option value="rate">etch rate of the wall</option></select></div>
     <h3>Now</h3>
@@ -429,7 +437,8 @@ dl.scenes dt { font-weight: 600; margin-top: 8px; } dl.scenes dd { margin: 2px 0
     <div class="row"><button class="btn" id="bSimPlay">Play</button>
       <label><input type="checkbox" id="cSimMask" checked> mask layer</label>
       <label><input type="checkbox" id="cSimCut"> cut away at the section</label></div>
-    <div class="legend"><span><i class="sw" style="background:var(--mask)"></i>mask film (drawn thicker than real)</span><span><i class="sw" style="background:var(--mask);filter:brightness(.55)"></i>mask with no silicon under it</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span></div>
+    <div class="legend"><span><i class="sw" style="background:var(--mask)"></i>mask film (true thickness)</span><span><i class="sw" style="background:var(--mask);filter:brightness(.55)"></i>mask with no silicon under it</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span></div>
+    <div class="maskUI"></div>
     <h3>Section line</h3>
     <div class="row"><span class="seg" id="segCut"><button data-a="y" aria-pressed="true">along x</button><button data-a="x" aria-pressed="false">along y</button></span><label class="note" title="position of the section line; you can also drag the line in the mask editor"><span id="simCutLbl">y</span> = <input type="number" id="simCutNum" step="1" style="width:6em"> µm</label></div>
     <input type="range" id="simCutPos" min="-100" max="100" step="1" value="0">
@@ -447,7 +456,7 @@ dl.scenes dt { font-weight: 600; margin-top: 8px; } dl.scenes dd { margin: 2px 0
         <li><b>Front motion</b> (method): every surface element moves along its normal at R(hkl); this is solved as a 3D level set (first-order Lax-Friedrichs scheme, fast-marching re-initialisation) on a cubic grid. Accuracy is about one cell; sharp edges are rounded over about two cells. Check: 200 µm square window on (100), 60 min in 30 wt%: depth 47.85 µm against 0.797 × 60 = 47.82 µm; {111} wall 54.2° (4 µm grid) and 54.8° (2 µm grid) against 54.74°.</li>
         <li><b>Mask edge</b> (assumption): no etchant reaches silicon through the mask, so silicon under the mask is only removed from the side. At the top row under the mask the level set has no downward slope; where the wall there is near-vertical (slope below 0.35), the vertical gradient is set to zero. Check: a 100 &micro;m square window at 45&deg; on (100), 40 min in 30 wt% KOH, gives 26.5 &micro;m sideways undercut at a 2 &micro;m grid (15.5 &micro;m at 4 &micro;m) against 0.797 &times; 40 = 31.9 &micro;m (Pal &amp; Sato Table 4.1, p. 87); a ⟨110⟩-aligned pit keeps 0 &micro;m. Use a fine grid when {100} undercut matters.</li>
         <li><b>Known numerical limits</b>: silicon walls and beams narrower than about 8 grid cells thin slowly (numerical dissipation, not physics), most when they are oblique to the grid; windows narrower than about 5 cells etch too slowly. Use the “fine” resolution or wider features when this matters. Undercut values are good to about one to two cells.</li>
-        <li><b>Mask</b> (assumption): inert and infinitely thin; etchant reaches the silicon only through openings and under released mask. The SiO₂ loss shown uses 0.34 µm/h for KOH 42 wt% (thermal oxide, Lec 4-1 p. 7; Lec 10 p. 11) and the Lec 10 p. 11 values for KOH 57 wt% and EDP Type S; for the other etchants the rate is not in the course files.</li>
+        <li><b>Mask</b> (assumption): inert for the etch; etchant reaches the silicon only through openings and under released mask. The film is drawn at its true thickness (default 1 µm thermal SiO₂, a design choice inside the 1–2 µm of Pal &amp; Sato p. 348; or 0.15 µm LPCVD Si₃N₄, Pal &amp; Sato p. 54) and a SiO₂ film thins at the oxide rate below; when it is used up the readout says so, but the model still keeps the mask. Pal &amp; Sato p. 83: a 2–3 µm thermal oxide is not enough to etch through a 500 µm wafer in KOH (Si : SiO₂ selectivity about 150); Si₃N₄ is used instead. For KOH etchants with no oxide rate in the course files the rate is estimated as R(100)/150 (estimate). The SiO₂ loss shown uses 0.34 µm/h for KOH 42 wt% (thermal oxide, Lec 4-1 p. 7; Lec 10 p. 11) and the Lec 10 p. 11 values for KOH 57 wt% and EDP Type S; for the other KOH etchants it is the R(100)/150 estimate above, and for EDP F&amp;K it is not in the course files.</li>
         <li><b>Rates from Lec 10 and EDP</b>: KOH 57 wt% at 75 °C: {100} 25, {110} 39, {111} 0.5 µm/h (Lec 10 p. 11); its other orientations are the Pal &amp; Sato 50 wt% values scaled by R(100) (assumption). EDP Type S at 110 °C: {100} 51, {110} 57, {111} 1.25 µm/h (Lec 10 p. 11). EDP F&amp;K: ratio 50:30:3 (Finne and Klein 1967, Berkeley lab manual ch. 1.10) scaled to R(100) = 51 µm/h (assumption). For EDP only three orientations are given, so all other planes use the three-rate interpolation of Radjenović et al. (2010, eq. 1) (assumption). Lec 10 p. 16 orders EDP as (100) &gt; (110) &gt; (111), which the Type S values of p. 11 do not follow; F&amp;K does.</li>
         <li><b>Wafer</b>: 525 µm thick by default (100 mm wafer, Pal &amp; Sato Table 2.1, p. 30); only the depth that the etch can reach is simulated, and the back side is protected (assumption). Frames: (100) x = [1̄10] along the flat (origami tutorial, Rev. 1); (110) two conventions, see above; (111) flat along [11̄0] (assumption).</li>
         <li><b>Pre-etch</b> (assumption): a vertical prism of the opening shape, as by deep RIE (Lec 4-1 p. 16), before KOH.</li>
@@ -541,6 +550,7 @@ dl.scenes dt { font-weight: 600; margin-top: 8px; } dl.scenes dd { margin: 2px 0
   <h3>Good to know</h3>
   <ul class="note" style="margin:0;padding-left:18px">
     <li><b>Sections</b>: click a heading in the right-hand panel (or press <span class="kbd">Enter</span> on it) to open or close that section. Only the first section of each panel is open at first; “open all” and “close all” sit at the top of the panel.</li>
+    <li><b>Switches</b> that are on (Explanations, Split view, Theater view, Full screen, Draw, Play, Enlarge) are filled in the accent colour; open sections and open source lists have an accent heading.</li>
     <li><b>⤢ Enlarge</b> opens an editor or a graph panel in a large window; <span class="kbd">Esc</span> closes it.</li>
     <li><b>ⓘ Explanations</b> shows the source notes under the controls and what each setting of the custom etchant means; they are off at first. <b>How it works</b>, below the page, explains the chemistry, the rate model and the simulation step by step.</li>
     <li><b>⚙ Settings</b> sets the layout, panel width, theme, label size, snap step and simulator resolution. They are kept in this browser.</li>
@@ -628,7 +638,7 @@ dl.scenes dt { font-weight: 600; margin-top: 8px; } dl.scenes dd { margin: 2px 0
     <p class="fhelp xinfo">Type rates in µm/h at your process. {100}, {110} and {111} are needed because they are the three corners of the orientation triangle from which every other rate is interpolated (How it works, part 7). {111} sets how fast the {111} walls move back under the mask, {100} how fast the floor of a (100) pit goes down. The other nine planes refine convex corners and curved walls; empty ones are interpolated.</p>
   </div>
   <div class="fields"><label>SiO₂ mask etch rate (optional) <span><input type="number" id="ceOx" min="0" step="0.001"> µm/h</span></label>
-      <p class="fhelp xinfo">Rate at which the etchant removes thermal oxide. Used only for the “oxide lost” readout; the mask itself stays intact in the model. Empty: the listed value is kept if temperature, concentration and factor are unchanged, otherwise it is unknown. KOH removes SiO₂ about 150 times slower than Si (Pal &amp; Sato p. 83).</p></div>
+      <p class="fhelp xinfo">Rate at which the etchant removes thermal oxide. Used for the “mask film” readout and for how fast the drawn SiO₂ film thins; the etch model itself keeps the mask. Empty: the listed value is kept if temperature, concentration and factor are unchanged, otherwise it is unknown. KOH removes SiO₂ about 150 times slower than Si (Pal &amp; Sato p. 83).</p></div>
   <h3>Result</h3>
   <table class="walls" id="cePrev"></table>
   <p class="fhelp xinfo">R(100)/R(111) is the anisotropy: the larger it is, the less a {111} wall is undercut while the pit deepens. “Time for 100 µm” is 100 µm divided by R(100).</p>
@@ -672,7 +682,7 @@ dl.scenes dt { font-weight: 600; margin-top: 8px; } dl.scenes dd { margin: 2px 0
 
   <details class="learn"><summary>5. The mask and selectivity</summary>
     <p>The <b>selectivity</b> of a mask is the etch rate of silicon divided by the etch rate of the mask material in the same etchant; the higher it is, the better the mask (Hsu p. 327). KOH dissolves thermal SiO₂ noticeably: the Si to SiO₂ selectivity is about 150 under normal conditions, so 2–3 µm of oxide is not enough to etch through a 500 µm wafer, and Si₃N₄ is used instead (Pal &amp; Sato p. 83; Hsu p. 327). Hot, concentrated KOH lowers it further: 40 at 110 °C and 25 at 135 °C in 45 wt% KOH (Pal &amp; Sato p. 92).</p>
-    <p><b>Check it:</b> KOH 42 wt% etches (100) at 42 µm/h and thermal oxide at 0.34 µm/h (Lec 4-1 p. 7), a selectivity of 124. Through 500 µm takes 500/42 = 11.9 h and removes 4.0 µm of oxide, in line with Pal &amp; Sato’s warning. <b>See it:</b> the simulator readout shows the oxide lost for etchants with a known SiO₂ rate.</p>
+    <p><b>Check it:</b> KOH 42 wt% etches (100) at 42 µm/h and thermal oxide at 0.34 µm/h (Lec 4-1 p. 7), a selectivity of 124. Through 500 µm takes 500/42 = 11.9 h and removes 4.0 µm of oxide, in line with Pal &amp; Sato’s warning. <b>See it:</b> the Etched pit and the simulator draw the mask film at its true thickness (Show and Time sections: thermal SiO₂, 1 µm by default, or Si₃N₄). A SiO₂ film thins at the oxide rate of the etchant, and the “mask film” readout gives what is left or when it is used up. For KOH 30 wt% at 70 °C no oxide rate is in the course files, so the page estimates it as R(100)/150 = 0.797/150 µm/min = 0.32 µm/h: 1 µm lasts about 190 min. Try it: KOH 57 wt% (0.62 µm/h, Lec 10 p. 11) uses up 1 µm of oxide in 97 min, long before a 525 µm wafer is etched through.</p>
   </details>
 
   <details class="learn"><summary>6. The shapes that follow: 54.74°, V-grooves and corners</summary>
@@ -747,7 +757,7 @@ dl.scenes dt { font-weight: 600; margin-top: 8px; } dl.scenes dd { margin: 2px 0
   <h2>References</h2>
   <ol>
     <li>F.-G. Tseng, “Lecture 4-1: Bulk micromachining,” <i>ESS5850 Micro System Design class notes</i>, National Tsing Hua University, 2016. Pages used: isotropic HNA etching p. 2; wafer flats p. 6; KOH rates, SiO₂ etch rate and the effects of concentration and temperature p. 7; concave and convex corners p. 8; corner compensation p. 9; ⟨100⟩ streets p. 10; (110) wafers pp. 11–12; (111) wafers p. 13; bridges p. 14; etch stop p. 15; DRIE p. 16.</li>
-    <li>P. Pal and K. Sato, <i>Silicon Wet Bulk Micromachining for MEMS</i>, 1st ed. Singapore: Jenny Stanford Publishing, 2017, doi: <a href="https://doi.org/10.1201/9781315364926" target="_blank" rel="noopener">10.1201/9781315364926</a>. Pages used: Table 2.1 p. 30 (wafer thickness); pp. 79–82 (reaction, dangling and back bonds); p. 83 (SiO₂ selectivity); p. 85 (rate map); Table 4.1 p. 87 (KOH rates of 12 orientations); p. 88 (concentration); pp. 90–92 (temperature, activation energy, hot concentrated KOH); p. 104 (vicinal (111)); pp. 112–117 (alcohol additives); p. 180 (concave and convex corners); pp. 235–249 (convex corners and compensation).</li>
+    <li>P. Pal and K. Sato, <i>Silicon Wet Bulk Micromachining for MEMS</i>, 1st ed. Singapore: Jenny Stanford Publishing, 2017, doi: <a href="https://doi.org/10.1201/9781315364926" target="_blank" rel="noopener">10.1201/9781315364926</a>. Pages used: Table 2.1 p. 30 (wafer thickness); p. 54 (Si₃N₄ film 100–150 nm); pp. 79–82 (reaction, dangling and back bonds); p. 83 (SiO₂ selectivity); p. 85 (rate map); Table 4.1 p. 87 (KOH rates of 12 orientations); p. 88 (concentration); pp. 90–92 (temperature, activation energy, hot concentrated KOH); p. 104 (vicinal (111)); pp. 112–117 (alcohol additives); p. 180 (concave and convex corners); pp. 235–249 (convex corners and compensation); pp. 289–304 (finding the crystal orientation); p. 348 (thermal oxide 1–2 µm).</li>
     <li>T.-R. Hsu, <i>MEMS and Microsystems: Design, Manufacture, and Nanoscale Engineering</i>, 2nd ed. Hoboken, NJ, USA: Wiley, 2008. Pages used: p. 325 (anisotropic etching, 54.74°, ⟨100⟩ to ⟨111⟩ rate ratio); p. 326 (wet etchants); p. 327 (selectivity, mask materials).</li>
     <li>F.-G. Tseng, “HW #2,” ESS5850 Micro System Design, National Tsing Hua University, fall 2026 (octahedron net p. 3; problem 5, (110) wafer with the ⟨111⟩ arrow).</li>
     <li>N. Paul, S. Bonam, S. R. K. Vanjari, and S. G. Singh, “Silicon membranes for microbolometers: simulation and fabrication using frontend bulk micromachining,” in <i>2024 IEEE Int. Conf. Electron Devices Society Kolkata Chapter (EDKCON)</i>, Kolkata, India, 2024, pp. 623–628, doi: <a href="https://doi.org/10.1109/EDKCON62339.2024.10870751" target="_blank" rel="noopener">10.1109/EDKCON62339.2024.10870751</a>. Used for the 45° (⟨100⟩-aligned) mask examples: Fig. 1, Sec. II–III.</li>
@@ -2062,6 +2072,8 @@ const S = {
   block: true,
   ghost: true,
   mask: true,
+  maskMat: "sio2",
+  maskT0: 1,
   corners: true,
   faces: false,
   upper: true,
@@ -2527,7 +2539,33 @@ function meshFromPolysV(polys, vcol, matOpts) {
   m.userData.tri2poly = tri2poly;
   return m;
 }
-const maskThick = () => Math.max(1, 0.012 * radius);
+var MASKMAT = {
+  sio2: { name: "thermal SiO\u2082", t0: 1, src: "1 \xB5m: a design choice inside the 1\u20132 \xB5m thermal oxide of Pal & Sato p. 348" },
+  si3n4: { name: "LPCVD Si\u2083N\u2084", t0: 0.15, src: "0.15 \xB5m: the upper end of the 100\u2013150 nm nitride of Pal & Sato p. 54 (a LOCOS layer there; using it as the KOH mask is an assumption)" }
+};
+const MASK_SEL = 150;
+function maskOxRate(simKey) {
+  const e = SRATES[simKey];
+  if (!e) return { r: null, src: "SiO\u2082 etch rate not in the course files" };
+  if (e.sio2 != null) return { r: e.sio2, src: e.sio2src || "" };
+  if (/KOH/.test(e.name) && e.r["100"]) return { r: e.r["100"] / MASK_SEL, src: `estimate R(100)/${MASK_SEL}, from the Si : SiO\u2082 selectivity of about ${MASK_SEL} (Pal & Sato p. 83)`, est: true };
+  return { r: null, src: "SiO\u2082 etch rate not in the course files" };
+}
+function maskFilm(simKey, tMin, final = false) {
+  const t0 = Math.max(0, Number(S.maskT0) || 0);
+  if (S.maskMat === "si3n4") return { t0, left: t0, r: null, gone: false, tGone: null, src: "Si\u2083N\u2084 etch rate in KOH and EDP not in the course files: drawn without loss (assumption)", est: false };
+  const o = maskOxRate(simKey), tGone = o.r ? t0 / o.r : null;
+  const left = o.r == null || final ? t0 : Math.max(0, t0 - o.r * tMin);
+  return { t0, left, r: o.r, gone: !final && o.r != null && left <= 0, tGone, src: o.src, est: !!o.est };
+}
+function maskFilmText(mf, tMin, final = false) {
+  const nm = MASKMAT[S.maskMat].name, f = (v) => v.toFixed(v < 0.1 ? 3 : 2);
+  if (final) return `${nm} ${f(mf.t0)} \xB5m (loss not shown at the long-etch limit${mf.tGone != null ? `; used up after ${mf.tGone.toFixed(0)} min` : ""})`;
+  if (mf.r == null) return `${nm} ${f(mf.t0)} \xB5m; ${mf.src}`;
+  if (mf.gone) return `<b>used up after ${mf.tGone.toFixed(0)} min</b> (${nm} ${f(mf.t0)} \xB5m at ${(mf.r * 60).toPrecision(2)} \xB5m/h; ${mf.src}). From then on a real wafer etches everywhere; this model keeps the mask.`;
+  return `${nm}: ${f(mf.left)} of ${f(mf.t0)} \xB5m left after ${tMin.toFixed(0)} min (${(mf.r * 60).toPrecision(2)} \xB5m/h, ${mf.src})`;
+}
+const pitFilm = () => maskFilm(PIT2SIM[S.rate] || S.rate, S.t, S.final);
 function maskRim(loops, isOpenAt, tm, clip, box) {
   const pos = [], col = [], ln = [], dark = COL.mask.clone().multiplyScalar(0.62);
   for (const P of loops) for (let i = 0; i < P.length; i++) {
@@ -2641,17 +2679,17 @@ function buildPit() {
     g.add(linesFromLoops([[[x0, yA, 0], [x0, yA, -zb]], [[x1, yA, 0], [x1, yA, -zb]], [[x0, yl, 0], [x0, yl, -zb]], [[x1, yl, 0], [x1, yl, -zb]]], COL["s-ink"], { opacity: 0.6 }));
     if (zb < T_WAFER) addLabel(new V3(x1, yA, -zb), `depth shown: ${zb.toFixed(0)} \xB5m`, "", (camDir) => camDir.z > -0.2);
     if (S.mask) {
-      const tm = maskThick(), opens = items.map((it) => it.o);
+      const mf = pitFilm(), tm = mf.left, opens = items.map((it) => it.o);
       const mm = holePlane(x0, x1, yA, yB, opens, COL.mask, (m) => {
         m.position.z = tm;
-      }, { opacity: 0.88, alphaTest: 0.01 });
+      }, { opacity: mf.gone ? 0.3 : 0.88, alphaTest: 0.01, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
       mm.renderOrder = 5;
       g.add(mm);
       const os = opens.map((o) => ({ pts: o, op: "open" })), inOpen = (x, y) => EE.isOpen(os, x, y);
       g.add(maskRim(pitLoops(), inOpen, tm, clip, [x0, x1, yA, yB]));
     }
   }
-  g.add(linesFromLoops(pitLoops().map((P) => P.map((p) => [p[0], p[1], (S.mask && S.block ? maskThick() : 0) + 4e-3 * zb])), COL.mask, S.mask && S.block ? { clip } : { clip, dashed: true, dash: radius * 0.03, gap: radius * 0.02 }));
+  g.add(linesFromLoops(pitLoops().map((P) => P.map((p) => [p[0], p[1], (S.mask && S.block ? pitFilm().left : 0) + 4e-3 * zb])), COL.mask, S.mask && S.block ? { clip } : { clip, dashed: true, dash: radius * 0.03, gap: radius * 0.02 }));
   if (S.ghost && !S.final) {
     const gh = linesFromLoops(unionWalls(fins.filter((c) => c.faces.length), (f) => f.label !== "surface", eps).edges, COL.ghost, { clip, opacity: 0.55 });
     gh.material.depthTest = false;
@@ -2659,7 +2697,7 @@ function buildPit() {
     g.add(gh);
   }
   const e = C.FRAME_IDX[S.wf];
-  const zArr = (S.mask && S.block ? maskThick() : 0) + 4e-3 * zb;
+  const zArr = (S.mask && S.block ? pitFilm().left : 0) + 4e-3 * zb;
   g.add(topArrow(new V3(1, 0, 0), new V3(x0, yA, zArr), (x1 - x0) * 0.25, radius * 0.06, radius * 0.035));
   addLabel(new V3(x0 + (x1 - x0) * 0.3, yA - radius * 0.04, 0), idxHTML(e[0], "[", "]") + " along flat", "acc");
   g.add(topArrow(new V3(0, -1, 0), new V3(x0 + (x1 - x0) * 0.5, yA, zArr), radius * 0.35, radius * 0.06, radius * 0.035));
@@ -2716,6 +2754,7 @@ function updateReadout(cavs) {
     ["flat floor", through ? "etched through" : cavs.length === 1 ? floor ? `yes, area ${(floor.area / 1e3).toFixed(1)}\xD710\xB3 \xB5m\xB2` : "no (walls meet)" : nf.length ? `yes, area ${(nf.reduce((a, f) => a + polyArea3(f.poly), 0) / 1e3).toFixed(1)}\xD710\xB3 \xB5m\xB2 (all pieces)` : "no (walls meet)"]
   ];
   if (cavs.length === 1) rows.splice(1, 1);
+  if (S.mask) rows.push(["mask film", maskFilmText(pitFilm(), S.t, S.final)]);
   document.getElementById("readout").innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
   const groups = /* @__PURE__ */ new Map();
   for (const f of pit.walls || []) {
@@ -2971,6 +3010,32 @@ for (const el of document.querySelectorAll(".waferUI")) el.innerHTML = `<h3>Whol
     <label>die centre on the wafer <span><input type="number" data-wu="x" step="1"> , <input type="number" data-wu="y" step="1"> mm</span></label>
     <div class="row"><button class="btn" data-wu="wview">Whole wafer</button><button class="btn" data-wu="dview">Zoom to die</button></div>
     <p class="note src" data-wu="txt"></p></div>`;
+for (const el of document.querySelectorAll(".maskUI")) el.innerHTML = `<div class="fields">
+    <label>mask film <select data-mf="mat"><option value="sio2">thermal SiO\u2082</option><option value="si3n4">LPCVD Si\u2083N\u2084</option></select></label>
+    <label>starting thickness <span><input type="number" data-mf="t0" min="0" max="20" step="0.05"> \xB5m</span></label></div>
+  <p class="note src" data-mf="src"></p>`;
+function syncMaskUI() {
+  for (const el of document.querySelectorAll(".maskUI")) {
+    el.querySelector('[data-mf="mat"]').value = S.maskMat;
+    el.querySelector('[data-mf="t0"]').value = String(S.maskT0);
+    el.querySelector('[data-mf="src"]').textContent = `Default ${MASKMAT[S.maskMat].src}. Drawn to scale: 1 \xB5m on a die a few hundred \xB5m wide is a thin sheet; zoom in on an edge to see it.`;
+  }
+}
+document.addEventListener("change", (e) => {
+  const t = e.target, k = t && t.getAttribute && t.getAttribute("data-mf");
+  if (!k) return;
+  if (k === "mat") {
+    S.maskMat = t.value;
+    S.maskT0 = MASKMAT[S.maskMat].t0;
+  } else S.maskT0 = Math.min(20, Math.max(0, Number(t.value) || 0));
+  syncMaskUI();
+  if (S.mode === "pit") rebuild(false);
+  else if (simLike()) {
+    buildSim(false);
+    updateSimReadout();
+  }
+});
+syncMaskUI();
 function syncWaferUI() {
   const wf = simLike() ? SFR[SIM.fk].wf : S.wf;
   for (const el of document.querySelectorAll(".waferUI")) {
@@ -3392,6 +3457,7 @@ let lastPlay = 0;
 $("bPlay").addEventListener("click", () => {
   S.playing = !S.playing;
   $("bPlay").textContent = S.playing ? "Pause" : "Play";
+  $("bPlay").setAttribute("aria-pressed", String(!!S.playing));
   if (S.playing && Number($("tSlider").value) >= 1e3) $("tSlider").value = 0;
   if (S.playing) {
     S.final = false;
@@ -3411,6 +3477,7 @@ function stepPlay(now) {
   if (v >= 1e3) {
     S.playing = false;
     $("bPlay").textContent = "Play";
+    $("bPlay").setAttribute("aria-pressed", "false");
   }
 }
 const EE = etchEngineFactory();
@@ -4049,12 +4116,12 @@ function buildSim(resetView) {
   const zbb = -zb;
   g.add(linesFromLoops([[[X0, Y0, 0], [X1, Y0, 0], [X1, Y1, 0], [X0, Y1, 0]], [[X0, Y0, zbb], [X1, Y0, zbb], [X1, Y1, zbb], [X0, Y1, zbb]]], COL["s-ink"], { opacity: 0.35, clip }));
   g.add(linesFromLoops([[[X0, Y0, 0], [X0, Y0, zbb]], [[X1, Y0, 0], [X1, Y0, zbb]], [[X0, Y1, 0], [X0, Y1, zbb]], [[X1, Y1, 0], [X1, Y1, zbb]]], COL["s-ink"], { opacity: 0.35, clip }));
-  const zMask = maskThick();
+  const film = maskFilm(SIM.rate, SIM.res ? SIM.res.tv : 0), zMask = film.left;
   if (SIM.showMask) {
     const tex = maskTexture(r);
     const pg = new THREE.PlaneGeometry(X1 - X0, Y1 - Y0);
     pg.translate((X0 + X1) / 2, (Y0 + Y1) / 2, zMask);
-    const mm = new THREE.Mesh(pg, new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, alphaTest: 0.02, clippingPlanes: clip }));
+    const mm = new THREE.Mesh(pg, new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: film.gone ? 0.3 : 1, side: THREE.DoubleSide, alphaTest: 0.02, clippingPlanes: clip, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }));
     mm.renderOrder = 5;
     g.add(mm);
   }
@@ -4081,9 +4148,9 @@ function buildSim(resetView) {
     g.add(maskRim(SIM.shapes.flatMap(shapePolys), (x, y) => EE.isOpen(es, x, y), zMask, clip, [X0, X1, Y0, Y1]));
   } else if (loops.length) g.add(linesFromLoops(loops, COL.mask, { clip, opacity: 0.8 }));
   const F = simFrame();
-  g.add(topArrow(new V3(1, 0, 0), new V3(X0, Y0, zMask + 0.5), (X1 - X0) * 0.25, radius * 0.06, radius * 0.035));
+  g.add(topArrow(new V3(1, 0, 0), new V3(X0, Y0, zMask + 4e-3 * zb), (X1 - X0) * 0.25, radius * 0.06, radius * 0.035));
   addLabel(new V3(X0 + (X1 - X0) * 0.13, Y0 - radius * 0.06, 0), idxHTML(F.idx[0], "[", "]") + " along flat", "acc");
-  g.add(topArrow(new V3(0, -1, 0), new V3((X0 + X1) / 2, Y0, zMask + 0.5), radius * 0.35, radius * 0.06, radius * 0.035));
+  g.add(topArrow(new V3(0, -1, 0), new V3((X0 + X1) / 2, Y0, zMask + 4e-3 * zb), radius * 0.35, radius * 0.06, radius * 0.035));
   addLabel(new V3((X0 + X1) / 2 + radius * 0.04, Y0 - radius * 0.42, 0), (F.arrow ? "\u27E8111\u27E9 " : "") + idxHTML(negIdx(F.idx[1]), "[", "]") + " \u22A5 flat, outward", "acc");
   addLabel(new V3(X1, Y1, 0), idxHTML(F.idx[2], "(", ")") + " surface", "", (camDir) => camDir.z > 0.1);
   scene.userData.center = new V3((X0 + X1) / 2, (Y0 + Y1) / 2, -zb / 2);
@@ -4208,8 +4275,7 @@ function updateSimReadout() {
     SIM.shapes.forEach((s, i) => {
       if (s.name && st.rel[i] != null) rows.push([`${s.name} free`, `${(100 * st.rel[i]).toFixed(0)} %${st.rel[i] > 0.995 ? " (released)" : ""}`]);
     });
-    const ox = SRATES[SIM.rate].sio2;
-    rows.push(["SiO\u2082 mask consumed", ox ? `${(ox * r.tv).toFixed(ox * r.tv < 0.1 ? 3 : 2)} \xB5m (${SRATES[SIM.rate].sio2src})` : "rate not in the course files"]);
+    rows.push(["mask film", maskFilmText(maskFilm(SIM.rate, r.tv), r.tv)]);
   }
   $("simReadout").innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
 }
@@ -4536,6 +4602,7 @@ $("simT").addEventListener("input", (e) => {
 $("bSimPlay").addEventListener("click", () => {
   SIM.playing = !SIM.playing;
   $("bSimPlay").textContent = SIM.playing ? "Pause" : "Play";
+  $("bSimPlay").setAttribute("aria-pressed", String(!!SIM.playing));
   if (SIM.playing && SIM.tv >= SIM.tSim - 1e-6) {
     SIM.tv = 0;
   }
@@ -4551,6 +4618,7 @@ function stepSimPlay(now) {
   if (SIM.tv >= SIM.tSim - 1e-9) {
     SIM.playing = false;
     $("bSimPlay").textContent = "Play";
+    $("bSimPlay").setAttribute("aria-pressed", "false");
   }
 }
 $("cSimMask").addEventListener("change", (e) => {
@@ -5970,6 +6038,7 @@ $("bFull").addEventListener("click", () => {
 });
 document.addEventListener("fullscreenchange", () => {
   $("bFull").textContent = document.fullscreenElement ? "Exit full screen" : "Full screen";
+  $("bFull").setAttribute("aria-pressed", String(!!document.fullscreenElement));
   requestAnimationFrame(resize);
 });
 try {
@@ -6224,6 +6293,7 @@ function enlarge(el, on) {
   }
   const b = el.querySelector(":scope > .enlBtn");
   if (b) {
+    b.setAttribute("aria-pressed", String(on));
     b.textContent = on ? "\u2715 Close" : "\u2922 Enlarge";
     b.title = on ? "Back to the page (Esc)" : "Open in a large window";
   }

@@ -186,12 +186,12 @@ function buildSim(resetView) {
   const zbb = -zb;
   g.add(linesFromLoops([[[X0, Y0, 0], [X1, Y0, 0], [X1, Y1, 0], [X0, Y1, 0]], [[X0, Y0, zbb], [X1, Y0, zbb], [X1, Y1, zbb], [X0, Y1, zbb]]], COL["s-ink"], { opacity: 0.35, clip }));
   g.add(linesFromLoops([[[X0, Y0, 0], [X0, Y0, zbb]], [[X1, Y0, 0], [X1, Y0, zbb]], [[X0, Y1, 0], [X0, Y1, zbb]], [[X1, Y1, 0], [X1, Y1, zbb]]], COL["s-ink"], { opacity: 0.35, clip }));
-  // mask layer (film drawn with exaggerated thickness) with suspended parts tinted
-  const zMask = maskThick();
+  // mask layer at its true thickness (it thins at the SiO₂ etch rate), with suspended parts tinted
+  const film = maskFilm(SIM.rate, SIM.res ? SIM.res.tv : 0), zMask = film.left;
   if (SIM.showMask) {
     const tex = maskTexture(r);
     const pg = new THREE.PlaneGeometry(X1 - X0, Y1 - Y0); pg.translate((X0 + X1)/2, (Y0 + Y1)/2, zMask);
-    const mm = new THREE.Mesh(pg, new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, alphaTest: 0.02, clippingPlanes: clip }));
+    const mm = new THREE.Mesh(pg, new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: film.gone ? 0.3 : 1, side: THREE.DoubleSide, alphaTest: 0.02, clippingPlanes: clip, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }));
     mm.renderOrder = 5; g.add(mm);
   }
   // mask outlines
@@ -213,10 +213,10 @@ function buildSim(resetView) {
   else if (loops.length) g.add(linesFromLoops(loops, COL.mask, { clip, opacity: 0.8 }));
   // flat and frame labels
   const F = simFrame();
-  g.add(topArrow(new V3(1, 0, 0), new V3(X0, Y0, zMask + 0.5), (X1 - X0)*0.25, radius*0.06, radius*0.035));
+  g.add(topArrow(new V3(1, 0, 0), new V3(X0, Y0, zMask + 0.004*zb), (X1 - X0)*0.25, radius*0.06, radius*0.035));
   addLabel(new V3(X0 + (X1 - X0)*0.13, Y0 - radius*0.06, 0), idxHTML(F.idx[0], "[", "]") + " along flat", "acc");
   // perpendicular to the flat, pointing outward (wafer -y, away from the centre); for the (110) arrow convention this is the ⟨111⟩ arrow
-  g.add(topArrow(new V3(0, -1, 0), new V3((X0 + X1)/2, Y0, zMask + 0.5), radius*0.35, radius*0.06, radius*0.035));
+  g.add(topArrow(new V3(0, -1, 0), new V3((X0 + X1)/2, Y0, zMask + 0.004*zb), radius*0.35, radius*0.06, radius*0.035));
   addLabel(new V3((X0 + X1)/2 + radius*0.04, Y0 - radius*0.42, 0), (F.arrow ? "⟨111⟩ " : "") + idxHTML(negIdx(F.idx[1]), "[", "]") + " ⊥ flat, outward", "acc");
   addLabel(new V3(X1, Y1, 0), idxHTML(F.idx[2], "(", ")") + " surface", "", camDir => camDir.z > 0.1);
   scene.userData.center = new V3((X0 + X1)/2, (Y0 + Y1)/2, -zb/2); scene.userData.die = scene.userData.center.clone();
@@ -290,8 +290,7 @@ function updateSimReadout() {
     rows.push(["mask with no Si under it", `${(st.susp/1e3).toFixed(1)}×10³ µm²`]);
     if (st.through > 0) rows.push(SIM.cfg && SIM.cfg.depth >= SIM.thick - 1e-6 ? ["etched through the wafer", `${(st.through/1e3).toFixed(1)}×10³ µm²`] : ["reached the simulated depth", `${SIM.cfg.depth.toFixed(0)} µm (raise it only by a longer time)`]);
     SIM.shapes.forEach((s, i) => { if (s.name && st.rel[i] != null) rows.push([`${s.name} free`, `${(100*st.rel[i]).toFixed(0)} %${st.rel[i] > 0.995 ? " (released)" : ""}`]); });
-    const ox = SRATES[SIM.rate].sio2;
-    rows.push(["SiO₂ mask consumed", ox ? `${(ox*r.tv).toFixed(ox*r.tv < 0.1 ? 3 : 2)} µm (${SRATES[SIM.rate].sio2src})` : "rate not in the course files"]);
+    rows.push(["mask film", maskFilmText(maskFilm(SIM.rate, r.tv), r.tv)]);
   }
   $("simReadout").innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
 }
@@ -466,7 +465,7 @@ for (const [id, key, mul] of [["simTime", "t", 1], ["simPre", "pre", 1], ["simTh
 $("simQual").addEventListener("change", e => { SIM.quality = e.target.value; markDirty(); });
 $("simT").addEventListener("input", e => { SIM.tv = Number(e.target.value); $("simTnow").textContent = `${SIM.tv.toFixed(0)} min`; requestView(SIM.tv); });
 $("bSimPlay").addEventListener("click", () => {
-  SIM.playing = !SIM.playing; $("bSimPlay").textContent = SIM.playing ? "Pause" : "Play";
+  SIM.playing = !SIM.playing; $("bSimPlay").textContent = SIM.playing ? "Pause" : "Play"; $("bSimPlay").setAttribute("aria-pressed", String(!!SIM.playing));
   if (SIM.playing && SIM.tv >= SIM.tSim - 1e-6) { SIM.tv = 0; }
 });
 function stepSimPlay(now) {
@@ -475,7 +474,7 @@ function stepSimPlay(now) {
   SIM.lastPlay = now;
   SIM.tv = Math.min(SIM.tSim, SIM.tv + SIM.tSim/80);
   $("simT").value = String(SIM.tv); $("simTnow").textContent = `${SIM.tv.toFixed(0)} min`; requestView(SIM.tv);
-  if (SIM.tv >= SIM.tSim - 1e-9) { SIM.playing = false; $("bSimPlay").textContent = "Play"; }
+  if (SIM.tv >= SIM.tSim - 1e-9) { SIM.playing = false; $("bSimPlay").textContent = "Play"; $("bSimPlay").setAttribute("aria-pressed", "false"); }
 }
 $("cSimMask").addEventListener("change", e => { SIM.showMask = e.target.checked; buildSim(false); });
 $("simColor").addEventListener("change", e => { SIM.color = e.target.value; $("simPlaneLegend").classList.toggle("hidden", SIM.color !== "plane"); buildSim(false); });

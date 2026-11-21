@@ -91,6 +91,24 @@ test("page: scenes, simulator kernel, drawing, settings, custom etchant, presets
     assert.equal(await ev(() => window.__o3d.SIM.cutPos), 25);
   });
 
+  await t.test("mask film at its true thickness: SiO₂ thins and is used up; toggles take the accent colour", async () => {
+    await p.click('#segM button[data-m="pit"]');
+    const k57 = await ev(() => [...document.querySelectorAll("#selRate option")].find(o => /57/.test(o.textContent)).value);
+    await p.selectOption("#selRate", k57); await p.dispatchEvent("#selRate", "change");
+    await p.fill("#tSlider", "1000"); await p.dispatchEvent("#tSlider", "input"); await p.waitForTimeout(300);
+    const film = () => ev(() => [...document.querySelectorAll("#readout dt")].find(d => d.textContent === "mask film").nextElementSibling.textContent);
+    assert.match(await film(), /used up after 97 min/);   // 1 µm at 0.62 µm/h (Lec 10 p. 11)
+    await p.selectOption("#panelPit [data-mf=mat]", "si3n4"); await p.waitForTimeout(200);
+    assert.match(await film(), /Si₃N₄ 0\.15 µm/);
+    assert.equal(await p.inputValue("#panelSim [data-mf=t0]"), "0.15");
+    await p.selectOption("#panelPit [data-mf=mat]", "sio2");
+    await p.click("#bExplain");
+    const bg = await ev(() => [getComputedStyle(document.getElementById("bExplain")).backgroundColor, getComputedStyle(document.getElementById("bHelp")).backgroundColor]);
+    assert.notEqual(bg[0], bg[1]);
+    await p.click("#bExplain");
+    await p.click('#segM button[data-m="sim"]');
+  });
+
   await t.test("custom etchant at 80 °C is faster than the 70 °C table (Arrhenius)", async () => {
     await p.click('[data-etch-open="sim"]'); await p.selectOption("#ceBase", "PAL40");
     await p.fill("#ceT", "80"); await p.dispatchEvent("#ceT", "input"); await p.click("#ceSave");

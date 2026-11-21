@@ -125,6 +125,26 @@ for (const el of document.querySelectorAll(".waferUI")) el.innerHTML = `<h3>Whol
     <label>die centre on the wafer <span><input type="number" data-wu="x" step="1"> , <input type="number" data-wu="y" step="1"> mm</span></label>
     <div class="row"><button class="btn" data-wu="wview">Whole wafer</button><button class="btn" data-wu="dview">Zoom to die</button></div>
     <p class="note src" data-wu="txt"></p></div>`;
+// ---- mask film controls (one copy in the pit panel, one in the simulator panel, same state)
+for (const el of document.querySelectorAll(".maskUI")) el.innerHTML = `<div class="fields">
+    <label>mask film <select data-mf="mat"><option value="sio2">thermal SiO₂</option><option value="si3n4">LPCVD Si₃N₄</option></select></label>
+    <label>starting thickness <span><input type="number" data-mf="t0" min="0" max="20" step="0.05"> µm</span></label></div>
+  <p class="note src" data-mf="src"></p>`;
+function syncMaskUI() {
+  for (const el of document.querySelectorAll(".maskUI")) {
+    (el.querySelector('[data-mf="mat"]') as HTMLSelectElement).value = S.maskMat;
+    (el.querySelector('[data-mf="t0"]') as HTMLInputElement).value = String(S.maskT0);
+    el.querySelector('[data-mf="src"]').textContent = `Default ${MASKMAT[S.maskMat].src}. Drawn to scale: 1 µm on a die a few hundred µm wide is a thin sheet; zoom in on an edge to see it.`;
+  }
+}
+document.addEventListener("change", e => {
+  const t = e.target as HTMLInputElement, k = t && t.getAttribute && t.getAttribute("data-mf"); if (!k) return;
+  if (k === "mat") { S.maskMat = t.value; S.maskT0 = MASKMAT[S.maskMat].t0; }
+  else S.maskT0 = Math.min(20, Math.max(0, Number(t.value) || 0));
+  syncMaskUI();
+  if (S.mode === "pit") rebuild(false); else if (simLike()) { buildSim(false); updateSimReadout(); }
+});
+syncMaskUI();
 function syncWaferUI() {
   const wf = simLike() ? SFR[SIM.fk].wf : S.wf;
   for (const el of document.querySelectorAll(".waferUI")) {

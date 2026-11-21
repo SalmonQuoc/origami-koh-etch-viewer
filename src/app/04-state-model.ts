@@ -1,5 +1,5 @@
 // --------------------------------------------------------------------- state
-const S: PageState = { rot: 0, waferOn: false, wtype: "p", dieX: 0, dieY: 0, compass: true, pitColor: "plane", pitShapes: [], pitSel: -1, wf: "100", mode: "model", sel: null, open: 0, rate: "PAL30", t: 0, final: false, cut: false, block: true, ghost: true, mask: true,
+const S: PageState = { rot: 0, waferOn: false, wtype: "p", dieX: 0, dieY: 0, compass: true, pitColor: "plane", pitShapes: [], pitSel: -1, wf: "100", mode: "model", sel: null, open: 0, rate: "PAL30", t: 0, final: false, cut: false, block: true, ghost: true, mask: true, maskMat: "sio2", maskT0: 1,
             corners: true, faces: false, upper: true, playing: false };
 
 // --------------------------------------------------------------------- MODEL scene

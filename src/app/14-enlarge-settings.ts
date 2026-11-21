@@ -13,7 +13,7 @@ function enlarge(el, on) {
   } else if (enlOpen && enlOpen.el === el) {
     enlOpen.ph.replaceWith(el); enlOpen.back.remove(); el.classList.remove("enlarged"); document.body.classList.remove("enl-open"); enlOpen = null;
   }
-  const b = el.querySelector(":scope > .enlBtn"); if (b) { b.textContent = on ? "✕ Close" : "⤢ Enlarge"; b.title = on ? "Back to the page (Esc)" : "Open in a large window"; }
+  const b = el.querySelector(":scope > .enlBtn"); if (b) { b.setAttribute("aria-pressed", String(on)); b.textContent = on ? "✕ Close" : "⤢ Enlarge"; b.title = on ? "Back to the page (Esc)" : "Open in a large window"; }
   requestAnimationFrame(redrawAll);
 }
 for (const el of document.querySelectorAll(".enl")) {

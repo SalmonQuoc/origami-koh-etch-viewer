@@ -188,7 +188,7 @@ $("cFaces").addEventListener("change", e => { S.faces = e.target.checked; dirty 
 $("cUpper").addEventListener("change", e => { S.upper = e.target.checked; model.up.visible = model.eUp.visible = S.upper; dirty = true; });
 let lastPlay = 0;
 $("bPlay").addEventListener("click", () => {
-  S.playing = !S.playing; $("bPlay").textContent = S.playing ? "Pause" : "Play";
+  S.playing = !S.playing; $("bPlay").textContent = S.playing ? "Pause" : "Play"; $("bPlay").setAttribute("aria-pressed", String(!!S.playing));
   if (S.playing && Number($("tSlider").value) >= 1000) $("tSlider").value = 0;
   if (S.playing) { S.final = false; $("cFinal").checked = false; }
   lastPlay = performance.now();
@@ -199,7 +199,7 @@ function stepPlay(now) {
   lastPlay = now;
   const v = Math.min(1000, Number($("tSlider").value) + 6);
   $("tSlider").value = v; S.t = sliderToT(); $("tNow").textContent = `${S.t.toFixed(S.t < 10 ? 1 : 0)} min`; buildPit();
-  if (v >= 1000) { S.playing = false; $("bPlay").textContent = "Play"; }
+  if (v >= 1000) { S.playing = false; $("bPlay").textContent = "Play"; $("bPlay").setAttribute("aria-pressed", "false"); }
 }
 
 // --------------------------------------------------------------------- ETCH SIMULATOR scene

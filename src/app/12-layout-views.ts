@@ -60,7 +60,7 @@ $("bFull").addEventListener("click", () => {
   const r = stage.requestFullscreen ? stage.requestFullscreen() : null;
   if (r && r.catch) r.catch(() => { $("bFull").textContent = "Full screen not available here"; setTimeout(() => { $("bFull").textContent = "Full screen"; }, 2500); });
 });
-document.addEventListener("fullscreenchange", () => { $("bFull").textContent = document.fullscreenElement ? "Exit full screen" : "Full screen"; requestAnimationFrame(resize); });
+document.addEventListener("fullscreenchange", () => { $("bFull").textContent = document.fullscreenElement ? "Exit full screen" : "Full screen"; $("bFull").setAttribute("aria-pressed", String(!!document.fullscreenElement)); requestAnimationFrame(resize); });
 try {
   const w = localStorage.getItem("o3d-splitW"); if (w && /^[\d.]+%$/.test(w)) document.documentElement.style.setProperty("--splitW", w);
   if (!localStorage.getItem("o3d-settings")) {   // older versions kept the layout in separate keys
