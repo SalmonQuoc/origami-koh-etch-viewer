@@ -156,6 +156,7 @@ body.lbl-off .labels { display: none; }
 .enl.enlarged { position: fixed; inset: 3vh 3vw; z-index: 70; background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
   padding: 46px 22px 22px; overflow: auto; box-shadow: 0 12px 48px rgba(0, 0, 0, .35); margin: 0 !important; }
 .enl.enlarged > .enlBtn { top: 10px; right: 14px; }
+.enl:not(.panel):not(.enlarged) > .enlBtn { position: static; display: block; margin: 0 0 6px auto; }
 .enl.enlarged::before { content: attr(data-title); position: absolute; top: 12px; left: 22px; font: 600 17px/1.3 "Source Serif 4", Georgia, serif; color: var(--ink); }
 .enl.enlarged.hidden { display: block !important; }
 #enlBack { position: fixed; inset: 0; z-index: 69; background: rgba(0, 0, 0, .45); }
@@ -209,6 +210,24 @@ section.refs a { color: var(--accent); }
 .dsel select { width: auto; max-width: 100%; min-width: 0; font-size: 12px; padding: 2px; }
 table.shapes .dsel { margin: 0; }
 .kbd { font-family: "IBM Plex Mono", monospace; font-size: 12px; border: 1px solid var(--line); border-radius: 3px; padding: 0 3px; }
+/* guidance: step numbers, scene tip, run button on the stage, help dialog */
+.stepn { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 11px; letter-spacing: 0; margin-right: 7px; vertical-align: 1px; }
+.guide { display: flex; align-items: flex-start; gap: 10px; margin: -4px 0 12px; padding: 8px 10px; border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 8px; background: var(--panel); font-size: 13.5px; line-height: 1.45; }
+.guide.hidden { display: none; }
+.guide #guideTxt { flex: 1; min-width: 0; }
+.guide .gico { flex: none; display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--accent); color: var(--accent); font: 600 12px "IBM Plex Serif", serif; }
+.guide .x { border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; padding: 0 2px; }
+.stageRun { position: absolute; right: 12px; top: 12px; z-index: 5; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+.stageRun.hidden { display: none; }
+.psBox { margin: 6px 0 2px; } .psBox .row { margin: 4px 0; gap: 6px; } .psBox input[type=text] { font: inherit; font-size: 13px; padding: 5px 7px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); }
+.psMore .btn { font-size: 12px; padding: 3px 8px; }
+.seg button[title], .tools .btn[title] { cursor: pointer; }
+.helpGrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px 18px; }
+@media (max-width: 640px) { .helpGrid { grid-template-columns: minmax(0, 1fr); } }
+table.keys { border-collapse: collapse; width: 100%; font-size: 13px; align-self: start; }
+table.keys td { padding: 3px 6px 3px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.keys td:first-child { white-space: nowrap; width: 1%; }
+dl.scenes dt { font-weight: 600; margin-top: 8px; } dl.scenes dd { margin: 2px 0 0; font-size: 13.5px; }
 </style>
 </head>
 <body>
@@ -222,11 +241,12 @@ table.shapes .dsel { margin: 0; }
 
 <div class="bar">
   <div><span class="lbl">Wafer</span><span class="seg" id="segW">
-    <button data-w="100" aria-pressed="true">(100)</button><button data-w="110" aria-pressed="false">(110)</button><button data-w="111" aria-pressed="false">(111)</button></span></div>
+    <button data-w="100" aria-pressed="true" title="(100) wafer: the usual MEMS wafer; pits have {111} walls at 54.74°">(100)</button><button data-w="110" aria-pressed="false" title="(110) wafer: vertical {111} walls along ⟨112⟩">(110)</button><button data-w="111" aria-pressed="false" title="(111) wafer: the surface itself is a slow {111} plane">(111)</button></span></div>
   <div><span class="lbl">Scene</span><span class="seg" id="segM">
-    <button data-m="model" aria-pressed="true">Model on wafer</button><button data-m="pit" aria-pressed="false">Etched pit</button><button data-m="sim" aria-pressed="false">Etch simulator</button><button data-m="corner" aria-pressed="false">Corner lab</button><button data-m="find" aria-pressed="false">Find orientation</button></span></div>
-  <div class="tools"><button class="btn" id="bSettings" title="Layout, theme, editor and simulator settings">⚙ Settings</button><button class="btn" id="bSplit" aria-pressed="false" title="3D view and controls side by side, each scrolling on its own; drag the divider to resize (key S)">Split view</button><button class="btn hidden" id="bSwap" title="Put the controls on the other side">Swap sides</button><button class="btn" id="bTheater" aria-pressed="false" title="Wide stage with the panel below (key T)">Theater view</button><button class="btn" id="bFull" title="Full screen 3D view (Esc to leave)">Full screen</button></div>
+    <button data-m="model" aria-pressed="true" title="How to hold the HW2 paper octahedron over the wafer; click a face for its plane">Model on wafer</button><button data-m="pit" aria-pressed="false" title="Fast analytic pit: openings in a mask, {111}-bounded walls, any time">Etched pit</button><button data-m="sim" aria-pressed="false" title="Full 3D etch of any mask with 12 measured plane rates: undercut, corners, release">Etch simulator</button><button data-m="corner" aria-pressed="false" title="Convex-corner attack and compensation patterns, side by side">Corner lab</button><button data-m="find" aria-pressed="false" title="Read the flat error δ from etched alignment marks on the whole wafer">Find orientation</button></span></div>
+  <div class="tools"><button class="btn" id="bHelp" title="Quick start, mouse and keys (key ?)">? Help</button><button class="btn" id="bSettings" title="Layout, theme, editor and simulator settings">⚙ Settings</button><button class="btn" id="bSplit" aria-pressed="false" title="3D view and controls side by side, each scrolling on its own; drag the divider to resize (key S)">Split view</button><button class="btn hidden" id="bSwap" title="Put the controls on the other side">Swap sides</button><button class="btn" id="bTheater" aria-pressed="false" title="Wide stage with the panel below (key T)">Theater view</button><button class="btn" id="bFull" title="Full screen 3D view (Esc to leave)">Full screen</button></div>
 </div>
+<div class="guide hidden" id="guide" role="note"><span class="gico" aria-hidden="true">i</span><div id="guideTxt"></div><button class="x" id="guideX" title="Hide this tip (Settings can show the tips again)" aria-label="hide this tip">×</button></div>
 
 <div class="grid">
   <div class="left">
@@ -234,6 +254,7 @@ table.shapes .dsel { margin: 0; }
       <div class="labels" id="labels"></div>
       <div class="tip" id="tip"></div>
       <div class="hint" id="hint">Click a face of the model</div>
+      <button class="btn primary stageRun hidden" id="stageRun" title="The mask or process changed since the last run">▶ Run the etch again</button>
       <div class="cbar hidden" id="cbar"><div id="cbarTitle"></div><canvas id="cbarCv"></canvas></div>
     </div>
     <div class="views" id="views">
@@ -281,8 +302,11 @@ table.shapes .dsel { margin: 0; }
 
   <aside class="panel hidden" id="panelPit">
     <h2>Etch</h2>
-    <h3>Mask</h3>
+    <h3><span class="stepn">1</span>Mask openings</h3>
     <div class="row"><span class="lbl">Start from</span><select id="selOpen" style="flex:1;min-width:0"></select></div>
+    <div class="psBox" data-ps="pit"><div class="row"><input type="text" data-ps-name maxlength="60" placeholder="name for your preset" aria-label="name for your preset" style="flex:1;min-width:0"><button class="btn" data-ps-save title="Keep the current mask, etchant and flat error in this browser">☆ Save as my preset</button></div>
+    <div class="row psMore"><button class="btn" data-ps-del disabled title="Delete the selected preset of yours">Delete preset</button><button class="btn" data-ps-exp title="Download all your presets as a .json file">Export</button><label class="btn" title="Add presets from a .json file">Import<input type="file" accept=".json,application/json" data-ps-imp hidden></label></div>
+    <p class="note hidden" data-ps-msg></p></div>
     <div class="enl" data-title="Mask editor: Etched pit">
     <p class="note" style="margin:4px 0 6px"><b>Drag</b> a shape to move it (<b>Alt</b>-drag moves a copy), <b>click</b> to select it, <b>double-click</b> an empty spot to add the chosen shape there. With the editor focused, the <span class="kbd">←</span><span class="kbd">→</span><span class="kbd">↑</span><span class="kbd">↓</span> keys move the selected shape by one snap step (with Shift, five), <span class="kbd">Ctrl</span>+<span class="kbd">D</span> duplicates it and <span class="kbd">Delete</span> removes it. <b>Draw</b> lets you draw your own outline. The 3D view updates when you let go.</p>
     <p class="drawhelp hidden" id="pcDrawHelp"></p>
@@ -296,11 +320,11 @@ table.shapes .dsel { margin: 0; }
     <details class="srcs"><summary>How this scene etches a shape</summary>
       <p class="note">Each wall is a crystal plane that moves out from the opening at its own rate (n·x ≤ h + R·t). A non-convex shape (L, U, cross, frame, ring, star) is split into overlapping convex pieces; each piece etches as a convex opening and the cavity shown is their union. Concave corners therefore stop at {111} as they should. A drawn outline is split into convex pieces by triangulation (a design choice); where two pieces meet along a ⟨110⟩ line, a thin ridge can stay between their cavities. Convex mask corners (the inside corner of an L or U, the tips of a star) are <b>not</b> undercut here, although they are in real KOH etching (Kovacs et al. 1998, Fig. 1(c); Pal et al. 2007, Sec. 2). Openings that grow into each other are overlaid, not merged. The etch simulator handles both.</p>
     </details>
-    <h3>Etchant</h3>
+    <h3><span class="stepn">2</span>Etchant</h3>
     <div class="row"><select id="selRate" style="flex:1;min-width:0"></select><button class="btn" data-etch-open="pit">Custom etchant…</button></div>
     <div class="fields"><label>flat error δ (crystal turned from the flat) <span><input type="number" id="pitRot" step="0.5" value="0"> °</span></label></div>
     <p class="note src">δ = 0: edges drawn along the flat lie exactly on ⟨110⟩. Lec 10 p. 18: the flat itself is only good to 2–5°; see the “Find orientation” scene.</p>
-    <h3>Time</h3>
+    <h3><span class="stepn">3</span>Etch time</h3>
     <div class="tline"><span id="tNow">0 min</span><span id="tMax"></span></div>
     <input type="range" id="tSlider" min="0" max="1000" value="350">
     <div class="row"><button class="btn primary" id="bPlay">Play</button>
@@ -339,15 +363,28 @@ table.shapes .dsel { margin: 0; }
     </div>
     <div id="simExBox">
     <h2>KOH and EDP etch simulator</h2>
-    <p class="note" style="margin:0 0 6px">Any mask on a (100), (110) or (111) wafer: undercut, release, convex-corner attack, compensation and merging windows. Pick an example or edit the mask below, then run.</p>
-    <h3>Example</h3>
+    <p class="note" style="margin:0 0 6px">Any mask on a (100), (110) or (111) wafer: undercut, release, convex-corner attack, compensation and merging windows. Three steps: pick an example, change the mask if you like, then set the process and press Run. The views and readouts follow below.</p>
+    <h3><span class="stepn">1</span>Pick an example</h3>
     <select id="simPreset"></select>
+    <div class="psBox" data-ps="sim"><div class="row"><input type="text" data-ps-name maxlength="60" placeholder="name for your preset" aria-label="name for your preset" style="flex:1;min-width:0"><button class="btn" data-ps-save title="Keep the current mask and process in this browser">☆ Save as my preset</button></div>
+    <div class="row psMore"><button class="btn" data-ps-del disabled title="Delete the selected preset of yours">Delete preset</button><button class="btn" data-ps-exp title="Download all your presets as a .json file">Export</button><label class="btn" title="Add presets from a .json file">Import<input type="file" accept=".json,application/json" data-ps-imp hidden></label></div>
+    <p class="note hidden" data-ps-msg></p></div>
     <p class="note simnote" id="simNote"></p>
     </div>
     <div class="row hidden" id="simFrameRow" style="display:block"><span class="lbl">(110) reference</span>
       <select id="simFrame"><option value="110f">Flat along ⟨110⟩ (Lec 4-1 p. 6)</option><option value="110a">⟨111⟩ arrow = flat normal (Lec 4-1 p. 11, HW2 P5)</option><option value="100" hidden>(100)</option><option value="111" hidden>(111)</option></select></div>
     <p class="note src" id="simFrameSrc"></p>
-    <h3>Process</h3>
+    <h3><span class="stepn">2</span>Edit or draw the mask</h3>
+    <div class="enl" data-title="Mask editor: etch simulator">
+    <p class="note" style="margin:0 0 4px">Shapes are applied top to bottom: “open” removes the mask, “mask” puts it back (solid outline: open; dashed: mask). <b>Drag</b> a shape to move it (<b>Alt</b>-drag moves a copy), <b>double-click</b> an empty spot to add the chosen shape there; with the editor focused, the arrow keys move the selected shape by one snap step (Shift: five), <span class="kbd">Ctrl</span>+<span class="kbd">D</span> duplicates it and <span class="kbd">Delete</span> removes it. <b>Draw</b> lets you draw your own outline. Press Run to etch the new mask.</p>
+    <p class="drawhelp hidden" id="simDrawHelp"></p>
+    <canvas id="maskCanvas" class="maskcv"></canvas>
+    <div class="legend"><label><input type="checkbox" class="cCompass" checked> crystal compass (orange: {111} traces)</label></div>
+    <div class="addrow"><select id="addType"></select><select id="addOp"><option value="open">as opening</option><option value="mask">as mask</option></select><button class="btn" id="bAddShape">Add shape</button><button class="btn" id="bDraw" title="Click to place corners or drag to draw freely">✎ Draw</button><button class="btn" id="bDupShape">Duplicate selected</button></div>
+    <p class="note" style="margin:4px 0 0">Columns: w, h = size; t = arm width (L, U, cross, frame) or inner size (ring, star); n = sides or points; array = copies nx × ny at pitch px, py (µm).</p>
+    <div class="tblwrap"><table class="shapes" id="shapeList"></table></div>
+    </div>
+    <h3><span class="stepn">3</span>Process, then run</h3>
     <div class="row"><select id="simRate" style="flex:1;min-width:0"></select><button class="btn" data-etch-open="sim">Custom etchant…</button></div>
     <p class="note src" id="simRateSrc"></p>
     <div class="fields">
@@ -377,16 +414,6 @@ table.shapes .dsel { margin: 0; }
     <select id="simColor"><option value="plane">crystal plane family</option><option value="depth">depth below the surface</option><option value="rate">local etch rate R(n)</option><option value="time">time the etch front reached the surface</option></select>
     <div class="legend" id="simPlaneLegend" style="margin-top:6px"><span><i class="sw" style="background:var(--f111)"></i>{111}</span><span><i class="sw" style="background:var(--f100)"></i>{100}</span><span><i class="sw" style="background:var(--f110)"></i>{110}</span><span><i class="sw" style="background:var(--fhi)"></i>higher index ({311}, {211}, {411} …)</span><span><i class="sw" style="background:var(--s-side)"></i>no plane within 4°</span><span><i class="sw" style="background:var(--s-cut)"></i>cut face</span></div>
     <div class="waferUI"></div>
-    <h3>Mask editor</h3>
-    <div class="enl" data-title="Mask editor: etch simulator">
-    <p class="note" style="margin:0 0 4px">Shapes are applied top to bottom: “open” removes the mask, “mask” puts it back (solid outline: open; dashed: mask). <b>Drag</b> a shape to move it (<b>Alt</b>-drag moves a copy), <b>double-click</b> an empty spot to add the chosen shape there; with the editor focused, the arrow keys move the selected shape by one snap step (Shift: five), <span class="kbd">Ctrl</span>+<span class="kbd">D</span> duplicates it and <span class="kbd">Delete</span> removes it. <b>Draw</b> lets you draw your own outline. Press Run to etch the new mask.</p>
-    <p class="drawhelp hidden" id="simDrawHelp"></p>
-    <canvas id="maskCanvas" class="maskcv"></canvas>
-    <div class="legend"><label><input type="checkbox" class="cCompass" checked> crystal compass (orange: {111} traces)</label></div>
-    <div class="addrow"><select id="addType"></select><select id="addOp"><option value="open">as opening</option><option value="mask">as mask</option></select><button class="btn" id="bAddShape">Add shape</button><button class="btn" id="bDraw" title="Click to place corners or drag to draw freely">✎ Draw</button><button class="btn" id="bDupShape">Duplicate selected</button></div>
-    <p class="note" style="margin:4px 0 0">Columns: w, h = size; t = arm width (L, U, cross, frame) or inner size (ring, star); n = sides or points; array = copies nx × ny at pitch px, py (µm).</p>
-    <div class="tblwrap"><table class="shapes" id="shapeList"></table></div>
-    </div>
     <details class="srcs"><summary>Model, sources and assumptions</summary>
       <ul>
         <li><b>Rates</b> (sourced): KOH 30, 40, 50 wt% at 70 °C for 12 orientations, Pal &amp; Sato Table 4.1, p. 87. KOH 42 wt% at 75 °C: {100} 42, {110} 66, {111} 0.5 µm/h, Lec 4-1 p. 7; its other 9 orientations are the Pal &amp; Sato 40 wt% values scaled by R(100) (assumption).</li>
@@ -407,10 +434,10 @@ table.shapes .dsel { margin: 0; }
     <h2>Find the true crystal orientation</h2>
     <p class="note" style="margin:0 0 6px">The flat of a real wafer is only good to 2–5° (Lec 10 p. 18; 1° to 5°, Pal &amp; Sato p. 294), so mask edges drawn along the flat miss ⟨110⟩ by a flat error δ. Here the crystal is turned by δ. Put test structures on the mask, etch them, read them under the microscope, and turn the device mask by the estimate before the device etch (Lec 10 pp. 18, 25–26; Pal &amp; Sato Ch. 7).</p>
     <p class="warn hidden" id="fdWarn">Lec 10 and Pal &amp; Sato Ch. 7 give these methods for (100) and (110) wafers. Pick (100) or (110) above.</p>
-    <h3>Flat error</h3>
+    <h3><span class="stepn">1</span>Flat error</h3>
     <div class="fields"><label>true flat error δ (crystal turned from the flat, counter-clockwise +) <span><input type="number" id="fdDelta" step="0.05"> °</span></label></div>
     <div class="row"><button class="btn" id="fdRandom">Random δ, hidden</button><label><input type="checkbox" id="fdReveal" checked> show the true δ</label></div>
-    <h3>Etch</h3>
+    <h3><span class="stepn">2</span>Etch</h3>
     <select id="fdRate"></select>
     <div class="row"><label><input type="checkbox" id="fdFinal" checked> long-etch limit ({111} only)</label></div>
     <div class="fields">
@@ -419,16 +446,16 @@ table.shapes .dsel { margin: 0; }
       <label>trench widths read to <span><input type="number" id="fdRelW" min="0" step="0.5"> % of the width</span></label>
     </div>
     <p class="note src">Readings are rounded to these steps: Pal &amp; Sato (pp. 299–300, 303) note that sub-micron offsets are hard to see in an optical microscope. 0.5 µm and 1 % are design choices.</p>
-    <h3>Mask on the wafer</h3>
+    <h3><span class="stepn">3</span>Mask on the wafer</h3>
     <div class="enl" data-title="Mask on the wafer">
     <p class="note" style="margin:0 0 4px"><b>Drag</b> an item to move it (<b>Alt</b>-drag moves a copy), <b>double-click</b> an empty spot to add the chosen item there. With the map focused, the arrow keys move the selected item by 1 mm (Shift: 5 mm), <span class="kbd">Ctrl</span>+<span class="kbd">D</span> duplicates it and <span class="kbd">Delete</span> removes it. Test structures: slot fan and circle arc; everything else is a device shape (µm).</p>
     <canvas id="fdCanvas" class="maskcv" tabindex="0" aria-label="Mask map of the whole wafer"></canvas>
     <div class="addrow"><select id="fdType" aria-label="item to add"></select><button class="btn primary" id="fdAdd">Add</button><button class="btn" id="fdDup">Duplicate</button><button class="btn" id="fdDel">Delete</button><button class="btn" id="fdReset">Lecture layout</button></div>
     <div id="fdList" class="cards"></div>
     </div>
-    <h3>Estimate of <span style="text-transform:none">δ</span></h3>
+    <h3><span class="stepn">4</span>Estimate of <span style="text-transform:none">δ</span></h3>
     <dl class="kv" id="fdReadout"></dl>
-    <h3>Error reduction</h3>
+    <h3><span class="stepn">5</span>Error reduction</h3>
     <div class="row"><label><input type="checkbox" id="fdCorrect"> turn the device shapes by the best estimate (second mask aligned to the test structures)</label></div>
     <dl class="kv" id="fdDevice"></dl>
     <div class="row"><button class="btn" id="fdMC">Test this layout on 500 random wafers</button></div>
@@ -452,6 +479,49 @@ table.shapes .dsel { margin: 0; }
   Model on wafer and Etched pit: each wall is a crystal plane that moves outward at its own rate from the mask opening (n·x ≤ h + R·t over the {100}, {110} and {111} planes); the long-etch limit keeps only {111} planes with R = 0. This is the construction used in the origami tutorial; non-convex openings are split there into overlapping convex pieces whose cavities are joined, and convex mask corners are not undercut; use the etch simulator for that (its model and sources are listed in its panel).
   Rates: Pal &amp; Sato, p. 87 (KOH 30 wt% and 40 wt%, 70 °C); Lec 4-1, p. 7 (KOH 42 wt%, 75 °C); Lec 10, p. 11 (KOH 57 wt%, 75 °C; EDP Type S, 110 °C); EDP 50:30:3 ratio after Finne and Klein (Berkeley lab manual ch. 1.10). Primary flat ⟨110⟩ for (100) and (110): Lec 4-1, p. 6. For (111) the flat is assumed along [1<span class="ob">1</span>0]. Wafer: 100 mm, 525 µm thick (Pal &amp; Sato Table 2.1, p. 30). x runs along the flat, z is the wafer normal. The Corner lab and Find orientation scenes list their own methods and sources in their panels.
 </footer>
+<dialog id="dlgHelp" class="dlg panel" aria-labelledby="hpTitle">
+  <div class="dlghead"><h2 id="hpTitle">Quick start</h2><button class="x" data-close aria-label="close">×</button></div>
+  <p class="note" style="margin-top:0">Pick a wafer and a scene in the bar at the top. The 3D view is on the left; the steps for the scene are on the right, numbered in the order you use them.</p>
+  <h3>Scenes</h3>
+  <dl class="scenes">
+    <dt>Model on wafer</dt><dd>How to hold the HW2 paper octahedron over the wafer. Click a face to see its plane, its trace on the surface and its angle to the wafer.</dd>
+    <dt>Etched pit</dt><dd>A fast pit model for openings in a mask: walls are the slow {111} planes. Edit the openings, pick an etchant, move the time slider.</dd>
+    <dt>Etch simulator</dt><dd>A full 3D etch of any mask with the measured rates of 12 plane families. Pick an example, change or draw the mask, set the process and press Run, then scrub the time slider.</dd>
+    <dt>Corner lab</dt><dd>Convex-corner attack and compensation: an uncompensated mesa next to one with the chosen pattern.</dd>
+    <dt>Find orientation</dt><dd>Etch alignment marks on the whole wafer and read the flat error δ from them.</dd>
+  </dl>
+  <h3>Mouse and keys</h3>
+  <div class="helpGrid">
+  <table class="keys">
+    <tr><td colspan="2"><b>3D view</b></td></tr>
+    <tr><td>drag</td><td>turn the view</td></tr>
+    <tr><td>scroll, pinch</td><td>zoom</td></tr>
+    <tr><td>hover, click</td><td>name a plane, select a face</td></tr>
+    <tr><td><span class="kbd">S</span></td><td>split view on or off</td></tr>
+    <tr><td><span class="kbd">T</span></td><td>theater view on or off</td></tr>
+    <tr><td><span class="kbd">?</span></td><td>this help</td></tr>
+  </table>
+  <table class="keys">
+    <tr><td colspan="2"><b>Mask editors</b> (click the editor first)</td></tr>
+    <tr><td>drag</td><td>move a shape</td></tr>
+    <tr><td><span class="kbd">Alt</span> + drag</td><td>move a copy</td></tr>
+    <tr><td>double-click</td><td>add the chosen shape there</td></tr>
+    <tr><td><span class="kbd">←</span> <span class="kbd">→</span> <span class="kbd">↑</span> <span class="kbd">↓</span></td><td>nudge by one snap step (<span class="kbd">Shift</span>: five)</td></tr>
+    <tr><td><span class="kbd">Ctrl</span> + <span class="kbd">D</span></td><td>duplicate the selected shape</td></tr>
+    <tr><td><span class="kbd">Delete</span></td><td>remove it</td></tr>
+    <tr><td>✎ Draw</td><td>click corners or drag a free outline; <span class="kbd">Enter</span> or double-click finishes, <span class="kbd">Backspace</span> undoes a corner, <span class="kbd">Esc</span> cancels</td></tr>
+  </table>
+  </div>
+  <h3>Good to know</h3>
+  <ul class="note" style="margin:0;padding-left:18px">
+    <li><b>⤢ Enlarge</b> opens an editor or a graph panel in a large window; <span class="kbd">Esc</span> closes it.</li>
+    <li><b>⚙ Settings</b> sets the layout, panel width, theme, label size, snap step and simulator resolution. They are kept in this browser.</li>
+    <li><b>☆ Save as my preset</b> (Etched pit and Etch simulator) keeps the mask and process under a name; your presets appear in the example list under <i>My presets</i>.</li>
+    <li><b>Custom etchant…</b> (next to each etchant list) makes a listed etchant at another temperature or KOH concentration, or one from your own rates.</li>
+    <li>Every number on the page has its source next to it; anything not from a source is marked as an assumption.</li>
+  </ul>
+  <div class="row" style="margin-top:12px"><button class="btn" id="hpTips">Show the scene tips again</button><button class="btn primary" data-close>Start</button></div>
+</dialog>
 <dialog id="dlgSet" class="dlg panel" aria-labelledby="stTitle">
   <div class="dlghead"><h2 id="stTitle">Settings</h2><button class="x" data-close aria-label="close">×</button></div>
   <h3>Layout</h3>
@@ -483,8 +553,8 @@ table.shapes .dsel { margin: 0; }
     <label><span><input type="checkbox" id="stAuto"> run again automatically after each edit</span></label>
   </div>
   <h3>Saved data</h3>
-  <div class="row"><button class="btn" id="stReset">Reset all settings</button><button class="btn" id="stClearEtch">Delete my custom etchants</button></div>
-  <p class="note">Settings and custom etchants are kept in this browser only.</p>
+  <div class="row"><button class="btn" id="stTips">Show the scene tips again</button><button class="btn" id="stReset">Reset all settings</button><button class="btn" id="stClearEtch">Delete my custom etchants</button><button class="btn" id="stClearPs">Delete my presets</button></div>
+  <p class="note">Settings, custom etchants and your presets are kept in this browser only. Use Export in the etchant dialog and next to each preset list to keep a copy or share it.</p>
 </dialog>
 <dialog id="dlgEtch" class="dlg panel" aria-labelledby="ceTitle">
   <div class="dlghead"><h2 id="ceTitle">Custom etchant</h2><button class="x" data-close aria-label="close">×</button></div>
@@ -2119,7 +2189,7 @@ renderer.domElement.addEventListener("pointerleave", () => { tip.style.display =
 const $ = id => document.getElementById(id);
 function pressed(seg, attr, val) { for (const b of seg.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset[attr] === val)); }
 function fillOpenings() {
-  $("selOpen").innerHTML = OPENINGS[S.wf].map((o, i) => `<option value="${i}">Example: ${o.name}</option>`).join("") +
+  $("selOpen").innerHTML = OPENINGS[S.wf].map((o, i) => `<option value="${i}">Example: ${o.name}</option>`).join("") + psOptions("pit") +
     `<option value="custom">Your own mask (${S.pitShapes.length} shape${S.pitShapes.length === 1 ? "" : "s"})</option>`;
   $("selOpen").value = String(S.open);
 }
@@ -2130,7 +2200,7 @@ function setHold() {
 }
 function sliderToT() { return pit.tmax*Number($("tSlider").value)/1000; }
 function rebuild(resetView) {
-  syncWaferUI();
+  syncWaferUI(); uiSync();
   if (S.mode === "model") {
     buildModel();
     $("panelModel").classList.remove("hidden"); $("panelPit").classList.add("hidden"); $("panelSim").classList.add("hidden"); $("simBelow").classList.add("hidden"); $("pitBelow").classList.add("hidden"); hideCbar();
@@ -2188,6 +2258,7 @@ $("views").addEventListener("click", e => {
   setView(dirOf(...(v === "oblique" ? OBL[S.wf] : v === "back" ? [OBL[S.wf][0], OBL[S.wf][1] + 180] : VIEWS[v])), tgt);
 });
 $("selOpen").addEventListener("change", e => {
+  if (e.target.value.startsWith("u:")) { psLoad(e.target.value.slice(2)); return; }
   S.open = e.target.value === "custom" ? "custom" : Number(e.target.value); S.pitSel = -1;
   if (S.open !== "custom") { S.rate = OPENINGS[S.wf][S.open].rate; $("selRate").value = S.rate; }
   renderCustomList(); prepPit(); rebuild(true);
@@ -3170,7 +3241,7 @@ function renderShapeList() {
   $("shapeList").innerHTML = `<tr class="hd"><td>layer</td><td>shape</td><td>centre x, y</td><td>size</td><td>angle°</td><td>array nx, ny, px, py</td><td></td></tr>` + rows;
 }
 function markDirty() { SIM.dirty = true; updateDirtyNote(); renderShapeList(); if (simLike()) buildSim(false); autoRunMaybe(); }
-function updateDirtyNote() { $("simDirty").classList.toggle("hidden", !SIM.dirty); }
+function updateDirtyNote() { $("simDirty").classList.toggle("hidden", !SIM.dirty); stageRunSync(); }
 
 function loadPreset(wf, i) {
   const p = SPRESETS[wf][i]; SIM.preset = i;
@@ -3192,13 +3263,14 @@ function syncCutSlider() {
   $("simCutLbl").textContent = `${SIM.cutAxis === "y" ? "y" : "x"} = ${(+SIM.cutPos).toFixed(0)} µm`;
 }
 function fillSimPresets() {
-  $("simPreset").innerHTML = SPRESETS[S.wf].map((p, i) => `<option value="${i}">${p.name}</option>`).join("") + `<option value="-1">Custom (keep the current mask)</option>`;
+  $("simPreset").innerHTML = `<optgroup label="Examples">` + SPRESETS[S.wf].map((p, i) => `<option value="${i}">${p.name}</option>`).join("") + `</optgroup>`
+    + psOptions("sim") + `<option value="-1">Custom (keep the current mask)</option>`;
   $("simPreset").value = String(SIM.preset);
 }
 
 // ---- wiring
 $("simRate").innerHTML = Object.entries(SRATES).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join("");
-$("simPreset").addEventListener("change", e => { const i = Number(e.target.value); if (i < 0) return; loadPreset(S.wf, i); simRun(); buildSim(true); });
+$("simPreset").addEventListener("change", e => { if (e.target.value.startsWith("u:")) { psLoad(e.target.value.slice(2)); return; } const i = Number(e.target.value); if (i < 0) return; loadPreset(S.wf, i); simRun(); buildSim(true); });
 $("bSimRun").addEventListener("click", () => { simRun(); buildSim(false); });
 $("simFrame").addEventListener("change", e => { SIM.fk = e.target.value; $("simFrameSrc").textContent = SFR[SIM.fk].src; markDirty(); });
 $("simRate").addEventListener("change", e => { SIM.rate = e.target.value; $("simRateSrc").textContent = SRATES[SIM.rate].src; markDirty(); });
@@ -4047,7 +4119,7 @@ $("stReset").addEventListener("click", () => {
   try { localStorage.removeItem("o3d-splitW"); } catch (e) {} document.documentElement.style.removeProperty("--splitW");
   applyLayout(); applyLook(); syncSettingsUI();
 });
-$("stClearEtch").addEventListener("click", () => { CUSTOM.length = 0; saveCustom(); registerCustom(); ceFill(); });
+$("stClearEtch").addEventListener("click", () => { CUSTOM.length = 0; saveCustom(); registerCustom(); ceCur = ceDefault(); ceFill(); prepPit(); rebuild(false); });
 
 // =====================================================================================================
 // custom etchants: a listed etchant at another temperature or KOH concentration, or the user's own rates
@@ -4180,6 +4252,137 @@ $("ceImport").addEventListener("change", async e => {
   } catch (err) { $("ceWarn").textContent = "This file could not be read as an etchant list."; $("ceWarn").classList.remove("hidden"); }
   e.target.value = "";
 });
+
+
+// =====================================================================================================
+// guidance: one tip per scene (hidden once dismissed), help dialog, run button on the stage
+var GUIDE = {
+  model: "<b>Start here.</b> Pick a wafer in the bar above, then drag the model to turn it. Click a face to see its plane and its angle to the wafer. The panel on the right says how to hold the paper model.",
+  pit: "<b>Etched pit.</b> Follow the numbered steps on the right: edit the openings in the mask editor, pick an etchant and move the time slider. Hover a wall to name its plane.",
+  sim: "<b>Etch simulator.</b> Follow the numbered steps on the right: pick an example, change or draw the mask, set the process and press <b>Run</b>. Then scrub the time slider to replay the etch.",
+  corner: "<b>Corner lab.</b> Pick a compensation pattern and press <b>Build and run</b>. The left mesa has no compensation; the right one has your pattern.",
+  find: "<b>Find orientation.</b> Follow the numbered steps on the right: set a flat error, etch the alignment marks, then read δ from the pattern and see how much the correction helps.",
+};
+var tipsHidden = [];
+try { tipsHidden = JSON.parse(localStorage.getItem("o3d-tips-hidden") || "[]"); if (!Array.isArray(tipsHidden)) tipsHidden = []; } catch (e) {}
+function uiSync() {   // called by rebuild()
+  const g = document.getElementById("guide"); if (!g) return;
+  const m = S.mode, show = !!GUIDE[m] && !tipsHidden.includes(m);
+  g.classList.toggle("hidden", !show); if (show) document.getElementById("guideTxt").innerHTML = GUIDE[m];
+  stageRunSync();
+}
+function stageRunSync() { const b = document.getElementById("stageRun"); if (b) b.classList.toggle("hidden", !(simLike() && SIM.dirty)); }
+$("guideX").addEventListener("click", () => {
+  if (!tipsHidden.includes(S.mode)) tipsHidden.push(S.mode);
+  try { localStorage.setItem("o3d-tips-hidden", JSON.stringify(tipsHidden)); } catch (e) {}
+  uiSync();
+});
+function tipsAgain() { tipsHidden = []; try { localStorage.removeItem("o3d-tips-hidden"); } catch (e) {} uiSync(); }
+$("stTips").addEventListener("click", tipsAgain); $("hpTips").addEventListener("click", tipsAgain);
+$("stageRun").addEventListener("click", () => { $("bSimRun").click(); stageRunSync(); });
+$("bHelp").addEventListener("click", () => $("dlgHelp").showModal());
+document.addEventListener("keydown", e => {
+  if (e.key !== "?" || e.ctrlKey || e.metaKey || e.altKey) return;
+  const tg = e.target.tagName; if (tg === "INPUT" || tg === "SELECT" || tg === "TEXTAREA" || document.querySelector("dialog[open]")) return;
+  e.preventDefault(); $("dlgHelp").showModal();
+});
+uiSync();
+
+
+// =====================================================================================================
+// the user's own presets (Etch simulator and Etched pit): kept in this browser, export and import as JSON
+var PSETS = [];
+try { const a = JSON.parse(localStorage.getItem("o3d-presets") || "[]"); if (Array.isArray(a)) PSETS = a.filter(q => q && q.id && q.name && q.data); } catch (e) {}
+const psSave = () => { try { localStorage.setItem("o3d-presets", JSON.stringify(PSETS)); return true; } catch (e) { return false; } };
+const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+function psOptions(kind) {   // <optgroup> of the user's presets for this scene and wafer
+  const L = (typeof PSETS === "undefined" ? [] : PSETS).filter(q => q.kind === kind && q.wf === S.wf);
+  return L.length ? `<optgroup label="My presets">` + L.map(q => `<option value="u:${q.id}">☆ ${esc(q.name)}</option>`).join("") + `</optgroup>` : "";
+}
+const psBox = kind => document.querySelector(`.psBox[data-ps="${kind}"]`);
+function psMsg(kind, txt) { const m = psBox(kind).querySelector("[data-ps-msg]"); m.textContent = txt || ""; m.classList.toggle("hidden", !txt); }
+function psSel(kind) { const v = $(kind === "sim" ? "simPreset" : "selOpen").value; return v.startsWith("u:") ? v.slice(2) : null; }
+function psSyncButtons() { for (const k of ["sim", "pit"]) psBox(k).querySelector("[data-ps-del]").disabled = !psSel(k); }
+function psEtch(key) { const c = CUSTOM.find(x => x.key === key); return c ? JSON.parse(JSON.stringify(c)) : null; }
+function psCapture(kind) {
+  if (kind === "sim") return { fk: SIM.fk, rate: SIM.rate, t: SIM.t, thick: SIM.thick, pre: SIM.pre, rot: SIM.rot || 0, hx: SIM.hx, hy: SIM.hy, dxMax: SIM.dxMax || 0,
+    cutAxis: SIM.cutAxis, cutPos: SIM.cutPos, shapes: JSON.parse(JSON.stringify(SIM.shapes)) };
+  return { rate: S.rate, rot: S.rot || 0, shapes: JSON.parse(JSON.stringify(pitShapesNow())) };
+}
+function psRate(q, table) {   // the preset's etchant key here: re-create its custom etchant if this browser lacks it
+  const r = q.data.rate; if (table[r] && !(r.startsWith("CU") && q.etch && table[r].name !== `★ ${q.etch.name}`)) return r;
+  if (q.etch) {
+    const same = CUSTOM.find(c => c.name === q.etch.name && JSON.stringify(Object.assign({}, c, { key: "" })) === JSON.stringify(Object.assign({}, q.etch, { key: "" })));
+    if (same) return same.key;
+    let n = 1; while (CUSTOM.some(x => x.key === `CU${n}`)) n++;
+    const ce = Object.assign({}, q.etch, { key: `CU${n}` }); if (ceCompute(ce).ok) { CUSTOM.push(ce); saveCustom(); registerCustom(); return ce.key; }
+  }
+  return "PAL30";
+}
+function psLoad(id) {
+  const q = PSETS.find(x => x.id === id); if (!q) return;
+  const d = q.data, kind = q.kind;
+  if (S.wf !== q.wf) setWafer(q.wf);
+  if (kind === "sim") {
+    Object.assign(SIM, { fk: d.fk, rate: psRate(q, SRATES), t: d.t, thick: d.thick || SIM.thick, pre: d.pre || 0, rot: d.rot || 0, hx: d.hx, hy: d.hy, dxMax: d.dxMax || 0,
+      cutAxis: d.cutAxis || "y", cutPos: d.cutPos || 0, shapes: JSON.parse(JSON.stringify(d.shapes)), sel: -1, probes: null, cl: null, owner: "sim", wfLoaded: S.wf, preset: `u:${q.id}` });
+    $("simNote").innerHTML = `Your preset <b>${esc(q.name)}</b>, saved ${esc(q.saved || "")}.`;
+    fillSimPresets(); syncSimInputs(); renderShapeList(); simRun(); buildSim(true);
+  } else {
+    S.rate = psRate(q, RATES); S.rot = d.rot || 0; $("pitRot").value = S.rot; $("selRate").value = S.rate;
+    S.pitShapes = JSON.parse(JSON.stringify(d.shapes)); S.pitSel = -1; S.open = "custom";
+    fillOpenings(); $("selOpen").value = `u:${q.id}`; renderCustomList(); prepPit(); rebuild(true);
+  }
+  psMsg(kind, ""); psSyncButtons();
+}
+function psValid(q) {
+  return q && typeof q.name === "string" && ["sim", "pit"].includes(q.kind) && ["100", "110", "111"].includes(q.wf) && q.data && Array.isArray(q.data.shapes)
+    && q.data.shapes.every(s => s && SHAPE_TYPES[s.type]) && (q.kind === "pit" || (SFR[q.data.fk] && q.data.t > 0 && q.data.hx > 0 && q.data.hy > 0));
+}
+const psId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+for (const kind of ["sim", "pit"]) {
+  const box = psBox(kind), nameEl = box.querySelector("[data-ps-name]");
+  const save = () => {
+    const data = psCapture(kind);
+    if (!data.shapes.length) { psMsg(kind, "The mask has no shapes yet: add or draw one first."); return; }
+    const name = nameEl.value.trim() || `${kind === "sim" ? "My simulation" : "My pit"} ${PSETS.filter(q => q.kind === kind).length + 1}`;
+    const old = PSETS.find(q => q.kind === kind && q.wf === S.wf && q.name === name);
+    const q = { id: old ? old.id : psId(), name, kind, wf: S.wf, saved: new Date().toISOString().slice(0, 10), data, etch: data.rate.startsWith("CU") ? psEtch(data.rate) : null };
+    if (old) PSETS[PSETS.indexOf(old)] = q; else PSETS.push(q);
+    const ok = psSave(); nameEl.value = "";
+    if (kind === "sim") { SIM.preset = `u:${q.id}`; fillSimPresets(); } else { fillOpenings(); $("selOpen").value = `u:${q.id}`; }
+    psSyncButtons();
+    psMsg(kind, ok ? `${old ? "Updated" : "Saved"} “${name}” for the (${S.wf}) wafer. It is in the list above, under My presets.` : "Saved for this visit only: this browser does not allow storage.");
+  };
+  box.querySelector("[data-ps-save]").addEventListener("click", save);
+  nameEl.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); save(); } });
+  box.querySelector("[data-ps-del]").addEventListener("click", () => {
+    const id = psSel(kind), i = PSETS.findIndex(q => q.id === id); if (i < 0) return;
+    const nm = PSETS[i].name; PSETS.splice(i, 1); psSave();
+    if (kind === "sim") { SIM.preset = -1; fillSimPresets(); } else fillOpenings();
+    psSyncButtons(); psMsg(kind, `Deleted “${nm}”. The mask stays as it is.`);
+  });
+  box.querySelector("[data-ps-exp]").addEventListener("click", () => {
+    if (!PSETS.length) { psMsg(kind, "There are no presets to export yet."); return; }
+    const blob = new Blob([JSON.stringify({ format: "origami-presets", version: 1, presets: PSETS }, null, 2)], { type: "application/json" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "my-etch-presets.json"; document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    psMsg(kind, `Exported ${PSETS.length} preset${PSETS.length === 1 ? "" : "s"} (all scenes and wafers).`);
+  });
+  box.querySelector("[data-ps-imp]").addEventListener("change", async e => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    try {
+      const j = JSON.parse(await f.text()), list = Array.isArray(j) ? j : j.presets; let n = 0, bad = 0;
+      for (const q of list || []) { if (psValid(q)) { PSETS.push(Object.assign({}, q, { id: psId() })); n++; } else bad++; }
+      psSave(); if (kind === "sim") fillSimPresets(); else fillOpenings(); psSyncButtons();
+      psMsg(kind, `Imported ${n} preset${n === 1 ? "" : "s"}${bad ? `; skipped ${bad} that could not be read` : ""}. Presets for another wafer show when you pick that wafer.`);
+    } catch (err) { psMsg(kind, "This file could not be read as a preset list."); }
+    e.target.value = "";
+  });
+}
+$("simPreset").addEventListener("change", psSyncButtons); $("selOpen").addEventListener("change", psSyncButtons);
+$("stClearPs").addEventListener("click", () => { PSETS = []; psSave(); SIM.preset = SIM.preset && String(SIM.preset).startsWith("u:") ? -1 : SIM.preset; fillSimPresets(); fillOpenings(); psSyncButtons(); });
+fillSimPresets(); fillOpenings(); psSyncButtons();
 
 // start-up of the settings, layout and custom etchants
 SIM.quality = SET.quality;
