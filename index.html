@@ -4233,10 +4233,20 @@ $("ceDel").addEventListener("click", () => {
   const i = CUSTOM.findIndex(x => x.key === ceCur.key); if (i < 0) return;
   CUSTOM.splice(i, 1); saveCustom(); registerCustom(); prepPit(); if (S.mode === "pit") rebuild(false); ceCur = ceDefault(); ceFill();
 });
-$("ceExport").addEventListener("click", () => {
-  const blob = new Blob([JSON.stringify({ format: "origami-etchants", version: 1, etchants: CUSTOM }, null, 2)], { type: "application/json" });
-  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "custom-etchants.json"; document.body.append(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+// saving a file: inside the claude.ai artifact viewer through its downloads capability, elsewhere (GitHub Pages, a local copy) as a normal download
+async function saveFile(name, text) {
+  if (window.claude && typeof window.claude.use === "function") {
+    let ns = null; try { ns = await window.claude.use("downloads"); } catch (e) {}
+    if (!ns) return "This viewer cannot save files; open the GitHub page to export.";
+    try { await ns.save({ filename: name, data: text }); return ""; } catch (e) { return e && e.code === "declined" ? "Export cancelled." : "The file could not be saved here."; }
+  }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "application/json" })); a.download = name; document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000); return "";
+}
+$("ceExport").addEventListener("click", async () => {
+  if (!CUSTOM.length) { $("ceWarn").textContent = "There are no saved etchants to export yet."; $("ceWarn").classList.remove("hidden"); return; }
+  const m = await saveFile("custom-etchants.json", JSON.stringify({ format: "origami-etchants", version: 1, etchants: CUSTOM }, null, 2));
+  $("ceWarn").textContent = m; $("ceWarn").classList.toggle("hidden", !m);
 });
 $("ceImport").addEventListener("change", async e => {
   const f = e.target.files && e.target.files[0]; if (!f) return;
@@ -4362,11 +4372,9 @@ for (const kind of ["sim", "pit"]) {
     if (kind === "sim") { SIM.preset = -1; fillSimPresets(); } else fillOpenings();
     psSyncButtons(); psMsg(kind, `Deleted “${nm}”. The mask stays as it is.`);
   });
-  box.querySelector("[data-ps-exp]").addEventListener("click", () => {
+  box.querySelector("[data-ps-exp]").addEventListener("click", async () => {
     if (!PSETS.length) { psMsg(kind, "There are no presets to export yet."); return; }
-    const blob = new Blob([JSON.stringify({ format: "origami-presets", version: 1, presets: PSETS }, null, 2)], { type: "application/json" });
-    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "my-etch-presets.json"; document.body.append(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    const m = await saveFile("my-etch-presets.json", JSON.stringify({ format: "origami-presets", version: 1, presets: PSETS }, null, 2)); if (m) { psMsg(kind, m); return; }
     psMsg(kind, `Exported ${PSETS.length} preset${PSETS.length === 1 ? "" : "s"} (all scenes and wafers).`);
   });
   box.querySelector("[data-ps-imp]").addEventListener("change", async e => {
