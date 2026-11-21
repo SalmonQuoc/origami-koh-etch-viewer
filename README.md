@@ -1,5 +1,9 @@
 # Origami 3D viewer: KOH and EDP etching of silicon
 
+**Open it:** https://salmonquoc.github.io/origami-koh-etch-viewer/
+
+[![CI](https://github.com/SalmonQuoc/origami-koh-etch-viewer/actions/workflows/ci.yml/badge.svg)](https://github.com/SalmonQuoc/origami-koh-etch-viewer/actions/workflows/ci.yml)
+
 An interactive 3D page for anisotropic wet etching of single-crystal silicon. It was made as a study aid for ESS5850 Micro System Design and ESS 5810 Advanced Micro System Fabrication and Lab (Prof. Fan-Gang Tseng, National Tsing Hua University, fall 2026). It is not official course material: every number names its source, so check it against your own lecture notes.
 
 It has five scenes:
@@ -22,11 +26,18 @@ Other functions:
 - **Graphs**: depth, undercut and released mask area against etch time (simulator), and depth and outline size against time (pit).
 - **Split view** (key S): the 3D view and the controls sit side by side and scroll separately, under a toolbar that stays at the top. Drag the divider to resize the panes (arrow keys also work when it has focus); double-click it to reset. **Swap sides** moves the controls to the left. The page remembers these settings. Split view is off below 900 px width.
 - **Theater view** (key T) widens the 3D view; **Full screen** fills the screen.
+- **Drawing and editing masks**: ✎ Draw places corners by clicking or follows a free drag stroke; a drawn outline is etched exactly in the simulator and split into convex pieces in the Etched pit. Shapes can be duplicated (⧉ button, Ctrl+D, Alt-drag). Every editor and graph panel has ⤢ Enlarge.
+- **Settings** (⚙): page layout (standard, split, split with controls left, theater, one column), panel width, 3D view height, theme, label size, camera animation, render quality, snap step, simulator resolution, automatic re-run and etch engine. Kept in the browser.
+- **Custom etchants**: a listed etchant at another temperature (R = R₀ exp(−Q/kT), Q(100) ≈ 0.60 eV for 40 % KOH, Pal & Sato p. 90; the same Q for the other planes and for EDP is an assumption) or another KOH concentration (linear between the 30, 40 and 50 wt% columns of Table 4.1, assumption), or your own measured rates. Export and import as JSON.
+- **Your own presets**: ☆ Save as my preset keeps a pit or simulator mask with its process (and its custom etchant); export and import as JSON.
+- **Guidance**: numbered steps in each panel, a tip per scene, a Quick start with all mouse and key controls (? key), and a Run button on the 3D view when the mask or process has changed.
 - **Flat arrows**: the die view has one arrow along the flat and one perpendicular to it pointing outward, away from the centre (the outward flat normal), each labelled with its crystal direction. Every scene that shows a wafer (Model on wafer, the whole-wafer views and the finder map) has the outward arrow from the middle of the primary flat.
 
 ## Run it
 
-Open `index.html` in a browser, or use the hosted copy at https://claude.ai/artifact/7YX2ZZKDeUP4KvxNpi8PPn. The page loads three.js r128 from cdnjs and jsDelivr. Nothing needs to be built.
+Open https://salmonquoc.github.io/origami-koh-etch-viewer/ (GitHub Pages, published from `index.html` on `main` after the checks pass), or download `index.html` and open it in a browser. The page loads three.js r128 from cdnjs and jsDelivr; everything else, including the WebAssembly kernel and the data, is inside the file.
+
+To change the page, edit `src/`, `data/` or `engine/` and run `npm run build` (see [CONTRIBUTING.md](CONTRIBUTING.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/DATA.md](docs/DATA.md)).
 
 ## Author
 
@@ -41,12 +52,13 @@ Huu Quoc Anh Nguyen (Student ID X1150030), undergraduate exchange student from t
 ## Method and validation
 
 - **Etch-rate model.** The rate R(hkl) for any orientation comes from the 12 orientations in Pal & Sato, Table 4.1 (p. 87): KOH at 30, 40 and 50 wt%, 70 °C. Between those orientations it is interpolated piecewise-linearly in gnomonic coordinates of the standard triangle, which keeps the slow {111} cusp. A KOH 42 wt%, 75 °C option uses Lec 4-1 p. 7 for {100}, {110} and {111}. The other orientations in that option are scaled from Pal & Sato 40 wt%; this scaling is an assumption.
-- **Front motion.** The level-set equation φ_t + R(n)|∇φ| = 0 is solved on a cubic grid. It uses a first-order Lax-Friedrichs scheme with fast-marching re-initialisation, and φ never rises, because etching cannot be undone.
-- **Mask edge (assumption).** Etchant cannot reach silicon through the mask. Under the mask, the level set therefore has no downward slope at the top boundary, and where the wall there is near-vertical (|dφ/dz| < 0.35 |∇ₕφ|) the vertical gradient is set to zero so the wall moves sideways at the full {100} rate. Check (`tools/etch-engine-tests/undercut-100.js`): a 100 µm square window at 45° on (100), 40 min in 30 wt% KOH, gives 26.5 µm sideways undercut at dx = 2 µm (21.0 µm at 3 µm, 15.5 µm at 4 µm) against 0.797 × 40 = 31.9 µm (Pal & Sato Table 4.1, p. 87); the older clamp gave 23.4 µm at 2 µm. A ⟨110⟩-aligned pit still keeps 0 µm undercut (`validate-cases.js`).
-- **Check.** For a 200 µm square window on (100) in 30 wt% KOH for 60 min, the simulated depth is 47.9 µm, against 0.797 × 60 = 47.82 µm. The {111} walls come out at 54.5°, against 54.74°.
+- **Front motion.** The level-set equation φ_t + R(n)|∇φ| = 0 is solved on a cubic grid. It uses a first-order Lax-Friedrichs scheme with fast-marching re-initialisation, and φ never rises, because etching cannot be undone. The time step runs in Rust compiled to WebAssembly (`engine/`); the JavaScript version in `src/engine/etch-engine.js` is the reference and the fallback. Both give bit-identical fields on the five test cases (`tests/engine-parity.test.mjs`); the Rust kernel is 1.2 to 1.9 times faster in Node and took 8.1 s instead of 11.8 s for the first simulator example in Chromium.
+- **Mask edge (assumption).** Etchant cannot reach silicon through the mask. Under the mask, the level set therefore has no downward slope at the top boundary, and where the wall there is near-vertical (|dφ/dz| < 0.35 |∇ₕφ|) the vertical gradient is set to zero so the wall moves sideways at the full {100} rate. Check (`tests/engine-physics.test.mjs`): a 100 µm square window at 45° on (100), 40 min in 30 wt% KOH, gives 24.0 µm sideways undercut at 20 µm depth with dx = 2 µm (16.5 µm at 3 µm, 9.5 µm at 4 µm) against 0.797 × 40 = 31.9 µm (Pal & Sato Table 4.1, p. 87). A ⟨110⟩-aligned pit keeps 0 µm undercut.
+- **Check.** For a 200 µm square window on (100) in 30 wt% KOH for 60 min, the simulated depth is 47.85 µm, against 0.797 × 60 = 47.82 µm (`tests/engine-physics.test.mjs`). The {111} walls came out at 54.5° in the 20 Nov check, against 54.74°.
+- **Engine fix (21 Nov 2026).** Porting the engine to Rust showed that the JavaScript re-initialisation looped over the neighbours of the wrong node after the first one (a shared scratch array was refilled inside the loop). Fixed in both versions. On the five test cases depths changed by 0.05 to 0.14 µm (at most 0.04 cells): three (100) cases moved closer to R(100)·t, the (100) cantilever and the (110) case moved slightly away; undercuts did not change. Details in `tools/check-log-2026-11-21.md`.
 - **EDP rates (assumption).** Lec 10 p. 11 gives EDP rates for {100}, {110} and {111} only (51, 57 and 1.25 µm/h). All other orientations use the three-rate interpolation, which equals the Hubbard three-parameter model in gnomonic coordinates (Radjenović et al. 2010, eq. 1). Lec 10 p. 16 orders EDP as (100) > (110) > (111), which the p. 11 values do not follow, so a second set "EDP F&K" uses the 50:30:3 ratio of Finne & Klein (1967, as listed in the Berkeley Microlab manual ch. 1.10) scaled to R(100) = 51 µm/h. With that set a trench along ⟨100⟩ gets 47° walls (Lec 10 p. 17: 45°); with Type S it gets 63°.
 - **Flat error check.** A 100 µm square on (100) with the crystal turned by 45° gives 32.0 µm depth (0.797 × 40 = 31.9 µm) and 23.8 µm undercut, the same as a square turned 45° on a true frame (22.2 µm), within one cell.
-- **Orientation finder (method).** In the long-etch limit a slot of length L and width w misaligned by α etches to width w cos α + L sin α; 3 cm at 1° gives 524 µm and at 0.06° 31.4 µm (Lec 10 p. 18: 524 and 33 µm). Device error is compared with U = l sin δ cos δ (Pal & Sato eq. 7.1, p. 289: 18 µm for 10 mm at 0.1°; here 17.45 µm). The full check log is in `tools/check-log-2026-11-20.md`.
+- **Orientation finder (method).** In the long-etch limit a slot of length L and width w misaligned by α etches to width w cos α + L sin α; 3 cm at 1° gives 524 µm and at 0.06° 31.4 µm (Lec 10 p. 18: 524 and 33 µm). Device error is compared with U = l sin δ cos δ (Pal & Sato eq. 7.1, p. 289: 18 µm for 10 mm at 0.1°; here 17.45 µm). Check logs: `tools/check-log-2026-11-20.md`, `tools/check-log-2026-11-21.md`.
 - **Known limits.** Silicon walls and beams narrower than about 8 grid cells thin slowly. This comes from numerical dissipation, not physics, and it is worst for walls oblique to the grid. Windows narrower than about 5 cells etch too slowly. Undercut on {111} walls is good to about one or two cells. Sideways undercut of vertical {100} walls lags by about 2–3 cells (see the check above), so use a fine grid when it matters.
 
 ## Wafer frames
@@ -77,10 +89,14 @@ Huu Quoc Anh Nguyen (Student ID X1150030), undergraduate exchange student from t
 
 | Path | Contents |
 |---|---|
-| `index.html` | The viewer (a single file) |
-| `tools/core.js` | The geometry core of the Etched pit scene, as a separate file |
-| `tools/etch-engine-tests/etch-engine.js` | The level-set engine as a Node module, for tests |
-| `tools/etch-engine-tests/validate-cases.js` | Depth and undercut for 5 reference cases (`npm run validate`) |
-| `tools/etch-engine-tests/undercut-100.js` | Sideways {100} undercut against grid size (`node tools/etch-engine-tests/undercut-100.js 2 40`) |
-| `tools/check-log-2026-11-20.md` | The 12 checks and the fixes made for the wafer, EDP, corner lab and finder release |
-| `tools/etch-engine-tests/browser-presets.js` | Runs every example in headless Chromium and saves screenshots (`npm run test:browser`) |
+| `index.html` | The viewer, a single file built from the folders below (served by GitHub Pages) |
+| `src/index.html` | Page markup and styles |
+| `src/app/*.ts` | User interface in 19 TypeScript modules |
+| `src/core/geometry.ts` | Analytic {111}-plane model (Model on wafer, Etched pit, Find orientation) |
+| `src/engine/etch-engine.js` | Level-set engine: set-up, mesh, sections, statistics, JavaScript time step |
+| `engine/` | Rust crate: the time step compiled to WebAssembly |
+| `data/*.json` | Etchants, simulator examples and pit examples ([docs/DATA.md](docs/DATA.md)) |
+| `build.mjs`, `tools/validate-data.mjs` | Build and data checks |
+| `tests/` | Engine parity, physics and data tests; `tests/browser/` page test in Chromium |
+| `docs/` | [Architecture](docs/ARCHITECTURE.md) and [data format](docs/DATA.md) |
+| `tools/check-log-*.md` | Check logs of each release |

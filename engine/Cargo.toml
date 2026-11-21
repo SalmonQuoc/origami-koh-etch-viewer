@@ -1,0 +1,16 @@
+[package]
+name = "etch-core"
+version = "0.1.0"
+edition = "2021"
+description = "Level-set wet-etch kernel of the Origami 3D viewer (time step, band bookkeeping, fast-marching re-initialisation)"
+license = "MIT"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"

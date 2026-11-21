@@ -1,14 +1,22 @@
 {
   "name": "origami-koh-etch-viewer",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "3D viewer of the {111} octahedron on (100), (110) and (111) silicon wafers, with an anisotropic KOH wet-etch simulator.",
+  "description": "Origami 3D viewer: {111} octahedron, etched pit, KOH/EDP level-set etch simulator (Rust/WebAssembly kernel), corner lab and orientation finder, built into one HTML file",
+  "type": "module",
   "scripts": {
-    "validate": "node tools/etch-engine-tests/validate-cases.js",
-    "test:browser": "node tools/etch-engine-tests/browser-presets.js"
+    "build:wasm": "cargo build --manifest-path engine/Cargo.toml --release --target wasm32-unknown-unknown && node -e \"require('fs').copyFileSync('engine/target/wasm32-unknown-unknown/release/etch_core.wasm','engine/etch_core.wasm')\"",
+    "build": "npm run build:wasm && node build.mjs",
+    "build:page": "node build.mjs",
+    "validate": "node tools/validate-data.mjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test tests/*.test.mjs",
+    "test:browser": "node --test tests/browser/*.test.mjs",
+    "check": "npm run validate && npm run typecheck && npm run build && npm test && npm run test:browser"
   },
   "devDependencies": {
-    "playwright": "^1.47.0",
-    "three": "0.128.0"
+    "esbuild": "0.24.2",
+    "typescript": "5.6.3",
+    "playwright": "1.56.1"
   }
 }

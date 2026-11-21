@@ -1,0 +1,73 @@
+// End-to-end checks of the built page (index.html) in Chromium. Run: npm run test:browser
+// (needs the playwright package and its Chromium; in CI: npx playwright install --with-deps chromium)
+import test from "node:test";
+import assert from "node:assert/strict";
+import { fileURLToPath } from "node:url";
+
+let chromium = null;
+try { ({ chromium } = await import("playwright")); } catch (e) {}
+const PAGE = "file://" + fileURLToPath(new URL("../../index.html", import.meta.url));
+const skip = !chromium && "playwright is not installed";
+
+test("page: scenes, simulator kernel, drawing, settings, custom etchant, presets, phone width", { skip, timeout: 240000 }, async t => {
+  const browser = await chromium.launch({ args: ["--use-gl=swiftshader", "--enable-webgl", "--ignore-gpu-blocklist"] });
+  const p = await browser.newPage({ viewport: { width: 1300, height: 950 } });
+  const errors = []; p.on("pageerror", e => errors.push(String(e))); p.on("console", m => { if (m.type() === "error" && !/fonts\.googleapis/.test(m.text())) errors.push(m.text()); });
+  await p.goto(PAGE); await p.waitForTimeout(1200);
+  const ev = f => p.evaluate(f);
+
+  await t.test("every scene opens on every wafer", async () => {
+    for (const w of ["100", "110", "111"]) {
+      await p.click(`#segW button[data-w="${w}"]`);
+      for (const m of ["model", "pit", "corner", "find", "sim"]) { await p.click(`#segM button[data-m="${m}"]`); await p.waitForTimeout(300); }
+    }
+    await p.click('#segW button[data-w="100"]');
+  });
+
+  await t.test("simulator runs with the Rust/WebAssembly kernel", async () => {
+    await p.click('#segM button[data-m="sim"]');
+    await p.selectOption("#simQual", "draft"); await p.dispatchEvent("#simQual", "change");
+    await p.click("#bSimRun"); await p.waitForTimeout(200);
+    await p.waitForFunction(() => !window.__o3d.SIM.running, null, { timeout: 90000 });
+    assert.match(await p.textContent("#simStatus"), /Rust\/WebAssembly kernel/);
+  });
+
+  await t.test("drawing an outline adds a shape", async () => {
+    const n0 = await ev(() => window.__o3d.SIM.shapes.length);
+    await p.locator("#maskCanvas").scrollIntoViewIfNeeded(); await p.click("#bDraw");
+    const bb = await p.locator("#maskCanvas").boundingBox(), cx = bb.x + bb.width/2, cy = bb.y + bb.height/2;
+    for (const [dx, dy] of [[-40, -40], [40, -40], [0, 40]]) await p.mouse.click(cx + dx, cy + dy);
+    await p.keyboard.press("Enter"); await p.waitForTimeout(200);
+    assert.equal(await ev(() => window.__o3d.SIM.shapes.length), n0 + 1);
+  });
+
+  await t.test("custom etchant at 80 °C is faster than the 70 °C table (Arrhenius)", async () => {
+    await p.click('[data-etch-open="sim"]'); await p.selectOption("#ceBase", "PAL40");
+    await p.fill("#ceT", "80"); await p.dispatchEvent("#ceT", "input"); await p.click("#ceSave");
+    const r = await ev(() => { const { SIM, SRATES } = window.__o3d; return [SRATES[SIM.rate].r["100"], SRATES.PAL40.r["100"]]; });
+    assert.ok(r[0] > r[1] && Math.abs(r[0]/r[1] - Math.exp(0.6/8.617333262e-5*(1/343.15 - 1/353.15))) < 1e-9, JSON.stringify(r));
+  });
+
+  await t.test("a preset can be saved and loaded", async () => {
+    await p.fill('.psBox[data-ps="sim"] [data-ps-name]', "test preset"); await p.click('.psBox[data-ps="sim"] [data-ps-save]');
+    assert.match(await p.inputValue("#simPreset"), /^u:/);
+  });
+
+  await t.test("settings dialog switches the layout", async () => {
+    await p.click("#bSettings"); await p.selectOption("#stLayout", "theater"); await p.waitForTimeout(200);
+    assert.ok(await ev(() => document.body.classList.contains("theater")));
+    await p.selectOption("#stLayout", "standard"); await ev(() => document.getElementById("dlgSet").close());
+  });
+
+  await t.test("no sideways scroll at phone width", async () => {
+    await p.setViewportSize({ width: 390, height: 844 });
+    for (const m of ["model", "pit", "sim", "find"]) {
+      await p.click(`#segM button[data-m="${m}"]`); await p.waitForTimeout(400);
+      const [sw, iw] = await ev(() => [document.documentElement.scrollWidth, innerWidth]);
+      assert.ok(sw <= iw, `${m}: ${sw} > ${iw}`);
+    }
+  });
+
+  await browser.close();
+  assert.deepEqual(errors, []);
+});

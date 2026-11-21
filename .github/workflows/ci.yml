@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Rust toolchain with the WebAssembly target
+        run: rustup target add wasm32-unknown-unknown
+      - run: npm ci
+      - name: Data files
+        run: npm run validate
+      - name: Type check
+        run: npm run typecheck
+      - name: Rust unit tests
+        run: cargo test --manifest-path engine/Cargo.toml --release
+      - name: index.html is up to date with src/, data/ and engine/etch_core.wasm
+        run: |
+          node build.mjs
+          git diff --exit-code -- index.html || (echo "::error::index.html differs from a fresh build. Run npm run build and commit index.html." && exit 1)
+      - name: Engine and data tests (committed kernel)
+        run: npm test
+      - name: Engine tests with a freshly compiled kernel
+        run: npm run build:wasm && node --test tests/engine-parity.test.mjs tests/engine-physics.test.mjs
+      - name: Browser test
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:browser

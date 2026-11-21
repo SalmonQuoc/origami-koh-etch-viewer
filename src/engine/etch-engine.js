@@ -1,3 +1,8 @@
+// ===================================================================================== etch engine
+// KOH rate map over all orientations (piecewise-linear interpolation of measured rates in the standard
+// triangle) + 3D level-set etch front (first-order Lax-Friedrichs, fast-marching redistancing),
+// arrival-time field T(x) for instant time scrubbing, surface-nets mesh extraction and 2D sections.
+// No DOM access: runs in a Web Worker or in the page.
 function etchEngineFactory() {
   const ORIENT = { "100": [1,0,0], "110": [1,1,0], "210": [2,1,0], "211": [2,1,1], "221": [2,2,1], "310": [3,1,0],
                    "311": [3,1,1], "320": [3,2,0], "331": [3,3,1], "530": [5,3,0], "540": [5,4,0], "111": [1,1,1] };
@@ -127,6 +132,7 @@ function etchEngineFactory() {
     const S = { cfg, Nx, Ny, Nz, NXY, NN, dx, B, phi, T, Hr, gOpen, open, sd, RT, Rg, al, rmax, t: 0, steps: 0, e: [e1, e2, e3] };
     S.dt0 = (cfg.cfl || 0.9)*dx/(al[0] + al[1] + al[2]);
     // band bookkeeping
+    if (WX && !cfg.noWasm && wasmSim(S)) return S;   // Rust/WebAssembly kernel: same scheme, faster
     S.act = new Int32Array(Math.min(NN, 1 << 20)); S.nact = 0; S.stamp = new Uint32Array(NN); S.gen = 1; S.tmp = new Float32Array(S.act.length);
     S.reinit = makeReinit(Nx, Ny, Nz, dx, B);
     rebuild(S, true);
@@ -156,6 +162,7 @@ function etchEngineFactory() {
   }
 
   function step(S, tEnd, maxSteps) {
+    if (S.wasm) { S.t = WX.sim_step(S.wasm, tEnd, maxSteps); S.steps = WX.sim_steps(S.wasm); wasmBind(S); return S.t; }
     const { Nx, Ny, Nz, NXY, dx, B, phi, T, Hr, gOpen, open, RT, al } = S;
     const [e1, e2, e3] = S.e, tab = RT.tab, N = RT.N, WT = N + 1;
     const WALL2 = 0.35*0.35;
@@ -179,11 +186,11 @@ function etchEngineFactory() {
         const pn = Math.sqrt(px*px + py*py + pz*pz);
         let Hn = 0;
         if (pn > 1e-12) {
-          const nx = px/pn, ny = py/pn, nz = pz/pn;
-          let a = e1[0]*nx + e2[0]*ny + e3[0]*nz, b = e1[1]*nx + e2[1]*ny + e3[1]*nz, cc = e1[2]*nx + e2[2]*ny + e3[2]*nz, t;
+          // crystal components of the gradient; the table needs only their ratios, so no normalisation
+          let a = e1[0]*px + e2[0]*py + e3[0]*pz, b = e1[1]*px + e2[1]*py + e3[1]*pz, cc = e1[2]*px + e2[2]*py + e3[2]*pz, t;
           if (a < 0) a = -a; if (b < 0) b = -b; if (cc < 0) cc = -cc;
           if (b > a) { t = a; a = b; b = t; } if (cc > a) { t = a; a = cc; cc = t; } if (cc > b) { t = b; b = cc; cc = t; }
-          const fu = b/a*N, fv = cc/a*N; let iu = fu | 0, iv = fv | 0; if (iu >= N) iu = N - 1; if (iv >= N) iv = N - 1;
+          const ia = N/a, fu = b*ia, fv = cc*ia; let iu = fu | 0, iv = fv | 0; if (iu >= N) iu = N - 1; if (iv >= N) iv = N - 1;
           const du = fu - iu, dv = fv - iv, o = iu*WT + iv;
           Hn = ((tab[o]*(1-dv) + tab[o+1]*dv)*(1-du) + (tab[o+WT]*(1-dv) + tab[o+WT+1]*dv)*du)*pn;
         }
@@ -217,7 +224,7 @@ function etchEngineFactory() {
       while (true) { let c = 2*k + 1; if (c >= hn) break; if (c + 1 < hn && hv[c+1] < hv[c]) c++; if (hv[c] >= lv) break; hv[k] = hv[c]; hi[k] = hi[c]; k = c; }
       hv[k] = lv; hi[k] = li; return q;
     };
-    const NB = new Int32Array(6);
+    const NB = new Int32Array(6), NBq = new Int32Array(6);   // solve() refills NB, so loops over a node's neighbours use a copy
     const nb = q => {
       const k = (q / NXY) | 0, r = q - k*NXY, j = (r / Nx) | 0, i = r - j*Nx;
       NB[0] = i > 0 ? q-1 : -1; NB[1] = i < Nx-1 ? q+1 : -1; NB[2] = j > 0 ? q-Nx : -1; NB[3] = j < Ny-1 ? q+Nx : -1;
@@ -256,12 +263,12 @@ function etchEngineFactory() {
         if (any) { dist[q] = 1/Math.sqrt(inv); st[q] = 2; touched.push(q); }
       }
       const nInit = touched.length;
-      for (let m = 0; m < nInit; m++) { nb(touched[m]); for (let s = 0; s < 6; s++) { const r = NB[s]; if (r >= 0 && st[r] === 0) { st[r] = 1; push(solve(r), r); } } }
+      for (let m = 0; m < nInit; m++) { nb(touched[m]); NBq.set(NB); for (let s = 0; s < 6; s++) { const r = NBq[s]; if (r >= 0 && st[r] === 0) { st[r] = 1; push(solve(r), r); } } }
       while (hn > 0) {
         const q = pop(); if (st[q] === 2) continue;
         const d = solve(q); st[q] = 2; dist[q] = d; touched.push(q);
         if (d >= B) continue;
-        nb(q); for (let s = 0; s < 6; s++) { const r = NB[s]; if (r >= 0 && st[r] !== 2) { st[r] = 1; push(solve(r), r); } }
+        nb(q); NBq.set(NB); for (let s = 0; s < 6; s++) { const r = NBq[s]; if (r >= 0 && st[r] !== 2) { st[r] = 1; push(solve(r), r); } }
       }
       for (let m = 0; m < touched.length; m++) { const q = touched[m]; const s = phi[q] > 0 ? 1 : -1; phi[q] = s*Math.min(B, dist[q]); st[q] = 0; }
     };
@@ -406,6 +413,33 @@ function etchEngineFactory() {
     }
   }
 
+  // ---------------------------------------------------------------- Rust/WebAssembly kernel (engine/src/sim.rs)
+  // The time step, band bookkeeping and re-initialisation run in WebAssembly when it is available; the grid set-up,
+  // mesh, sections and statistics stay here and read phi, T and Hr in place in the WebAssembly memory.
+  let WX = null;
+  function wasmInit(bytes) {
+    try { WX = new WebAssembly.Instance(new WebAssembly.Module(bytes), {}).exports; if (!WX.sim_new || !WX.memory) WX = null; } catch (e) { WX = null; }
+    return !!WX;
+  }
+  function wasmBind(S) {   // (re)attach the typed-array views after the WebAssembly memory has grown
+    const buf = WX.memory.buffer; if (S.phi && S.phi.buffer === buf) return;
+    const h = S.wasm, NN = S.NN;
+    S.phi = new Float32Array(buf, WX.sim_phi_ptr(h), NN); S.T = new Float32Array(buf, WX.sim_t_ptr(h), NN); S.Hr = new Float32Array(buf, WX.sim_hr_ptr(h), NN);
+  }
+  function wasmSim(S) {
+    try {
+      const h = WX.sim_new(S.Nx, S.Ny, S.Nz, S.RT.N); if (!h) return false;
+      WX.sim_set_params(h, S.dx, S.B, S.dt0, S.al[0], S.al[1], S.al[2], 0);
+      const buf = () => WX.memory.buffer;
+      new Float32Array(buf(), WX.sim_phi_ptr(h), S.NN).set(S.phi); new Float32Array(buf(), WX.sim_t_ptr(h), S.NN).set(S.T);
+      new Float32Array(buf(), WX.sim_gopen_ptr(h), S.NXY).set(S.gOpen); new Uint8Array(buf(), WX.sim_open_ptr(h), S.NXY).set(S.open);
+      new Float32Array(buf(), WX.sim_tab_ptr(h), S.RT.tab.length).set(S.RT.tab); new Float64Array(buf(), WX.sim_e_ptr(h), 9).set([...S.e[0], ...S.e[1], ...S.e[2]]);
+      WX.sim_init(h); S.wasm = h; S.phi = null; wasmBind(S); return true;
+    } catch (e) { return false; }
+  }
+  function release(S) { if (S && S.wasm && WX) { WX.sim_free(S.wasm); S.wasm = 0; } }
+  const engineKind = S => S && S.wasm ? "rust" : "js";
+
   // ---------------------------------------------------------------- message handler (worker or in-page)
   function makeHandler(post) {
     let S = null, job = 0;
@@ -420,8 +454,8 @@ function etchEngineFactory() {
     return function (msg, tick) {
       if (msg.cmd === "run") {
         const my = ++job, t0 = Date.now();
-        try { S = create(msg.cfg); shapeMaps(S); } catch (e) { post({ type: "error", message: String(e && e.message || e) }); return; }
-        post({ type: "grid", id: msg.id, Nx: S.Nx, Ny: S.Ny, Nz: S.Nz, dx: S.dx, dt: S.dt0, al: S.al, rmax: S.rmax, tris: S.RT.tris });
+        try { release(S); S = null; S = create(msg.cfg); shapeMaps(S); } catch (e) { post({ type: "error", message: String(e && e.message || e) }); return; }
+        post({ type: "grid", id: msg.id, Nx: S.Nx, Ny: S.Ny, Nz: S.Nz, dx: S.dx, dt: S.dt0, al: S.al, rmax: S.rmax, tris: S.RT.tris, engine: engineKind(S) });
         let lastPost = Date.now();
         const loop = () => {
           if (my !== job) return;
@@ -447,7 +481,5 @@ function etchEngineFactory() {
     };
   }
 
-  return { ORIENT, uvOf, makeRate, rateC, create, step, extract, section, teff, isOpen, stats, makeHandler };
+  return { ORIENT, uvOf, makeRate, rateC, create, step, extract, section, teff, isOpen, stats, makeHandler, wasmInit, release, engineKind };
 }
-
-if (typeof module !== "undefined") module.exports = etchEngineFactory();

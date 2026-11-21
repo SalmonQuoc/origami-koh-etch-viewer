@@ -1,0 +1,104 @@
+{
+  "format": "origami-pit-examples",
+  "version": 1,
+  "about": "Examples of the Etched pit scene, per wafer. Opening shapes: rect (w, h, ang), circle (d), trench110 (w, l: vertical-wall trench on (110) along a {111} wall trace). Lengths in µm, angles in degrees; pre = vertical pre-etch depth in µm; rate = pitKey in etchants.json.",
+  "wafers": {
+    "100": [
+      {
+        "name": "Rectangle 400 × 200 µm, edges along the flat",
+        "open": {
+          "shape": "rect",
+          "w": 400,
+          "h": 200,
+          "ang": 0
+        },
+        "rate": "PAL30"
+      },
+      {
+        "name": "Square 200 µm turned 45° (Example 2)",
+        "open": {
+          "shape": "rect",
+          "w": 200,
+          "h": 200,
+          "ang": 45
+        },
+        "rate": "PAL30"
+      },
+      {
+        "name": "Rectangle 400 × 200 µm turned 5° (Example 3)",
+        "open": {
+          "shape": "rect",
+          "w": 400,
+          "h": 200,
+          "ang": 5
+        },
+        "rate": "PAL30"
+      },
+      {
+        "name": "Circle Ø 200 µm (Example 4)",
+        "open": {
+          "shape": "circle",
+          "d": 200
+        },
+        "rate": "PAL30"
+      }
+    ],
+    "110": [
+      {
+        "name": "Circle Ø 300 µm",
+        "open": {
+          "shape": "circle",
+          "d": 300
+        },
+        "rate": "PAL40"
+      },
+      {
+        "name": "Circle Ø 400 µm (Example 7)",
+        "open": {
+          "shape": "circle",
+          "d": 400
+        },
+        "rate": "PAL40"
+      },
+      {
+        "name": "Vertical-wall trench 50 × 600 µm (Example 8)",
+        "open": {
+          "shape": "trench110",
+          "w": 50,
+          "l": 600
+        },
+        "rate": "PAL40"
+      },
+      {
+        "name": "Rectangle 400 × 60 µm along the flat (Example 9)",
+        "open": {
+          "shape": "rect",
+          "w": 400,
+          "h": 60,
+          "ang": 0
+        },
+        "rate": "PAL40"
+      }
+    ],
+    "111": [
+      {
+        "name": "Circle Ø 80 µm, pre-etched 30 µm",
+        "open": {
+          "shape": "circle",
+          "d": 80
+        },
+        "pre": 30,
+        "rate": "PAL30"
+      },
+      {
+        "name": "Circle Ø 100 µm, pre-etched 20 µm (Example 10)",
+        "open": {
+          "shape": "circle",
+          "d": 100
+        },
+        "pre": 20,
+        "rate": "PAL30"
+      }
+    ]
+  }
+}

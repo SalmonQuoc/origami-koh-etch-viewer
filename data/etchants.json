@@ -1,0 +1,190 @@
+{
+  "format": "origami-etchants-db",
+  "version": 1,
+  "about": "Etch rates used by every scene. Edit this file, then run npm run build: the build checks it (tools/validate-data.mjs) and puts it into index.html. Rates are stored in the unit of the source; the page converts them to µm/min. See docs/DATA.md.",
+  "tables": {
+    "PalSato4.1": {
+      "source": "Pal & Sato, Table 4.1, p. 87",
+      "etchant": "KOH",
+      "T_C": 70,
+      "unit": "um/min",
+      "note": "12 orientations at 30, 40 and 50 wt%. Columns are keyed by concentration in wt%.",
+      "columns": {
+        "30": {
+          "100": 0.797,
+          "110": 1.455,
+          "210": 1.561,
+          "211": 1.319,
+          "221": 0.714,
+          "310": 1.456,
+          "311": 1.436,
+          "320": 1.543,
+          "331": 1.16,
+          "530": 1.556,
+          "540": 1.512,
+          "111": 0.005
+        },
+        "40": {
+          "100": 0.599,
+          "110": 1.293,
+          "210": 1.233,
+          "211": 0.95,
+          "221": 0.544,
+          "310": 1.088,
+          "311": 1.067,
+          "320": 1.287,
+          "331": 0.8,
+          "530": 1.28,
+          "540": 1.287,
+          "111": 0.009
+        },
+        "50": {
+          "100": 0.539,
+          "110": 0.87,
+          "210": 0.959,
+          "211": 0.631,
+          "221": 0.322,
+          "310": 0.757,
+          "311": 0.746,
+          "320": 1.013,
+          "331": 0.489,
+          "530": 1.033,
+          "540": 0.914,
+          "111": 0.009
+        }
+      }
+    }
+  },
+  "etchants": [
+    {
+      "key": "PAL30",
+      "pitKey": "PAL30",
+      "name": "KOH 30 wt%, 70 °C",
+      "pitName": "KOH 30 wt%, 70 °C (Pal & Sato p. 87)",
+      "T_C": 70,
+      "conc_wt": 30,
+      "rates": {
+        "table": "PalSato4.1",
+        "column": "30"
+      },
+      "source": "Pal & Sato Table 4.1, p. 87 (12 orientations)",
+      "sio2": null
+    },
+    {
+      "key": "PAL40",
+      "pitKey": "PAL40",
+      "name": "KOH 40 wt%, 70 °C",
+      "pitName": "KOH 40 wt%, 70 °C (Pal & Sato p. 87)",
+      "T_C": 70,
+      "conc_wt": 40,
+      "rates": {
+        "table": "PalSato4.1",
+        "column": "40"
+      },
+      "source": "Pal & Sato Table 4.1, p. 87 (12 orientations)",
+      "sio2": null
+    },
+    {
+      "key": "PAL50",
+      "name": "KOH 50 wt%, 70 °C",
+      "T_C": 70,
+      "conc_wt": 50,
+      "rates": {
+        "table": "PalSato4.1",
+        "column": "50"
+      },
+      "source": "Pal & Sato Table 4.1, p. 87 (12 orientations)",
+      "sio2": null
+    },
+    {
+      "key": "LEC42",
+      "pitKey": "LEC",
+      "name": "KOH 42 wt%, 75 °C (Lec 4-1)",
+      "pitName": "KOH 42 wt%, 75 °C (Lec 4-1 p. 7)",
+      "T_C": 75,
+      "rates": {
+        "unit": "um/h",
+        "given": {
+          "100": 42,
+          "110": 66,
+          "111": 0.5
+        },
+        "others": {
+          "table": "PalSato4.1",
+          "column": "40",
+          "scaleBy": "100"
+        }
+      },
+      "source": "Lec 4-1 p. 7 (and Lec 10 p. 11) for {100}, {110}, {111}; other orientations scaled from Pal & Sato 40 wt% (assumption)",
+      "sio2": {
+        "value": 0.34,
+        "unit": "um/h",
+        "source": "Lec 10 p. 11"
+      }
+    },
+    {
+      "key": "LEC57",
+      "pitKey": "LEC57",
+      "name": "KOH 57 wt%, 75 °C (Lec 10)",
+      "pitName": "KOH 57 wt%, 75 °C (Lec 10 p. 11)",
+      "T_C": 75,
+      "rates": {
+        "unit": "um/h",
+        "given": {
+          "100": 25,
+          "110": 39,
+          "111": 0.5
+        },
+        "others": {
+          "table": "PalSato4.1",
+          "column": "50",
+          "scaleBy": "100"
+        }
+      },
+      "source": "Lec 10 p. 11: {100} 25, {110} 39, {111} 0.5 µm/h; other orientations scaled from Pal & Sato 50 wt% by R(100) (assumption)",
+      "sio2": {
+        "value": 0.62,
+        "unit": "um/h",
+        "source": "Lec 10 p. 11"
+      }
+    },
+    {
+      "key": "EDPS",
+      "pitKey": "EDPS",
+      "name": "EDP Type S, 110 °C (Lec 10)",
+      "pitName": "EDP Type S, 110 °C (Lec 10 p. 11)",
+      "T_C": 110,
+      "rates": {
+        "unit": "um/h",
+        "given": {
+          "100": 51,
+          "110": 57,
+          "111": 1.25
+        }
+      },
+      "source": "Lec 10 p. 11: {100} 51, {110} 57, {111} 1.25 µm/h, SiO₂ 0.004 µm/h. Only three orientations are given; all other planes use the linear three-rate interpolation (Radjenović et al. 2010, eq. 1) (assumption). Note: here {110} > {100}, while Lec 10 p. 16 orders EDP as (100) > (110) > (111).",
+      "sio2": {
+        "value": 0.004,
+        "unit": "um/h",
+        "source": "Lec 10 p. 11"
+      }
+    },
+    {
+      "key": "EDPFK",
+      "pitKey": "EDPFK",
+      "name": "EDP F&K 50:30:3, 110 °C",
+      "pitName": "EDP F&K 50:30:3, 110 °C (R(100) from Lec 10)",
+      "T_C": 110,
+      "rates": {
+        "unit": "um/h",
+        "given": {
+          "100": 51,
+          "110": 30.6,
+          "111": 3.06
+        }
+      },
+      "source": "Ratio R(100):R(110):R(111) = 50:30:3 for EDP 'F&K' at 110 °C (Finne & Klein 1967, as listed in the Berkeley Microlab manual ch. 1.10); scaled so that R(100) = 51 µm/h as in Lec 10 p. 11 (assumption). Matches the order (100) > (110) > (111) of Lec 10 p. 16. Other planes: linear three-rate interpolation (assumption).",
+      "sio2": null
+    }
+  ]
+}

@@ -58,7 +58,7 @@ const Core = (() => {
     return mul(x, 1/det);
   }
 
-  function polyhedron(H) {   // H: [{n, b, label, fam}]
+  function polyhedron(H): any {   // H: [{n, b, label, fam}]
     const m = H.length;
     let scale = 1;
     for (const h of H) scale = Math.max(scale, Math.abs(h.b));
@@ -145,10 +145,12 @@ const Core = (() => {
   }
 
   // cavity under a convex opening; t = null -> final {111} shape
-  function etchH(wf, opening, { t = null, T = null, pre = 0, rates = null } = {}) {
+  // rot (deg): the crystal is turned by rot about the wafer normal relative to the flat (flat error); default 0
+  function etchH(wf, opening, { t = null, T = null, pre = 0, rates = null, rot = 0 } = {}) {
     let P = opening.map(p => [p[0], p[1], 0]);
     if (pre > 0) P = P.concat(opening.map(p => [p[0], p[1], -pre]));
     const pl = t === null ? planes(wf, ["111"], null) : planes(wf, ["100", "110", "111"], rates);
+    if (rot) { const c = Math.cos(rot/DEG), s = Math.sin(rot/DEG); for (const p of pl) p.n = [p.n[0]*c - p.n[1]*s, p.n[0]*s + p.n[1]*c, p.n[2]]; }
     const H = pl.map(p => {
       let s = -Infinity; for (const q of P) s = Math.max(s, dot(p.n, q));
       return { n: p.n, b: s + (t === null ? 0 : p.R*t), label: p.hkl, fam: p.fam };
@@ -167,4 +169,4 @@ const Core = (() => {
   return { dot, cross, sub, add, mul, norm, unit, DEG, family, FRAMES, FRAME_IDX, toWafer, toCrystal, intDir, angleToSurface,
            polyhedron, volume, depth, outline, vsectionY, section2d, clip2, planes, etchH, etch, circle, rect, simplify2 };
 })();
-if (typeof module !== "undefined") module.exports = Core;
+
