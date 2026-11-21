@@ -94,6 +94,7 @@ function selectFace(k, moveCam = false) {
   labels = labels.filter(L => { if (L.sel) { L.el.remove(); return false; } return true; });
   const fi = document.getElementById("faceInfo");
   if (k === null) { document.getElementById("vAlong").disabled = true; dirty = true; return; }
+  openFoldsAround(fi);   // show the "Selected face" section (module 20)
   const f = model.F[k], n = f.n, theta = C.angleToSurface(n);
   // highlight
   const hl = meshFromPolys([f.V.map(p => C.add(p, C.mul(n, 0.004)))], [COL.accent], { transparent: true, opacity: 0.45, depthWrite: false });

@@ -8,7 +8,8 @@ const saveSet = () => { try { localStorage.setItem("o3d-settings", JSON.stringif
 let layoutBusy = false;   // true while applyLayout() switches split/theater, so they do not overwrite SET.layout
 const snapV = v => { const st = Number(SET.snap) || 1; return Math.round(v/st)*st; };
 const EDC: Record<string, number[]> = {};   // cursor position in each 2D editor (world µm), set in 19-coordinates.ts
-const edGrid = (W: number) => niceStep(W/8);  // grid and tick step of an editor W µm wide
+const edGrid = (W: number) => niceStep(W/8);
+const EDZ: Record<string, { z: number; cx: number; cy: number }> = {};   // zoom and centre of each 2D editor (19-coordinates.ts)  // grid and tick step of an editor W µm wide
 // height limit of an editor or graph canvas: generous inside an enlarged window, none otherwise
 const bigBox = cv => !!(cv && cv.closest(".enlarged"));
 const edMaxH = cv => bigBox(cv) ? Math.max(260, window.innerHeight*0.94 - 230) : Infinity;

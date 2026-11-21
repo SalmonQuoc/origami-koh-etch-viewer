@@ -128,3 +128,80 @@ function redrawEditors() {
     }
   }
 })();
+
+// =====================================================================================================
+// Zoom and pan in the 2D editors. Each editor draws its plot in a fixed rectangle (L, T, Wp × Hp px) at the
+// fit scale s0; edView() returns the zoomed scale and origin for the current zoom z and centre (cx, cy), and
+// the visible world range. Ctrl + wheel or pinch zooms at the cursor, the − + Fit buttons and the + − 0 keys
+// zoom about the centre, and Space + drag or middle-button drag pans.
+function edView(id: string, s0: number, L: number, T: number, Wp: number, Hp: number, cx0: number, cy0: number, zmax: number) {
+  const v = EDZ[id] || (EDZ[id] = { z: 1, cx: cx0, cy: cy0 });
+  v.z = Math.max(1, Math.min(zmax, v.z || 1));
+  if (v.z === 1) { v.cx = cx0; v.cy = cy0; }
+  const sz = s0*v.z, hw = Wp/2/sz, hh = Hp/2/sz, HW = Wp/2/s0, HH = Hp/2/s0;
+  v.cx = Math.max(cx0 - HW + hw, Math.min(cx0 + HW - hw, v.cx));
+  v.cy = Math.max(cy0 - HH + hh, Math.min(cy0 + HH - hh, v.cy));
+  const view = { s: sz, ox: L + Wp/2 - v.cx*sz, oy: T + Hp/2 + v.cy*sz, z: v.z, zmax, s0, L, T, Wp, Hp, X0: v.cx - hw, X1: v.cx + hw, Y0: v.cy - hh, Y1: v.cy + hh };
+  const lab = document.querySelector(`.zoomBar[data-for="${id}"] .zv`); if (lab) lab.textContent = `${Math.round(v.z*100)} %`;
+  return view;
+}
+(() => {
+  const ED: Record<string, { ed: () => any; redraw: () => void }> = {
+    pitCanvas: { ed: () => S.pitEd, redraw: () => drawPitEditor() },
+    maskCanvas: { ed: () => SIM.ed, redraw: () => drawMaskEditor() },
+    fdCanvas: { ed: () => FD.ed, redraw: () => drawFindMap() },
+  };
+  let raf = 0; const pend = new Set<string>();
+  const redraw = (id: string) => { pend.add(id); if (!raf) raf = requestAnimationFrame(() => { raf = 0; for (const p of pend) ED[p].redraw(); pend.clear(); }); };
+  // zoom by factor f keeping the canvas point (px, py) fixed; no point: the centre of the plot
+  function zoomAt(id: string, f: number, px?: number, py?: number) {
+    const ed = ED[id].ed(), V = ed && ed.view; if (!V) return;
+    const v = EDZ[id], z1 = Math.max(1, Math.min(V.zmax, v.z*f)); if (z1 === v.z) return;
+    if (px == null) { px = V.L + V.Wp/2; py = V.T + V.Hp/2; }
+    const wx = (px - ed.ox)/ed.s, wy = -(py - ed.oy)/ed.s, s1 = V.s0*z1;
+    v.z = z1; v.cx = wx - (px - V.L - V.Wp/2)/s1; v.cy = wy + (py - V.T - V.Hp/2)/s1;
+    ED[id].redraw();
+  }
+  let space = false;
+  window.addEventListener("keydown", e => { if (e.code === "Space" && (e.target as HTMLElement).tagName === "CANVAS" && ED[(e.target as HTMLElement).id]) { space = true; e.preventDefault(); } });
+  window.addEventListener("keyup", e => { if (e.code === "Space") space = false; });
+  for (const id of Object.keys(ED)) {
+    const cv = $(id); if (!cv) continue;
+    // the bar above the editor
+    const bar = document.createElement("div"); bar.className = "zoomBar"; bar.dataset.for = id;
+    bar.innerHTML = `<button class="btn" data-z="out" title="Zoom out (key −)" aria-label="zoom out">−</button><span class="zv" aria-live="polite">100 %</span><button class="btn" data-z="in" title="Zoom in (key +)" aria-label="zoom in">+</button><button class="btn" data-z="fit" title="Show everything (key 0)">Fit</button><span class="note">Ctrl + scroll or pinch to zoom at the cursor; Space + drag or middle-drag to pan</span>`;
+    cv.parentElement.insertBefore(bar, cv);
+    bar.addEventListener("click", e => {
+      const b = (e.target as HTMLElement).closest("button"); if (!b) return;
+      if (b.dataset.z === "in") zoomAt(id, 2); else if (b.dataset.z === "out") zoomAt(id, 0.5);
+      else { EDZ[id] = { z: 1, cx: 0, cy: 0 }; ED[id].redraw(); }
+    });
+    cv.addEventListener("wheel", (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;   // a plain wheel scrolls the page
+      e.preventDefault(); const r = cv.getBoundingClientRect();
+      zoomAt(id, Math.exp(-e.deltaY*0.0025), e.clientX - r.left, e.clientY - r.top);
+    }, { passive: false });
+    cv.addEventListener("keydown", (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === "+" || e.key === "=") { e.preventDefault(); zoomAt(id, 2); }
+      else if (e.key === "-" || e.key === "_") { e.preventDefault(); zoomAt(id, 0.5); }
+      else if (e.key === "0") { e.preventDefault(); EDZ[id] = { z: 1, cx: 0, cy: 0 }; ED[id].redraw(); }
+    });
+    // pan: capture on the parent so it runs before the editor's own drag and draw handlers
+    let pan: { x: number; y: number; cx: number; cy: number } | null = null;
+    const host = cv.parentElement;
+    host.addEventListener("pointerdown", (e: PointerEvent) => {
+      if (e.target !== cv || !(e.button === 1 || (space && e.button === 0))) return;
+      const v = EDZ[id]; if (!v || v.z <= 1) return;
+      e.stopPropagation(); e.preventDefault(); cv.setPointerCapture(e.pointerId);
+      pan = { x: e.clientX, y: e.clientY, cx: v.cx, cy: v.cy }; cv.style.cursor = "grabbing";
+    }, true);
+    host.addEventListener("pointermove", (e: PointerEvent) => {
+      if (!pan || e.target !== cv) return; e.stopPropagation();
+      const v = EDZ[id], ed = ED[id].ed(); v.cx = pan.cx - (e.clientX - pan.x)/ed.s; v.cy = pan.cy + (e.clientY - pan.y)/ed.s; redraw(id);
+    }, true);
+    const end = (e: PointerEvent) => { if (!pan) return; e.stopPropagation(); pan = null; cv.style.cursor = ""; };
+    host.addEventListener("pointerup", end, true); host.addEventListener("pointercancel", end, true);
+    cv.addEventListener("auxclick", e => { if (e.button === 1) e.preventDefault(); });
+  }
+})();

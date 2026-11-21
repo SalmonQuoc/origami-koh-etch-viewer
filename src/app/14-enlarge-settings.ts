@@ -5,6 +5,7 @@ function redrawAll() { redrawPanes(); if (S.mode === "pit") drawPitEditor(true);
 function enlarge(el, on) {
   if (on && enlOpen && enlOpen.el !== el) enlarge(enlOpen.el, false);
   if (on) {
+    openFoldsAround(el); for (const h of el.querySelectorAll(".foldH.closed")) foldSet(h, true, false);   // module 20
     const ph = document.createComment("enlarged"); el.parentNode.insertBefore(ph, el);
     const back = document.createElement("div"); back.id = "enlBack"; back.addEventListener("click", () => enlarge(el, false));
     document.body.append(back, el); el.classList.add("enlarged"); document.body.classList.add("enl-open");

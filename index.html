@@ -118,6 +118,18 @@ details.srcs { margin-top: 14px; font-size: 13px; }
 details.srcs summary { cursor: pointer; font-weight: 600; }
 details.srcs ul { padding-left: 18px; margin: 6px 0 0; }
 details.srcs li { margin: 4px 0; }
+.foldH { cursor: pointer; user-select: none; position: relative; padding-left: 16px; border-radius: 4px; }
+.foldH::before { content: ""; position: absolute; left: 2px; top: 50%; margin-top: -4px; border: 4px solid transparent; border-left: 6px solid currentColor; border-right: 0; transition: transform .15s; transform-origin: 3px 4px; opacity: .7; }
+.foldH:not(.closed)::before { transform: rotate(90deg); }
+.foldH:hover { color: var(--ink); }
+.foldH:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.foldH.closed + .foldBody { display: none; }
+.foldAll { display: flex; justify-content: flex-end; align-items: baseline; gap: 4px; margin: -4px 0 4px; font-size: 12px; }
+.linkbtn { background: none; border: 0; padding: 0 2px; font: inherit; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.zoomBar { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin: 2px 0 4px; }
+.zoomBar .btn { padding: 1px 8px; min-width: 28px; font-size: 13px; }
+.zoomBar .zv { font: 12px "IBM Plex Mono", monospace; min-width: 4.5em; text-align: center; color: var(--muted); }
+.zoomBar .note { font-size: 11.5px; margin-left: 4px; }
 /* explanations: source notes and per-setting help are hidden until switched on (toolbar ⓘ, Settings) */
 body:not(.explain) .note.src, body:not(.explain) .xinfo { display: none; }
 .fhelp { font-size: 12px; color: var(--muted); margin: -2px 0 6px; line-height: 1.45; }
@@ -528,6 +540,7 @@ dl.scenes dt { font-weight: 600; margin-top: 8px; } dl.scenes dd { margin: 2px 0
   </div>
   <h3>Good to know</h3>
   <ul class="note" style="margin:0;padding-left:18px">
+    <li><b>Sections</b>: click a heading in the right-hand panel (or press <span class="kbd">Enter</span> on it) to open or close that section. Only the first section of each panel is open at first; “open all” and “close all” sit at the top of the panel.</li>
     <li><b>⤢ Enlarge</b> opens an editor or a graph panel in a large window; <span class="kbd">Esc</span> closes it.</li>
     <li><b>ⓘ Explanations</b> shows the source notes under the controls and what each setting of the custom etchant means; they are off at first. <b>How it works</b>, below the page, explains the chemistry, the rate model and the simulation step by step.</li>
     <li><b>⚙ Settings</b> sets the layout, panel width, theme, label size, snap step and simulator resolution. They are kept in this browser.</li>
@@ -1539,6 +1552,7 @@ const snapV = (v) => {
 };
 const EDC = {};
 const edGrid = (W) => niceStep(W / 8);
+const EDZ = {};
 const bigBox = (cv) => !!(cv && cv.closest(".enlarged"));
 const edMaxH = (cv) => bigBox(cv) ? Math.max(260, window.innerHeight * 0.94 - 230) : Infinity;
 const graphH = (cv, h) => bigBox(cv) ? Math.max(h, Math.round(window.innerHeight * 0.33)) : h;
@@ -2156,6 +2170,7 @@ function selectFace(k, moveCam = false) {
     dirty = true;
     return;
   }
+  openFoldsAround(fi);
   const f = model.F[k], n = f.n, theta = C.angleToSurface(n);
   const hl = meshFromPolys([f.V.map((p) => C.add(p, C.mul(n, 4e-3)))], [COL.accent], { transparent: true, opacity: 0.45, depthWrite: false });
   hl.renderOrder = 4;
@@ -3077,25 +3092,30 @@ function drawPitEditor(keepExtent) {
   cv.style.height = `${hcss}px`;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, wcss, hcss);
-  Object.assign(S.pitEd, { s, ox: 10 + hx * s, oy: 10 + hy * s });
-  const toC = (p) => [S.pitEd.ox + p[0] * s, S.pitEd.oy - p[1] * s], col = (c) => "#" + COL[c].getHexString();
+  const V = edView("pitCanvas", s, 10, 10, 2 * hx * s, 2 * hy * s, 0, 0, 40);
+  Object.assign(S.pitEd, { s: V.s, ox: V.ox, oy: V.oy, view: V });
+  const toC = (p) => [S.pitEd.ox + p[0] * S.pitEd.s, S.pitEd.oy - p[1] * S.pitEd.s], col = (c) => "#" + COL[c].getHexString();
   const path = (c, P) => {
     P.map(toC).forEach((q, k) => k ? c.lineTo(q[0], q[1]) : c.moveTo(q[0], q[1]));
     c.closePath();
   };
   ctx.fillStyle = col("scene-bg");
   ctx.fillRect(10, 10, 2 * hx * s, 2 * hy * s);
-  const g = edGrid(2 * hx);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(10, 10, 2 * hx * s, 2 * hy * s);
+  ctx.clip();
+  const g = edGrid(V.X1 - V.X0);
   ctx.strokeStyle = col("s-ink");
   ctx.globalAlpha = 0.08;
   ctx.lineWidth = 1;
   ctx.beginPath();
-  for (let x = -Math.floor(hx / g) * g; x <= hx; x += g) {
+  for (let x = Math.ceil(V.X0 / g) * g; x <= V.X1; x += g) {
     const [a] = toC([x, 0]);
     ctx.moveTo(a, 10);
     ctx.lineTo(a, 10 + 2 * hy * s);
   }
-  for (let y = -Math.floor(hy / g) * g; y <= hy; y += g) {
+  for (let y = Math.ceil(V.Y0 / g) * g; y <= V.Y1; y += g) {
     const [, b] = toC([0, y]);
     ctx.moveTo(10, b);
     ctx.lineTo(10 + 2 * hx * s, b);
@@ -3144,6 +3164,7 @@ function drawPitEditor(keepExtent) {
       ctx.fillRect(a - 3, b - 3, 6, 6);
     }
   });
+  ctx.restore();
   ctx.strokeStyle = col("s-ink");
   ctx.lineWidth = 1;
   ctx.strokeRect(10, 10, 2 * hx * s, 2 * hy * s);
@@ -3153,7 +3174,7 @@ function drawPitEditor(keepExtent) {
   ctx.fillText(`primary flat side; x along ${plainIdx(C.FRAME_IDX[S.wf][0])}; grid ${g} \xB5m`, 12, 10 + 2 * hy * s + 18);
   if (S.compass) drawCompass(ctx, 10 + 2 * hx * s - 44, 54, 30, inPlaneDirs(C.FRAMES[S.wf]), S.rot || 0);
   const sel = list[S.pitSel];
-  drawCoords(ctx, "pitCanvas", { X0: -hx, X1: hx, Y0: -hy, Y1: hy, toC, g, grid: false, sel: sel ? [sel.cx, sel.cy] : null });
+  drawCoords(ctx, "pitCanvas", { X0: V.X0, X1: V.X1, Y0: V.Y0, Y1: V.Y1, toC, g, grid: false, sel: sel ? [sel.cx, sel.cy] : null });
   drawOverlay(ctx, "pitCanvas", toC);
 }
 (() => {
@@ -4314,18 +4335,23 @@ function drawMaskEditor() {
   cv.style.height = `${hcss}px`;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, wcss, hcss);
-  SIM.ed = { s, ox: 10 + SIM.hx * s, oy: 10 + SIM.hy * s };
+  const V = edView("maskCanvas", s, 10, 10, W * s, H * s, 0, 0, 40);
+  SIM.ed = { s: V.s, ox: V.ox, oy: V.oy, view: V };
   const tmp = document.createElement("canvas");
   tmp.width = Math.round(W * s * dpr);
   tmp.height = Math.round(H * s * dpr);
-  paintMask(tmp.getContext("2d"), s * dpr, -SIM.hx, -SIM.hy, H, "#" + COL.mask.getHexString(), 0.55);
+  paintMask(tmp.getContext("2d"), V.s * dpr, V.X0, V.Y0, V.Y1 - V.Y0, "#" + COL.mask.getHexString(), 0.55);
   ctx.fillStyle = "#" + COL["scene-bg"].getHexString();
   ctx.fillRect(10, 10, W * s, H * s);
   ctx.drawImage(tmp, 10, 10, W * s, H * s);
   ctx.strokeStyle = "#" + COL["s-ink"].getHexString();
   ctx.lineWidth = 1;
   ctx.strokeRect(10, 10, W * s, H * s);
-  const toC = (p) => [SIM.ed.ox + p[0] * s, SIM.ed.oy - p[1] * s];
+  const zs = V.s, toC = (p) => [SIM.ed.ox + p[0] * zs, SIM.ed.oy - p[1] * zs];
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(10, 10, W * s, H * s);
+  ctx.clip();
   SIM.shapes.forEach((sh, i) => {
     ctx.beginPath();
     for (const Q of shapePolys(sh)) {
@@ -4344,11 +4370,11 @@ function drawMaskEditor() {
   ctx.lineWidth = 1.2;
   ctx.beginPath();
   if (SIM.cutAxis === "y") {
-    const y = SIM.ed.oy - SIM.cutPos * s;
+    const y = SIM.ed.oy - SIM.cutPos * zs;
     ctx.moveTo(10, y);
     ctx.lineTo(10 + W * s, y);
   } else {
-    const x = SIM.ed.ox + SIM.cutPos * s;
+    const x = SIM.ed.ox + SIM.cutPos * zs;
     ctx.moveTo(x, 10);
     ctx.lineTo(x, 10 + H * s);
   }
@@ -4358,7 +4384,7 @@ function drawMaskEditor() {
     const lab = `${SIM.cutAxis === "y" ? "y" : "x"} = ${+(+SIM.cutPos).toFixed(1)} \xB5m`;
     ctx.font = "600 10px IBM Plex Mono, monospace";
     const tw = ctx.measureText(lab).width;
-    const [gx, gy] = SIM.cutAxis === "y" ? [10 + W * s - tw - 14, SIM.ed.oy - SIM.cutPos * s] : [SIM.ed.ox + SIM.cutPos * s, 10 + 16];
+    const [gx, gy] = SIM.cutAxis === "y" ? [10 + W * s - tw - 14, SIM.ed.oy - SIM.cutPos * zs] : [SIM.ed.ox + SIM.cutPos * zs, 10 + 16];
     const bx = SIM.cutAxis === "y" ? gx : Math.min(Math.max(gx + 6, 12), 10 + W * s - tw - 10), by = SIM.cutAxis === "y" ? gy - 18 < 12 ? gy + 4 : gy - 18 : gy - 7;
     ctx.fillStyle = "#" + COL["scene-bg"].getHexString();
     ctx.globalAlpha = 0.85;
@@ -4371,13 +4397,14 @@ function drawMaskEditor() {
     ctx.arc(hx_, hy_, 4, 0, 2 * Math.PI);
     ctx.fill();
   }
+  ctx.restore();
   ctx.fillStyle = "#" + COL.accent.getHexString();
   ctx.fillRect(10, 10 + H * s + 2, W * s, 3);
   ctx.font = "11px IBM Plex Sans, sans-serif";
-  ctx.fillText(`primary flat side; x along ${plainIdx(simFrame().idx[0])}${SET.coords !== false ? `; grid ${edGrid(W)} \xB5m` : ""}`, 12, 10 + H * s + 18);
+  ctx.fillText(`primary flat side; x along ${plainIdx(simFrame().idx[0])}${SET.coords !== false ? `; grid ${edGrid(V.X1 - V.X0)} \xB5m` : ""}`, 12, 10 + H * s + 18);
   if (S.compass) drawCompass(ctx, 10 + W * s - 44, 54, 30, inPlaneDirs(SFR[SIM.fk].e), SIM.rot || 0);
   const sel = SIM.shapes[SIM.sel];
-  drawCoords(ctx, "maskCanvas", { X0: -SIM.hx, X1: SIM.hx, Y0: -SIM.hy, Y1: SIM.hy, toC, g: edGrid(W), grid: true, sel: sel ? [sel.cx, sel.cy] : null });
+  drawCoords(ctx, "maskCanvas", { X0: V.X0, X1: V.X1, Y0: V.Y0, Y1: V.Y1, toC, g: edGrid(V.X1 - V.X0), grid: true, sel: sel ? [sel.cx, sel.cy] : null });
   drawOverlay(ctx, "maskCanvas", toC);
 }
 const plainIdx = (v) => "[" + v.map((x) => x < 0 ? `${-x}\u0305` : `${x}`).join("") + "]";
@@ -5157,11 +5184,16 @@ function drawFindMap() {
   cv.style.height = `${hcss}px`;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, wcss, hcss);
-  FD.ed = { s, ox: 10 + R * s, oy: 10 + R * s };
+  const V = edView("fdCanvas", s, 10, 10, 2 * R * s, 2 * R * s + PB, 0, -PB / s / 2, 400);
+  FD.ed = { s: V.s, ox: V.ox, oy: V.oy, view: V };
   cv.style.height = `${hcss + 28}px`;
   cv.height = Math.round((hcss + 28) * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const toC = (p) => [FD.ed.ox + p[0] * s, FD.ed.oy - p[1] * s], col = (c) => "#" + COL[c].getHexString();
+  const zs = V.s, toC = (p) => [FD.ed.ox + p[0] * zs, FD.ed.oy - p[1] * zs], col = (c) => "#" + COL[c].getHexString();
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(10, 10, 2 * R * s, 2 * R * s + PB);
+  ctx.clip();
   const path = (P) => {
     ctx.beginPath();
     P.map(toC).forEach((q, k) => k ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]));
@@ -5275,6 +5307,12 @@ function drawFindMap() {
     ctx.font = "600 12px IBM Plex Sans, sans-serif";
     ctx.fillText(String(i + 1), q[0] + 6, q[1] - 6);
   });
+  ctx.restore();
+  if (V.z > 1) {
+    ctx.strokeStyle = col("s-ink");
+    ctx.lineWidth = 1;
+    ctx.strokeRect(10, 10, 2 * R * s, 2 * R * s + PB);
+  }
   ctx.font = "11px IBM Plex Sans, sans-serif";
   ctx.fillStyle = col("s-ink");
   ctx.fillText(`(${wf}) ${S.wtype}-type, \xD8 100 mm. Arrow: \u22A5 flat, outward.`, 12, 10 + 2 * R * s + PB + 16);
@@ -5282,7 +5320,7 @@ function drawFindMap() {
   ctx.fillText("Violet: mask; blue: etched outline.", 12, 10 + 2 * R * s + PB + 44);
   if (S.compass) drawCompass(ctx, 10 + 2 * R * s - 40, 50, 28, inPlaneDirs(fdFrameE()), FD.reveal ? FD.delta : 0);
   const it = FD.items && FD.items[FD.sel];
-  drawCoords(ctx, "fdCanvas", { X0: -R, X1: R, Y0: -R, Y1: R, toC, g: 1e4, grid: false, k: 1e-3, unit: "mm", snap: false, sel: it ? fdPos(it) : null });
+  drawCoords(ctx, "fdCanvas", { X0: V.X0, X1: V.X1, Y0: Math.max(V.Y0, -R), Y1: V.Y1, toC, g: V.z > 1 ? edGrid(V.X1 - V.X0) : 1e4, grid: false, k: 1e-3, unit: "mm", snap: false, sel: it ? fdPos(it) : null });
 }
 function drawScope() {
   const cv = $("fdScope"), ctx = cv.getContext("2d"), wcss = cv.clientWidth || 600, hcss = graphH(cv, 240), dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -5612,7 +5650,7 @@ $("fdList").addEventListener("click", (e) => {
     return [(ev.clientX - r.left - FD.ed.ox) / FD.ed.s / 1e3, -(ev.clientY - r.top - FD.ed.oy) / FD.ed.s / 1e3];
   };
   const hit = (x, y) => {
-    let bi = -1, bd = 3;
+    let bi = -1, bd = Math.max(0.02, 3 / (FD.ed.view && FD.ed.view.z || 1));
     (FD.an ? FD.an.res : []).forEach((r, i) => {
       if (!r) return;
       const pts = [fdPos(r.it)];
@@ -6166,6 +6204,8 @@ function redrawAll() {
 function enlarge(el, on) {
   if (on && enlOpen && enlOpen.el !== el) enlarge(enlOpen.el, false);
   if (on) {
+    openFoldsAround(el);
+    for (const h of el.querySelectorAll(".foldH.closed")) foldSet(h, true, false);
     const ph = document.createComment("enlarged");
     el.parentNode.insertBefore(ph, el);
     const back = document.createElement("div");
@@ -6626,10 +6666,10 @@ $("ceImport").addEventListener("change", async (e) => {
 // ---- src/app/16-guidance.ts
 var GUIDE = {
   model: "<b>Start here.</b> Pick a wafer in the bar above, then drag the model to turn it. Click a face to see its plane and its angle to the wafer. The panel on the right says how to hold the paper model.",
-  pit: "<b>Etched pit.</b> Follow the numbered steps on the right: edit the openings in the mask editor, pick an etchant and move the time slider. Hover a wall to name its plane.",
-  sim: "<b>Etch simulator.</b> Follow the numbered steps on the right: pick an example, change or draw the mask, set the process and press <b>Run</b>. Then scrub the time slider to replay the etch.",
+  pit: "<b>Etched pit.</b> Follow the numbered steps on the right (click a heading to open its section): edit the openings in the mask editor, pick an etchant and move the time slider. Hover a wall to name its plane.",
+  sim: "<b>Etch simulator.</b> Follow the numbered steps on the right (click a heading to open its section): pick an example, change or draw the mask, set the process and press <b>Run</b>. Then scrub the time slider to replay the etch.",
   corner: "<b>Corner lab.</b> Pick a compensation pattern and press <b>Build and run</b>. The left mesa has no compensation; the right one has your pattern.",
-  find: "<b>Find orientation.</b> Follow the numbered steps on the right: set a flat error, etch the alignment marks, then read \u03B4 from the pattern and see how much the correction helps."
+  find: "<b>Find orientation.</b> Follow the numbered steps on the right (click a heading to open its section): set a flat error, etch the alignment marks, then read \u03B4 from the pattern and see how much the correction helps."
 };
 var tipsHidden = [];
 try {
@@ -6939,6 +6979,7 @@ window.__o3d = {
   },
   COL,
   EDC,
+  EDZ,
   S,
   C,
   get pit() {
@@ -7192,6 +7233,205 @@ function redrawEditors() {
       host.addEventListener("pointercancel", end, true);
     }
   }
+})();
+function edView(id, s0, L, T, Wp, Hp, cx0, cy0, zmax) {
+  const v = EDZ[id] || (EDZ[id] = { z: 1, cx: cx0, cy: cy0 });
+  v.z = Math.max(1, Math.min(zmax, v.z || 1));
+  if (v.z === 1) {
+    v.cx = cx0;
+    v.cy = cy0;
+  }
+  const sz = s0 * v.z, hw = Wp / 2 / sz, hh = Hp / 2 / sz, HW = Wp / 2 / s0, HH = Hp / 2 / s0;
+  v.cx = Math.max(cx0 - HW + hw, Math.min(cx0 + HW - hw, v.cx));
+  v.cy = Math.max(cy0 - HH + hh, Math.min(cy0 + HH - hh, v.cy));
+  const view = { s: sz, ox: L + Wp / 2 - v.cx * sz, oy: T + Hp / 2 + v.cy * sz, z: v.z, zmax, s0, L, T, Wp, Hp, X0: v.cx - hw, X1: v.cx + hw, Y0: v.cy - hh, Y1: v.cy + hh };
+  const lab = document.querySelector(`.zoomBar[data-for="${id}"] .zv`);
+  if (lab) lab.textContent = `${Math.round(v.z * 100)} %`;
+  return view;
+}
+(() => {
+  const ED = {
+    pitCanvas: { ed: () => S.pitEd, redraw: () => drawPitEditor() },
+    maskCanvas: { ed: () => SIM.ed, redraw: () => drawMaskEditor() },
+    fdCanvas: { ed: () => FD.ed, redraw: () => drawFindMap() }
+  };
+  let raf = 0;
+  const pend = /* @__PURE__ */ new Set();
+  const redraw = (id) => {
+    pend.add(id);
+    if (!raf) raf = requestAnimationFrame(() => {
+      raf = 0;
+      for (const p of pend) ED[p].redraw();
+      pend.clear();
+    });
+  };
+  function zoomAt(id, f, px, py) {
+    const ed = ED[id].ed(), V = ed && ed.view;
+    if (!V) return;
+    const v = EDZ[id], z1 = Math.max(1, Math.min(V.zmax, v.z * f));
+    if (z1 === v.z) return;
+    if (px == null) {
+      px = V.L + V.Wp / 2;
+      py = V.T + V.Hp / 2;
+    }
+    const wx = (px - ed.ox) / ed.s, wy = -(py - ed.oy) / ed.s, s1 = V.s0 * z1;
+    v.z = z1;
+    v.cx = wx - (px - V.L - V.Wp / 2) / s1;
+    v.cy = wy + (py - V.T - V.Hp / 2) / s1;
+    ED[id].redraw();
+  }
+  let space = false;
+  window.addEventListener("keydown", (e) => {
+    if (e.code === "Space" && e.target.tagName === "CANVAS" && ED[e.target.id]) {
+      space = true;
+      e.preventDefault();
+    }
+  });
+  window.addEventListener("keyup", (e) => {
+    if (e.code === "Space") space = false;
+  });
+  for (const id of Object.keys(ED)) {
+    const cv = $(id);
+    if (!cv) continue;
+    const bar = document.createElement("div");
+    bar.className = "zoomBar";
+    bar.dataset.for = id;
+    bar.innerHTML = `<button class="btn" data-z="out" title="Zoom out (key \u2212)" aria-label="zoom out">\u2212</button><span class="zv" aria-live="polite">100 %</span><button class="btn" data-z="in" title="Zoom in (key +)" aria-label="zoom in">+</button><button class="btn" data-z="fit" title="Show everything (key 0)">Fit</button><span class="note">Ctrl + scroll or pinch to zoom at the cursor; Space + drag or middle-drag to pan</span>`;
+    cv.parentElement.insertBefore(bar, cv);
+    bar.addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (!b) return;
+      if (b.dataset.z === "in") zoomAt(id, 2);
+      else if (b.dataset.z === "out") zoomAt(id, 0.5);
+      else {
+        EDZ[id] = { z: 1, cx: 0, cy: 0 };
+        ED[id].redraw();
+      }
+    });
+    cv.addEventListener("wheel", (e) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      const r = cv.getBoundingClientRect();
+      zoomAt(id, Math.exp(-e.deltaY * 25e-4), e.clientX - r.left, e.clientY - r.top);
+    }, { passive: false });
+    cv.addEventListener("keydown", (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === "+" || e.key === "=") {
+        e.preventDefault();
+        zoomAt(id, 2);
+      } else if (e.key === "-" || e.key === "_") {
+        e.preventDefault();
+        zoomAt(id, 0.5);
+      } else if (e.key === "0") {
+        e.preventDefault();
+        EDZ[id] = { z: 1, cx: 0, cy: 0 };
+        ED[id].redraw();
+      }
+    });
+    let pan = null;
+    const host = cv.parentElement;
+    host.addEventListener("pointerdown", (e) => {
+      if (e.target !== cv || !(e.button === 1 || space && e.button === 0)) return;
+      const v = EDZ[id];
+      if (!v || v.z <= 1) return;
+      e.stopPropagation();
+      e.preventDefault();
+      cv.setPointerCapture(e.pointerId);
+      pan = { x: e.clientX, y: e.clientY, cx: v.cx, cy: v.cy };
+      cv.style.cursor = "grabbing";
+    }, true);
+    host.addEventListener("pointermove", (e) => {
+      if (!pan || e.target !== cv) return;
+      e.stopPropagation();
+      const v = EDZ[id], ed = ED[id].ed();
+      v.cx = pan.cx - (e.clientX - pan.x) / ed.s;
+      v.cy = pan.cy + (e.clientY - pan.y) / ed.s;
+      redraw(id);
+    }, true);
+    const end = (e) => {
+      if (!pan) return;
+      e.stopPropagation();
+      pan = null;
+      cv.style.cursor = "";
+    };
+    host.addEventListener("pointerup", end, true);
+    host.addEventListener("pointercancel", end, true);
+    cv.addEventListener("auxclick", (e) => {
+      if (e.button === 1) e.preventDefault();
+    });
+  }
+})();
+
+// ---- src/app/20-sections.ts
+function foldSet(h, open, redraw = true) {
+  h.classList.toggle("closed", !open);
+  h.setAttribute("aria-expanded", String(open));
+  const body = h.nextElementSibling;
+  if (open && redraw && body && body.querySelector("canvas")) requestAnimationFrame(redrawAll);
+}
+function openFoldsAround(el) {
+  for (let e = el; e; e = e.parentElement) {
+    if (!e.classList || !e.classList.contains("foldBody")) continue;
+    const h = e.previousElementSibling;
+    if (h && h.classList.contains("closed")) foldSet(h, true);
+  }
+}
+function foldAllIn(box, open) {
+  for (const h of box.querySelectorAll(".foldH")) foldSet(h, open, false);
+  if (open) requestAnimationFrame(redrawAll);
+}
+(function() {
+  function makeFolds(box, tag, openFirst) {
+    if (!box) return;
+    const kids = Array.from(box.children);
+    let first = true;
+    for (let i = 0; i < kids.length; i++) {
+      const h = kids[i];
+      if (h.tagName !== tag) continue;
+      const body = document.createElement("div");
+      body.className = "foldBody";
+      let j = i + 1;
+      for (; j < kids.length; j++) {
+        const k = kids[j];
+        if (k.tagName === tag || j === kids.length - 1 && k.matches("details.srcs")) break;
+        body.append(k);
+      }
+      h.after(body);
+      i = j - 1;
+      h.classList.add("foldH");
+      h.setAttribute("role", "button");
+      h.setAttribute("tabindex", "0");
+      h.setAttribute("title", "Click to open or close this section");
+      foldSet(h, openFirst && first, false);
+      first = false;
+    }
+  }
+  for (const el of document.querySelectorAll(".waferUI")) makeFolds(el, "H3", false);
+  for (const id of ["panelModel", "panelPit", "cornerBox", "simExBox", "panelFind"]) makeFolds($(id), "H3", true);
+  makeFolds($("panelSim"), "H3", false);
+  for (const id of ["simBelow", "findBelow", "pitBelow"]) makeFolds($(id), "H2", true);
+  for (const id of ["panelModel", "panelPit", "panelSim", "panelFind"]) {
+    const a = $(id);
+    if (!a) continue;
+    const bar = document.createElement("div");
+    bar.className = "foldAll note";
+    bar.innerHTML = 'Sections: <button type="button" class="linkbtn" data-fold="1">open all</button> \xB7 <button type="button" class="linkbtn" data-fold="0">close all</button>';
+    bar.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-fold]");
+      if (b) foldAllIn(a, b.getAttribute("data-fold") === "1");
+    });
+    a.prepend(bar);
+  }
+  document.addEventListener("click", (e) => {
+    const h = e.target.closest && e.target.closest(".foldH");
+    if (h) foldSet(h, h.classList.contains("closed"));
+  });
+  document.addEventListener("keydown", (e) => {
+    const h = e.target;
+    if (!h.classList || !h.classList.contains("foldH") || e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    foldSet(h, h.classList.contains("closed"));
+  });
 })();
 
 })();

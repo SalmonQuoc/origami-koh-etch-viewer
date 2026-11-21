@@ -219,8 +219,10 @@ function drawFindMap() {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   cv.width = Math.round(wcss*dpr); cv.height = Math.round(hcss*dpr); cv.style.height = `${hcss}px`;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, wcss, hcss);
-  FD.ed = { s, ox: 10 + R*s, oy: 10 + R*s }; cv.style.height = `${hcss + 28}px`; cv.height = Math.round((hcss + 28)*dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const toC = p => [FD.ed.ox + p[0]*s, FD.ed.oy - p[1]*s], col = c => "#" + COL[c].getHexString();
+  const V = edView("fdCanvas", s, 10, 10, 2*R*s, 2*R*s + PB, 0, -PB/s/2, 400);
+  FD.ed = { s: V.s, ox: V.ox, oy: V.oy, view: V }; cv.style.height = `${hcss + 28}px`; cv.height = Math.round((hcss + 28)*dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const zs = V.s, toC = p => [FD.ed.ox + p[0]*zs, FD.ed.oy - p[1]*zs], col = c => "#" + COL[c].getHexString();
+  ctx.save(); ctx.beginPath(); ctx.rect(10, 10, 2*R*s, 2*R*s + PB); ctx.clip();   // zoomed content stays in the map
   const path = P => { ctx.beginPath(); P.map(toC).forEach((q, k) => k ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1])); ctx.closePath(); };
   const wf = fdWf(), O = waferOutline(wf, S.wtype);
   path(O); ctx.fillStyle = col("mask"); ctx.globalAlpha = 0.28; ctx.fill(); ctx.globalAlpha = 1; ctx.strokeStyle = col("s-ink"); ctx.lineWidth = 1; ctx.stroke();
@@ -249,13 +251,15 @@ function drawFindMap() {
     }
     const q = toC(fdPos(r.it)); ctx.fillStyle = sel ? col("accent") : col("s-ink"); ctx.font = "600 12px IBM Plex Sans, sans-serif"; ctx.fillText(String(i + 1), q[0] + 6, q[1] - 6);
   });
+  ctx.restore();
+  if (V.z > 1) { ctx.strokeStyle = col("s-ink"); ctx.lineWidth = 1; ctx.strokeRect(10, 10, 2*R*s, 2*R*s + PB); }
   ctx.font = "11px IBM Plex Sans, sans-serif"; ctx.fillStyle = col("s-ink");
   ctx.fillText(`(${wf}) ${S.wtype}-type, Ø 100 mm. Arrow: ⊥ flat, outward.`, 12, 10 + 2*R*s + PB + 16);
   ctx.fillText(`Dashed: flat direction${FD.reveal ? "; orange: true ⟨110⟩" : ""}.`, 12, 10 + 2*R*s + PB + 30);
   ctx.fillText("Violet: mask; blue: etched outline.", 12, 10 + 2*R*s + PB + 44);
   if (S.compass) drawCompass(ctx, 10 + 2*R*s - 40, 50, 28, inPlaneDirs(fdFrameE()), FD.reveal ? FD.delta : 0);
   const it = FD.items && FD.items[FD.sel];
-  drawCoords(ctx, "fdCanvas", { X0: -R, X1: R, Y0: -R, Y1: R, toC, g: 10000, grid: false, k: 1e-3, unit: "mm", snap: false, sel: it ? fdPos(it) : null });
+  drawCoords(ctx, "fdCanvas", { X0: V.X0, X1: V.X1, Y0: Math.max(V.Y0, -R), Y1: V.Y1, toC, g: V.z > 1 ? edGrid(V.X1 - V.X0) : 10000, grid: false, k: 1e-3, unit: "mm", snap: false, sel: it ? fdPos(it) : null });
 }
 // microscope view and the reading plot of the selected item
 function drawScope() {
@@ -364,7 +368,7 @@ $("fdList").addEventListener("click", e => {
   const cv = $("fdCanvas"); let drag = null;
   const world = ev => { const r = cv.getBoundingClientRect(); return [(ev.clientX - r.left - FD.ed.ox)/FD.ed.s/1000, -(ev.clientY - r.top - FD.ed.oy)/FD.ed.s/1000]; };   // mm
   const hit = (x, y) => {   // nearest item within 3 mm of its position or its drawn parts
-    let bi = -1, bd = 3;
+    let bi = -1, bd = Math.max(0.02, 3/((FD.ed.view && FD.ed.view.z) || 1));   // 3 mm at full view, less when zoomed in
     (FD.an ? FD.an.res : []).forEach((r, i) => {
       if (!r) return; const pts = [fdPos(r.it)];
       if (r.cs) for (let k = 0; k < r.cs.length; k += 4) pts.push(r.cs[k].c); if (r.sl) r.sl.forEach(q => pts.push(...q.poly));

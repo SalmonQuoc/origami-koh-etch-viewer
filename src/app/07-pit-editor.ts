@@ -61,14 +61,16 @@ function drawPitEditor(keepExtent?: boolean) {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   cv.width = Math.round(wcss*dpr); cv.height = Math.round(hcss*dpr); cv.style.height = `${hcss}px`;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, wcss, hcss);
-  Object.assign(S.pitEd, { s, ox: 10 + hx*s, oy: 10 + hy*s });
-  const toC = p => [S.pitEd.ox + p[0]*s, S.pitEd.oy - p[1]*s], col = c => "#" + COL[c].getHexString();
+  const V = edView("pitCanvas", s, 10, 10, 2*hx*s, 2*hy*s, 0, 0, 40);
+  Object.assign(S.pitEd, { s: V.s, ox: V.ox, oy: V.oy, view: V });
+  const toC = p => [S.pitEd.ox + p[0]*S.pitEd.s, S.pitEd.oy - p[1]*S.pitEd.s], col = c => "#" + COL[c].getHexString();
   const path = (c, P) => { P.map(toC).forEach((q, k) => k ? c.lineTo(q[0], q[1]) : c.moveTo(q[0], q[1])); c.closePath(); };
   ctx.fillStyle = col("scene-bg"); ctx.fillRect(10, 10, 2*hx*s, 2*hy*s);
+  ctx.save(); ctx.beginPath(); ctx.rect(10, 10, 2*hx*s, 2*hy*s); ctx.clip();   // zoomed content stays in the plot
   // grid
-  const g = edGrid(2*hx); ctx.strokeStyle = col("s-ink"); ctx.globalAlpha = 0.08; ctx.lineWidth = 1; ctx.beginPath();
-  for (let x = -Math.floor(hx/g)*g; x <= hx; x += g) { const [a] = toC([x, 0]); ctx.moveTo(a, 10); ctx.lineTo(a, 10 + 2*hy*s); }
-  for (let y = -Math.floor(hy/g)*g; y <= hy; y += g) { const [, b] = toC([0, y]); ctx.moveTo(10, b); ctx.lineTo(10 + 2*hx*s, b); }
+  const g = edGrid(V.X1 - V.X0); ctx.strokeStyle = col("s-ink"); ctx.globalAlpha = 0.08; ctx.lineWidth = 1; ctx.beginPath();
+  for (let x = Math.ceil(V.X0/g)*g; x <= V.X1; x += g) { const [a] = toC([x, 0]); ctx.moveTo(a, 10); ctx.lineTo(a, 10 + 2*hy*s); }
+  for (let y = Math.ceil(V.Y0/g)*g; y <= V.Y1; y += g) { const [, b] = toC([0, y]); ctx.moveTo(10, b); ctx.lineTo(10 + 2*hx*s, b); }
   ctx.stroke(); ctx.globalAlpha = 1;
   // mask with the openings cut out
   const tmp = document.createElement("canvas"); tmp.width = cv.width; tmp.height = cv.height;
@@ -91,13 +93,14 @@ function drawPitEditor(keepExtent?: boolean) {
     ctx.lineWidth = i === S.pitSel ? 2.4 : 1.1; ctx.strokeStyle = i === S.pitSel ? col("accent") : col("s-ink"); ctx.stroke();
     if (i === S.pitSel) { const [a, b] = toC([sh.cx, sh.cy]); ctx.fillStyle = col("accent"); ctx.fillRect(a - 3, b - 3, 6, 6); }
   });
+  ctx.restore();
   ctx.strokeStyle = col("s-ink"); ctx.lineWidth = 1; ctx.strokeRect(10, 10, 2*hx*s, 2*hy*s);
   ctx.fillStyle = col("accent"); ctx.fillRect(10, 10 + 2*hy*s + 2, 2*hx*s, 3);
   ctx.font = "11px IBM Plex Sans, sans-serif";
   ctx.fillText(`primary flat side; x along ${plainIdx(C.FRAME_IDX[S.wf][0])}; grid ${g} µm`, 12, 10 + 2*hy*s + 18);
   if (S.compass) drawCompass(ctx, 10 + 2*hx*s - 44, 54, 30, inPlaneDirs(C.FRAMES[S.wf]), S.rot || 0);
   const sel = list[S.pitSel];
-  drawCoords(ctx, "pitCanvas", { X0: -hx, X1: hx, Y0: -hy, Y1: hy, toC, g, grid: false, sel: sel ? [sel.cx, sel.cy] : null });
+  drawCoords(ctx, "pitCanvas", { X0: V.X0, X1: V.X1, Y0: V.Y0, Y1: V.Y1, toC, g, grid: false, sel: sel ? [sel.cx, sel.cy] : null });
   drawOverlay(ctx, "pitCanvas", toC);
 }
 (() => {

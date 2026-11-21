@@ -118,6 +118,18 @@ details.srcs { margin-top: 14px; font-size: 13px; }
 details.srcs summary { cursor: pointer; font-weight: 600; }
 details.srcs ul { padding-left: 18px; margin: 6px 0 0; }
 details.srcs li { margin: 4px 0; }
+.foldH { cursor: pointer; user-select: none; position: relative; padding-left: 16px; border-radius: 4px; }
+.foldH::before { content: ""; position: absolute; left: 2px; top: 50%; margin-top: -4px; border: 4px solid transparent; border-left: 6px solid currentColor; border-right: 0; transition: transform .15s; transform-origin: 3px 4px; opacity: .7; }
+.foldH:not(.closed)::before { transform: rotate(90deg); }
+.foldH:hover { color: var(--ink); }
+.foldH:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.foldH.closed + .foldBody { display: none; }
+.foldAll { display: flex; justify-content: flex-end; align-items: baseline; gap: 4px; margin: -4px 0 4px; font-size: 12px; }
+.linkbtn { background: none; border: 0; padding: 0 2px; font: inherit; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.zoomBar { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin: 2px 0 4px; }
+.zoomBar .btn { padding: 1px 8px; min-width: 28px; font-size: 13px; }
+.zoomBar .zv { font: 12px "IBM Plex Mono", monospace; min-width: 4.5em; text-align: center; color: var(--muted); }
+.zoomBar .note { font-size: 11.5px; margin-left: 4px; }
 /* explanations: source notes and per-setting help are hidden until switched on (toolbar ⓘ, Settings) */
 body:not(.explain) .note.src, body:not(.explain) .xinfo { display: none; }
 .fhelp { font-size: 12px; color: var(--muted); margin: -2px 0 6px; line-height: 1.45; }
@@ -528,6 +540,7 @@ dl.scenes dt { font-weight: 600; margin-top: 8px; } dl.scenes dd { margin: 2px 0
   </div>
   <h3>Good to know</h3>
   <ul class="note" style="margin:0;padding-left:18px">
+    <li><b>Sections</b>: click a heading in the right-hand panel (or press <span class="kbd">Enter</span> on it) to open or close that section. Only the first section of each panel is open at first; “open all” and “close all” sit at the top of the panel.</li>
     <li><b>⤢ Enlarge</b> opens an editor or a graph panel in a large window; <span class="kbd">Esc</span> closes it.</li>
     <li><b>ⓘ Explanations</b> shows the source notes under the controls and what each setting of the custom etchant means; they are off at first. <b>How it works</b>, below the page, explains the chemistry, the rate model and the simulation step by step.</li>
     <li><b>⚙ Settings</b> sets the layout, panel width, theme, label size, snap step and simulator resolution. They are kept in this browser.</li>

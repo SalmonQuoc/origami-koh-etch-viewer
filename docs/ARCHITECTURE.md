@@ -16,7 +16,7 @@ src/
   core/geometry.ts          analytic {111}-plane model used by Model on wafer, Etched pit and Find orientation
   engine/etch-engine.js     the etch engine: grid set-up, JavaScript time step (reference and fallback), mesh,
                             sections, statistics, worker message handler; loads the Rust kernel when it can
-  app/00-data.ts ... 19-coordinates.ts  the user interface, one file per part (see below)
+  app/00-data.ts ... 20-sections.ts  the user interface, one file per part (see below)
   types/*.d.ts              shared types: page state objects, globals from the other scripts
 tools/validate-data.mjs   checks data/*.json (run by the build and the tests)
 build.mjs                 makes index.html
@@ -70,7 +70,8 @@ The two time steps are the same algorithm with the same arithmetic (f64, stored 
 | `16-guidance.ts` | scene tips, Quick start dialog, Run button on the stage |
 | `17-user-presets.ts` | the user's own presets (save, load, export, import) |
 | `18-startup.ts` | start-up and the `window.__o3d` handle used by the browser tests |
-| `19-coordinates.ts` | coordinates in the 2D editors (axes, ticks, cursor position, selected centre) and dragging the section line |
+| `19-coordinates.ts` | coordinates in the 2D editors (axes, ticks, cursor position, selected centre), dragging the section line, zoom and pan in the 2D editors |
+| `20-sections.ts` | collapsible panel sections (runs last: it wraps the markup that the other modules have filled) |
 
 ## Browser storage
 

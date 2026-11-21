@@ -10,7 +10,7 @@ const PAGE = "file://" + fileURLToPath(new URL("../../index.html", import.meta.u
 const skip = !chromium && "playwright is not installed";
 
 test("page: scenes, simulator kernel, drawing, settings, custom etchant, presets, phone width", { skip, timeout: 240000 }, async t => {
-  const browser = await chromium.launch({ args: ["--use-gl=swiftshader", "--enable-webgl", "--ignore-gpu-blocklist"] });
+  const browser = await chromium.launch({ ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}), args: ["--use-gl=swiftshader", "--enable-webgl", "--ignore-gpu-blocklist"] });
   const p = await browser.newPage({ viewport: { width: 1300, height: 950 } });
   const errors = []; p.on("pageerror", e => errors.push(String(e))); p.on("console", m => { if (m.type() === "error" && !/fonts\.googleapis/.test(m.text())) errors.push(m.text()); });
   await p.goto(PAGE); await p.waitForTimeout(1200);
@@ -32,6 +32,31 @@ test("page: scenes, simulator kernel, drawing, settings, custom etchant, presets
       for (const m of ["model", "pit", "corner", "find", "sim"]) { await p.click(`#segM button[data-m="${m}"]`); await p.waitForTimeout(300); }
     }
     await p.click('#segW button[data-w="100"]');
+  });
+
+  await t.test("sections: only the first section of each panel is open at first, headings toggle", async () => {
+    const open = await ev(() => [...document.querySelectorAll(".foldH")].filter(h => !h.classList.contains("closed")).map(h => h.textContent.trim()));
+    assert.deepEqual(open, ["Cross-section", "Microscope view of the selected item", "Etch history", "Show", "1Mask openings", "Corner result", "1Pick an example", "1Flat error"]);
+    assert.ok(await ev(() => [...document.querySelectorAll(".foldH.closed + .foldBody")].every(b => getComputedStyle(b).display === "none")));
+    await p.click('#segM button[data-m="sim"]');
+    const h = p.locator("#panelSim .foldH", { hasText: "Edit or draw the mask" });
+    await h.click(); assert.equal(await h.getAttribute("aria-expanded"), "true");
+    assert.ok(await ev(() => document.getElementById("maskCanvas").clientWidth > 0));
+    await h.press("Enter"); assert.equal(await h.getAttribute("aria-expanded"), "false");
+    for (const m of ["model", "pit", "find", "sim"]) {   // the later checks use controls in every section
+      await p.click(`#segM button[data-m="${m}"]`);
+      await p.click(`aside.panel:not(.hidden) .foldAll [data-fold="1"]`);
+    }
+    await ev(() => { for (const h of document.querySelectorAll("#simBelow .foldH.closed, #findBelow .foldH.closed, #pitBelow .foldH.closed")) h.click(); });
+    assert.equal(await ev(() => document.querySelectorAll(".foldH.closed").length), 0);
+  });
+
+  await t.test("zoom in the wafer map of Find orientation", async () => {
+    await p.click('#segM button[data-m="find"]');
+    await p.click('.zoomBar[data-for="fdCanvas"] [data-z="in"]'); await p.click('.zoomBar[data-for="fdCanvas"] [data-z="in"]');
+    assert.ok(await ev(() => window.__o3d.EDZ.fdCanvas.z > 1));
+    await p.click('.zoomBar[data-for="fdCanvas"] [data-z="fit"]');
+    assert.equal(await ev(() => window.__o3d.EDZ.fdCanvas.z), 1);
   });
 
   await t.test("simulator runs with the Rust/WebAssembly kernel", async () => {

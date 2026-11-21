@@ -369,13 +369,15 @@ function drawMaskEditor() {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   cv.width = Math.round(wcss*dpr); cv.height = Math.round(hcss*dpr); cv.style.height = `${hcss}px`;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, wcss, hcss);
-  SIM.ed = { s, ox: 10 + SIM.hx*s, oy: 10 + SIM.hy*s };
+  const V = edView("maskCanvas", s, 10, 10, W*s, H*s, 0, 0, 40);
+  SIM.ed = { s: V.s, ox: V.ox, oy: V.oy, view: V };
   const tmp = document.createElement("canvas"); tmp.width = Math.round(W*s*dpr); tmp.height = Math.round(H*s*dpr);
-  paintMask(tmp.getContext("2d"), s*dpr, -SIM.hx, -SIM.hy, H, "#" + COL.mask.getHexString(), 0.55);
+  paintMask(tmp.getContext("2d"), V.s*dpr, V.X0, V.Y0, V.Y1 - V.Y0, "#" + COL.mask.getHexString(), 0.55);
   ctx.fillStyle = "#" + COL["scene-bg"].getHexString(); ctx.fillRect(10, 10, W*s, H*s);
   ctx.drawImage(tmp, 10, 10, W*s, H*s);
   ctx.strokeStyle = "#" + COL["s-ink"].getHexString(); ctx.lineWidth = 1; ctx.strokeRect(10, 10, W*s, H*s);
-  const toC = p => [SIM.ed.ox + p[0]*s, SIM.ed.oy - p[1]*s];
+  const zs = V.s, toC = p => [SIM.ed.ox + p[0]*zs, SIM.ed.oy - p[1]*zs];
+  ctx.save(); ctx.beginPath(); ctx.rect(10, 10, W*s, H*s); ctx.clip();   // zoomed content stays in the plot
   SIM.shapes.forEach((sh, i) => {
     ctx.beginPath();
     for (const Q of shapePolys(sh)) { const P = Q.map(toC); P.forEach((p, k) => k ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath(); }
@@ -385,26 +387,27 @@ function drawMaskEditor() {
   ctx.setLineDash([]);
   // section line
   ctx.strokeStyle = "#" + COL.ghost.getHexString(); ctx.setLineDash([6, 4]); ctx.lineWidth = 1.2; ctx.beginPath();
-  if (SIM.cutAxis === "y") { const y = SIM.ed.oy - SIM.cutPos*s; ctx.moveTo(10, y); ctx.lineTo(10 + W*s, y); }
-  else { const x = SIM.ed.ox + SIM.cutPos*s; ctx.moveTo(x, 10); ctx.lineTo(x, 10 + H*s); }
+  if (SIM.cutAxis === "y") { const y = SIM.ed.oy - SIM.cutPos*zs; ctx.moveTo(10, y); ctx.lineTo(10 + W*s, y); }
+  else { const x = SIM.ed.ox + SIM.cutPos*zs; ctx.moveTo(x, 10); ctx.lineTo(x, 10 + H*s); }
   ctx.stroke(); ctx.setLineDash([]);
   { // its coordinate, at the right end (along x) or the top end (along y), and a grip to drag it
     const lab = `${SIM.cutAxis === "y" ? "y" : "x"} = ${+(+SIM.cutPos).toFixed(1)} µm`;
     ctx.font = "600 10px IBM Plex Mono, monospace"; const tw = ctx.measureText(lab).width;
-    const [gx, gy] = SIM.cutAxis === "y" ? [10 + W*s - tw - 14, SIM.ed.oy - SIM.cutPos*s] : [SIM.ed.ox + SIM.cutPos*s, 10 + 16];
+    const [gx, gy] = SIM.cutAxis === "y" ? [10 + W*s - tw - 14, SIM.ed.oy - SIM.cutPos*zs] : [SIM.ed.ox + SIM.cutPos*zs, 10 + 16];
     const bx = SIM.cutAxis === "y" ? gx : Math.min(Math.max(gx + 6, 12), 10 + W*s - tw - 10), by = SIM.cutAxis === "y" ? (gy - 18 < 12 ? gy + 4 : gy - 18) : gy - 7;
     ctx.fillStyle = "#" + COL["scene-bg"].getHexString(); ctx.globalAlpha = 0.85; ctx.fillRect(bx - 3, by, tw + 6, 14); ctx.globalAlpha = 1;
     ctx.fillStyle = "#" + COL.ghost.getHexString(); ctx.fillText(lab, bx, by + 10);
     const [hx_, hy_] = SIM.cutAxis === "y" ? [10 + W*s - 6, gy] : [gx, 10 + 6];
     ctx.beginPath(); ctx.arc(hx_, hy_, 4, 0, 2*Math.PI); ctx.fill();
   }
+  ctx.restore();
   // flat at the bottom edge
   ctx.fillStyle = "#" + COL.accent.getHexString(); ctx.fillRect(10, 10 + H*s + 2, W*s, 3);
   ctx.font = "11px IBM Plex Sans, sans-serif";
-  ctx.fillText(`primary flat side; x along ${plainIdx(simFrame().idx[0])}${SET.coords !== false ? `; grid ${edGrid(W)} µm` : ""}`, 12, 10 + H*s + 18);
+  ctx.fillText(`primary flat side; x along ${plainIdx(simFrame().idx[0])}${SET.coords !== false ? `; grid ${edGrid(V.X1 - V.X0)} µm` : ""}`, 12, 10 + H*s + 18);
   if (S.compass) drawCompass(ctx, 10 + W*s - 44, 54, 30, inPlaneDirs(SFR[SIM.fk].e), SIM.rot || 0);
   const sel = SIM.shapes[SIM.sel];
-  drawCoords(ctx, "maskCanvas", { X0: -SIM.hx, X1: SIM.hx, Y0: -SIM.hy, Y1: SIM.hy, toC, g: edGrid(W), grid: true, sel: sel ? [sel.cx, sel.cy] : null });
+  drawCoords(ctx, "maskCanvas", { X0: V.X0, X1: V.X1, Y0: V.Y0, Y1: V.Y1, toC, g: edGrid(V.X1 - V.X0), grid: true, sel: sel ? [sel.cx, sel.cy] : null });
   drawOverlay(ctx, "maskCanvas", toC);
 }
 const plainIdx = v => "[" + v.map(x => x < 0 ? `${-x}̅` : `${x}`).join("") + "]";
