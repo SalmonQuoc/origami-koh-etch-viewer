@@ -21,7 +21,7 @@ src/
 tools/validate-data.mjs   checks data/*.json (run by the build and the tests)
 build.mjs                 makes index.html
 tests/                    node tests (engine parity, physics checks, data) and tests/browser (Chromium)
-.github/workflows/        CI (all checks on every push) and Pages (publishes index.html after CI passes)
+.github/workflows/        ci.yml: all checks on every push, then publishes index.html to Pages on main; pages.yml: publish by hand
 ```
 
 ## Build

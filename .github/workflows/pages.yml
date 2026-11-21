@@ -1,11 +1,8 @@
 name: Publish to GitHub Pages
 
-# Publishes index.html (the built single-file page) after the checks pass on main.
+# Publishes index.html by hand (Actions -> Publish to GitHub Pages -> Run workflow).
+# The automatic publish after each push is the "pages" job in ci.yml.
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -19,15 +16,12 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - name: Collect the site
         run: mkdir _site && cp index.html .nojekyll _site/
       - uses: actions/configure-pages@v6

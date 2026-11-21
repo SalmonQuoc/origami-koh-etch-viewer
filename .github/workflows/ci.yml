@@ -38,3 +38,30 @@ jobs:
         run: |
           npx playwright install --with-deps chromium
           npm run test:browser
+
+  # Publish index.html to GitHub Pages after the checks pass on main (same run, so the
+  # deploy step finds the uploaded artifact; a separate workflow_run workflow did not).
+  pages:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: true
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Collect the site
+        run: mkdir _site && cp index.html .nojekyll _site/
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v5
