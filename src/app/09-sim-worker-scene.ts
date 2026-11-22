@@ -38,11 +38,56 @@ function simConfig() {
   Lz = Math.min(SIM.thick, Math.max(3*dx, Lz));
   return { frame: simE(), rates: R, probes: SIM.probes || null, shapes, X0, X1, Y0, Y1, depth: Lz, dx, pre: SIM.pre || 0 };
 }
-function cutSpec() {
-  if (!SIM.grid) return null;
-  const g = SIM.grid;
-  if (SIM.cutAxis === "y") return { axis: "y", index: Math.max(0, Math.min(g.Ny - 1, Math.round((SIM.cutPos + SIM.hy)/g.dx - 0.5))) };
-  return { axis: "x", index: Math.max(0, Math.min(g.Nx - 1, Math.round((SIM.cutPos + SIM.hx)/g.dx - 0.5))) };
+function simDomain() { const g = SIM.grid; return [-SIM.hx, -SIM.hx + g.Nx*g.dx, -SIM.hy, -SIM.hy + g.Ny*g.dx]; }
+function cutSpec() {   // the section line A -> B (module 23); the engine samples the vertical plane through the whole
+  if (!SIM.grid) return null;   // line inside the domain: the plot shows A -> B, the 3D cut face shows all of it
+  const l = simLine(), r = lineInBox(l, simDomain()); if (!r) return { a: l.a.slice(), b: l.b.slice() };
+  const L = secLen(l) || 1, ux = (l.b[0] - l.a[0])/L, uy = (l.b[1] - l.a[1])/L;
+  return { a: [l.a[0] + ux*r[0], l.a[1] + uy*r[0]], b: [l.a[0] + ux*r[1], l.a[1] + uy*r[1]] };
+}
+// silicon of an engine section (marching squares on s = m ds, z = -(k + 0.5) dx), painted with the current fill
+// style through P(s, z) -> canvas point. The top surface and the bottom lie half a cell beyond the first and last
+// node rows; the ends at the first and last samples.
+function paintSec(ctx: CanvasRenderingContext2D, sec, dx: number, P: (s: number, z: number) => number[]) {
+  const n = sec.n, Nz = sec.Nz, ds = sec.ds, val = sec.val, Ls = sec.len;
+  const V = (k, m) => {
+    if (m < 0 || m >= n) return -1e9;
+    if (k < 0) return -Math.abs(val[m]); if (k >= Nz) return -Math.abs(val[(Nz - 1)*n + m]);
+    return val[k*n + m];
+  };
+  const pt = (m, k) => P(Math.max(0, Math.min(Ls, m*ds)), Math.max(-Nz*dx, Math.min(0, -(k + 0.5)*dx)));
+  ctx.beginPath();
+  for (let k = -1; k < Nz; k++) for (let m = -1; m < n; m++) {
+    const cs = [[m, k], [m + 1, k], [m + 1, k + 1], [m, k + 1]], v = cs.map(([mm, kk]) => V(kk, mm)), sil = v.map(x => x > 0);
+    if (!sil.some(x => x)) continue;
+    const poly = [];
+    for (let e = 0; e < 4; e++) {
+      const [pm, pk] = cs[e], [qm, qk] = cs[(e + 1) % 4];
+      if (sil[e]) poly.push(pt(pm, pk));
+      if (sil[e] !== sil[(e + 1) % 4]) {
+        const va = v[e], vb = v[(e + 1) % 4], f = Math.min(1, Math.max(0, va/(va - vb)));
+        const A = pt(pm, pk), B = pt(qm, qk); poly.push([A[0] + f*(B[0] - A[0]), A[1] + f*(B[1] - A[1])]);
+      }
+    }
+    if (poly.length >= 3) { ctx.moveTo(poly[0][0], poly[0][1]); for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i][0], poly[i][1]); ctx.closePath(); }
+  }
+  ctx.fill();
+}
+// the 3D cut face: the engine section as a texture on the vertical plane through the line (holes are transparent)
+function simCap(sec, dx: number, l: SecLine) {
+  const L = secLen(l) || 1, ux = (l.b[0] - l.a[0])/L, uy = (l.b[1] - l.a[1])/L;
+  const off = (sec.a[0] - l.a[0])*ux + (sec.a[1] - l.a[1])*uy, Ls = sec.len, zd = sec.Nz*dx;
+  if (Math.abs((sec.b[0] - sec.a[0])*uy - (sec.b[1] - sec.a[1])*ux) > 1e-6*Math.max(1, Ls)) return null;   // section of an older line
+  const k = Math.min(8, 2400/Math.max(Ls, zd)), cv = document.createElement("canvas");
+  cv.width = Math.max(2, Math.round(Ls*k)); cv.height = Math.max(2, Math.round(zd*k));
+  const ctx = cv.getContext("2d"); ctx.fillStyle = "#" + COL["s-cut"].getHexString();
+  paintSec(ctx, sec, dx, (s, z) => [s*k, -z*k]);
+  const tex = new THREE.CanvasTexture(cv); tex.anisotropy = 4;
+  const geo = new THREE.PlaneGeometry(Ls, zd); geo.translate(off + Ls/2, -zd/2, 0);
+  const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+  m.rotation.x = Math.PI/2; m.userData.noPick = true;
+  const grp = new THREE.Group(); grp.position.set(l.a[0], l.a[1], 0); grp.rotation.z = Math.atan2(uy, ux); grp.add(m);
+  return grp;
 }
 
 function simRun() {
@@ -50,7 +95,7 @@ function simRun() {
   const cfg: any = simConfig(); cfg.noWasm = SET.engine === "js";
   SIM.id++; SIM.hist = null; SIM.rtab = EE.makeRate(cfg.rates); SIM.tEnd = SIM.t; SIM.tSim = 0; SIM.running = true; SIM.res = null; SIM.cfg = cfg;
   SIM.grid = { Nx: Math.round((cfg.X1 - cfg.X0)/cfg.dx), Ny: Math.round((cfg.Y1 - cfg.Y0)/cfg.dx), Nz: Math.max(3, Math.round(cfg.depth/cfg.dx)), dx: cfg.dx, depth: cfg.depth };
-  const msg = { cmd: "run", cfg, tEnd: SIM.t, id: SIM.id, cut: cutSpec(), cutMesh: SIM.cutOn };
+  const msg = { cmd: "run", cfg, tEnd: SIM.t, id: SIM.id, cut: cutSpec(), cutMesh: false };
   SIM.pendingRun = msg;
   SIM.worker.post(msg);
   $("simStatus").textContent = `Grid ${SIM.grid.Nx} × ${SIM.grid.Ny} × ${SIM.grid.Nz}, cell ${cfg.dx} µm, depth simulated ${cfg.depth.toFixed(0)} µm. Etching…`;
@@ -84,7 +129,7 @@ function requestView(tv) {
   if (!SIM.worker || !SIM.res) return;
   if (SIM.viewBusy) { SIM.viewWant = tv; return; }
   SIM.viewBusy = true;
-  SIM.worker.post({ cmd: "view", tv, cut: cutSpec(), cutMesh: SIM.cutOn, id: SIM.id });
+  SIM.worker.post({ cmd: "view", tv, cut: cutSpec(), cutMesh: false, id: SIM.id });
 }
 
 // ---- plane classification for colours and the tooltip
@@ -116,12 +161,8 @@ function buildSim(resetView) {
   const g = new THREE.Group(); scene.add(g);
   simScene = { pick: null, triInfo: null };
   const r = SIM.res;
-  const cut = SIM.cutOn ? cutSpec() : null;
-  let clip = null;
-  if (cut && SIM.grid) {
-    const d = SIM.grid.dx;
-    clip = cut.axis === "y" ? [new THREE.Plane(new V3(0, -1, 0), Y0 + (cut.index + 1)*d)] : [new THREE.Plane(new V3(-1, 0, 0), X0 + (cut.index + 1)*d)];
-  }
+  // cut open: keep the left-hand side of the section line A -> B
+  const clip = SIM.cutOn && SIM.grid ? [secPlane(simLine())] : null;
   if (r && r.mesh && r.mesh.idx.length) {
     const { pos, idx, tag } = r.mesh, nt = idx.length/3, nv = pos.length/3;
     const P = new Float32Array(nt*9), Cc = new Float32Array(nt*9), info = new Array(nt), VN = new Float32Array(nv*3), FN = new Float32Array(nt*3);
@@ -183,8 +224,9 @@ function buildSim(resetView) {
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.BufferAttribute(P, 3)); geo.setAttribute("color", new THREE.BufferAttribute(Cc, 3));
-    const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }));
+    const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, clippingPlanes: clip, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }));
     g.add(mesh); simScene.pick = mesh; simScene.triInfo = info;
+    if (clip && r.sec && r.sec.line) { const cap = simCap(r.sec, SIM.grid.dx, simLine()); if (cap) g.add(cap); }   // the cut face
   }
   // domain box edges
   const zbb = -zb;
@@ -303,66 +345,36 @@ function updateSimReadout() {
   $("simReadout").innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
 }
 
-// ---- 2D section
+// ---- 2D section: the vertical plane through the section line A -> B (sampled by the engine, module 23)
 function drawSection() {
   const cv = $("secCanvas"), ctx = cv.getContext("2d");
   const wcss = cv.clientWidth || 600, r = SIM.res;
-  const sec = r && r.sec, g = SIM.grid;
-  const along = SIM.cutAxis === "y" ? 2*SIM.hx : 2*SIM.hy, a0 = SIM.cutAxis === "y" ? -SIM.hx : -SIM.hy;
+  const sec = r && r.sec && r.sec.line ? r.sec : null, g = SIM.grid, l = simLine(), L = secLen(l) || 1;
   const zd = g ? g.Nz*g.dx : 100;
-  const pad = 34, sc = (wcss - 2*pad)/along, hcss = Math.min(bigBox(cv) ? Math.round(window.innerHeight*0.55) : 420, Math.max(120, zd*sc + 2*pad));
+  const pad = 34, sc = (wcss - 2*pad)/L, hcss = Math.min(bigBox(cv) ? Math.round(window.innerHeight*0.55) : 420, Math.max(120, zd*sc + 2*pad));
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   cv.width = Math.round(wcss*dpr); cv.height = Math.round(hcss*dpr); cv.style.height = `${hcss}px`;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, wcss, hcss);
-  const X = a => pad + (a - a0)*sc, Z = z => pad - z*sc;    // z <= 0 downward
+  const X = a => pad + a*sc, Z = z => pad - z*sc;    // z <= 0 downward
   const ink = "#" + COL["s-ink"].getHexString(), si = "#" + COL["s-top"].getHexString(), maskc = "#" + COL.mask.getHexString();
   ctx.font = "11px IBM Plex Mono, monospace"; ctx.fillStyle = ink; ctx.strokeStyle = ink;
   if (!sec || !g) { ctx.fillText("Run the simulation to see the section.", pad, pad + 14); return; }
-  const n = sec.n, Nz = sec.Nz, dx = g.dx;
-  const ax = a => a0 + (a + 0.5)*dx, zk = k => -(k + 0.5)*dx;
-  ctx.fillStyle = si; ctx.beginPath();
-  // marching squares on the node lattice, extended by half a cell to the block faces and the surface
-  const S2 = (k, a) => (k < 0 || a < 0 || a >= n || k >= Nz) ? 0 : sec.sil[k*n + a];
-  const pt = (a, k) => [X(ax(a)), Z(zk(k))];
-  for (let k = -1; k < Nz; k++) for (let a = -1; a < n; a++) {
-    const cs = [[a, k], [a + 1, k], [a + 1, k + 1], [a, k + 1]];
-    const v = cs.map(([aa, kk]) => S2(kk, aa));
-    if (!v.some(x => x)) continue;
-    const poly = [];
-    for (let e = 0; e < 4; e++) {
-      const [pa, pk] = cs[e], [qa, qk] = cs[(e + 1) % 4], va = v[e], vb = v[(e + 1) % 4];
-      if (va) poly.push(pt(pa, pk));
-      if (va !== vb) {
-        let f = 0.5;
-        const inside = (aa, kk) => aa >= 0 && aa < n && kk >= 0 && kk < Nz;
-        if (inside(pa, pk) && inside(qa, qk)) {
-          if (pk === qk) { const lo = Math.min(pa, qa), fr = sec.fa[pk*n + lo]; if (fr >= 0) f = pa < qa ? fr : 1 - fr; }
-          else { const lo = Math.min(pk, qk), fr = sec.fk[lo*n + pa]; if (fr >= 0) f = pk < qk ? fr : 1 - fr; }
-        }
-        const A = pt(pa, pk), B = pt(qa, qk); poly.push([A[0] + f*(B[0] - A[0]), A[1] + f*(B[1] - A[1])]);
-      }
-    }
-    if (poly.length >= 3) { ctx.moveTo(poly[0][0], poly[0][1]); for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i][0], poly[i][1]); ctx.closePath(); }
-  }
-  ctx.fill();
+  const n = sec.n, dx = g.dx, ds = sec.ds, Ls = sec.len;
+  // the engine samples the whole line inside the domain: off = distance of its first sample from A
+  const ux = (l.b[0] - l.a[0])/L, uy = (l.b[1] - l.a[1])/L, off = (sec.a[0] - l.a[0])*ux + (sec.a[1] - l.a[1])*uy;
+  ctx.save(); ctx.beginPath(); ctx.rect(X(0), 0, L*sc, hcss); ctx.clip();
+  ctx.fillStyle = si; paintSec(ctx, sec, dx, (s, z) => [X(off + s), Z(z)]);
   // mask on top
   ctx.fillStyle = maskc;
-  for (let a = 0; a < n; a++) if (!sec.open[a]) ctx.fillRect(X(a0 + a*dx), Z(0) - 3, dx*sc + 0.6, 3);
-  // axes
-  ctx.fillStyle = ink; ctx.globalAlpha = 0.8;
-  ctx.beginPath(); ctx.moveTo(X(a0), Z(0)); ctx.lineTo(X(a0 + along), Z(0)); ctx.lineWidth = 0.5; ctx.stroke();
-  const step = edGrid(along);
-  for (let v = Math.ceil(a0/step)*step; v <= a0 + along + 1e-6; v += step) { ctx.fillRect(X(v), Z(0) + 1, 0.8, 4); ctx.fillText(`${v.toFixed(0)}`, X(v) - 8, Z(0) - 7); }
-  const zs = niceStep(zd/4);
-  for (let v = 0; v <= zd + 1e-6; v += zs) { ctx.fillRect(X(a0) - 5, Z(-v), 4, 0.8); ctx.fillText(`${v.toFixed(0)}`, 2, Z(-v) + 4); }
-  ctx.fillText(SIM.cutAxis === "y" ? "x (µm)" : "y (µm)", X(a0 + along) - 44, Z(0) - 20);
+  for (let m = 0; m < n; m++) if (!sec.open[m]) ctx.fillRect(X(off + Math.max(0, (m - 0.5)*ds)), Z(0) - 3, ds*sc + 0.6, 3);
+  ctx.restore();
+  secAxes(ctx, X, Z, L, zd, ink, wcss, hcss, pad);
   { // where the cursor is in the mask editor, projected on the section
-    const c = EDC.maskCanvas; if (c && SET.coords !== false) { const v = SIM.cutAxis === "y" ? c[0] : c[1];
-      ctx.save(); ctx.strokeStyle = "#" + COL.accent.getHexString(); ctx.globalAlpha = 0.7; ctx.setLineDash([3, 3]); ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(X(v), Z(0) - 4); ctx.lineTo(X(v), Z(-zd)); ctx.stroke(); ctx.restore(); } }
-  ctx.globalAlpha = 1;
-  const ci = cutSpec().index, lab = SIM.cutAxis === "y" ? `section along x at y = ${(-SIM.hy + (ci + 0.5)*dx).toFixed(0)} µm` : `section along y at x = ${(-SIM.hx + (ci + 0.5)*dx).toFixed(0)} µm`;
-  ctx.fillText(lab + "  (µm, true scale; mask drawn on top)", pad, hcss - 8);
+    const c = EDC.maskCanvas; if (c && SET.coords !== false) { const v = (c[0] - l.a[0])*ux + (c[1] - l.a[1])*uy;
+      if (v >= 0 && v <= L) { ctx.save(); ctx.strokeStyle = "#" + COL.accent.getHexString(); ctx.globalAlpha = 0.7; ctx.setLineDash([3, 3]); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(X(v), Z(0) - 4); ctx.lineTo(X(v), Z(-zd)); ctx.stroke(); ctx.restore(); } } }
+  ctx.fillStyle = ink;
+  ctx.fillText(`section A (${l.a.map(v => v.toFixed(0)).join(", ")}) → B (${l.b.map(v => v.toFixed(0)).join(", ")}) µm, ${fmtLen(L)} long  (true scale; mask on top)`, pad, hcss - 8);
 }
 function niceStep(x) { const p = Math.pow(10, Math.floor(Math.log10(x))); for (const k of [1, 2, 2.5, 5, 10]) if (k*p >= x) return k*p; return 10*p; }
 
@@ -400,21 +412,7 @@ function drawMaskEditor() {
     ctx.strokeStyle = i === SIM.sel ? "#" + COL.accent.getHexString() : "#" + COL["s-ink"].getHexString(); ctx.stroke();
   });
   ctx.setLineDash([]);
-  // section line
-  ctx.strokeStyle = "#" + COL.ghost.getHexString(); ctx.setLineDash([6, 4]); ctx.lineWidth = 1.2; ctx.beginPath();
-  if (SIM.cutAxis === "y") { const y = SIM.ed.oy - SIM.cutPos*zs; ctx.moveTo(10, y); ctx.lineTo(10 + W*s, y); }
-  else { const x = SIM.ed.ox + SIM.cutPos*zs; ctx.moveTo(x, 10); ctx.lineTo(x, 10 + H*s); }
-  ctx.stroke(); ctx.setLineDash([]);
-  { // its coordinate, at the right end (along x) or the top end (along y), and a grip to drag it
-    const lab = `${SIM.cutAxis === "y" ? "y" : "x"} = ${+(+SIM.cutPos).toFixed(1)} µm`;
-    ctx.font = "600 10px IBM Plex Mono, monospace"; const tw = ctx.measureText(lab).width;
-    const [gx, gy] = SIM.cutAxis === "y" ? [10 + W*s - tw - 14, SIM.ed.oy - SIM.cutPos*zs] : [SIM.ed.ox + SIM.cutPos*zs, 10 + 16];
-    const bx = SIM.cutAxis === "y" ? gx : Math.min(Math.max(gx + 6, 12), 10 + W*s - tw - 10), by = SIM.cutAxis === "y" ? (gy - 18 < 12 ? gy + 4 : gy - 18) : gy - 7;
-    ctx.fillStyle = "#" + COL["scene-bg"].getHexString(); ctx.globalAlpha = 0.85; ctx.fillRect(bx - 3, by, tw + 6, 14); ctx.globalAlpha = 1;
-    ctx.fillStyle = "#" + COL.ghost.getHexString(); ctx.fillText(lab, bx, by + 10);
-    const [hx_, hy_] = SIM.cutAxis === "y" ? [10 + W*s - 6, gy] : [gx, 10 + 6];
-    ctx.beginPath(); ctx.arc(hx_, hy_, 4, 0, 2*Math.PI); ctx.fill();
-  }
+  drawSecLine(ctx, "maskCanvas", toC);   // section line A -> B (module 23)
   ctx.restore();
   // flat at the bottom edge
   ctx.fillStyle = "#" + COL.accent.getHexString(); ctx.fillRect(10, 10 + H*s + 2, W*s, 3);
@@ -445,7 +443,7 @@ function updateDirtyNote() { $("simDirty").classList.toggle("hidden", !SIM.dirty
 function loadPreset(wf, i) {
   const p = SPRESETS[wf][i]; SIM.preset = i;
   SIM.fk = p.fk; SIM.rate = p.rate; SIM.t = p.t; SIM.pre = p.pre || 0; SIM.rot = 0; SIM.probes = null; SIM.cl = null; SIM.owner = "sim"; SIM.hx = p.hx; SIM.hy = p.hy; SIM.dxMax = p.dxMax || 0;
-  SIM.shapes = p.shapes.map(s => Object.assign({}, s)); SIM.sel = -1; SIM.cutPos = 0; SIM.cutAxis = "y";
+  SIM.shapes = p.shapes.map(s => Object.assign({}, s)); SIM.sel = -1; SIM.cutPos = 0; SIM.cutAxis = "y"; SIM.cutLine = null;
   $("simNote").innerHTML = p.note;
   syncSimInputs(); renderShapeList();
 }
@@ -453,15 +451,9 @@ function syncSimInputs() {
   $("simFrame").value = SIM.fk; $("simFrameRow").classList.toggle("hidden", SFR[SIM.fk].wf !== "110");
   $("simRate").value = SIM.rate; $("simTime").value = SIM.t; $("simPre").value = SIM.pre; $("simRot").value = SIM.rot || 0; $("simThick").value = SIM.thick;
   $("simHx").value = 2*SIM.hx; $("simHy").value = 2*SIM.hy; $("simQual").value = SIM.quality;
-  pressed($("segCut"), "a", SIM.cutAxis); syncCutSlider();
+  syncSecUI("maskCanvas");
   $("simFrameSrc").textContent = SFR[SIM.fk].src;
   $("simRateSrc").textContent = SRATES[SIM.rate].src;
-}
-function syncCutSlider() {
-  const h = SIM.cutAxis === "y" ? SIM.hy : SIM.hx; $("simCutPos").min = String(-h); $("simCutPos").max = String(h); $("simCutPos").value = String(SIM.cutPos);
-  $("simCutLbl").textContent = SIM.cutAxis === "y" ? "y" : "x";
-  const nb = $("simCutNum"); nb.min = String(-h); nb.max = String(h); nb.step = String(Number(SET.snap) || 1);
-  if (document.activeElement !== nb) nb.value = String(+(+SIM.cutPos).toFixed(1));
 }
 function fillSimPresets() {
   $("simPreset").innerHTML = `<optgroup label="Examples">` + SPRESETS[S.wf].map((p, i) => `<option value="${i}">${p.name}</option>`).join("") + `</optgroup>`
@@ -477,7 +469,7 @@ $("simFrame").addEventListener("change", e => { SIM.fk = e.target.value; $("simF
 $("simRate").addEventListener("change", e => { SIM.rate = e.target.value; $("simRateSrc").textContent = SRATES[SIM.rate].src; markDirty(); });
 $("simRot").addEventListener("change", e => { SIM.rot = Number(e.target.value) || 0; markDirty(); });
 for (const [id, key, mul] of [["simTime", "t", 1], ["simPre", "pre", 1], ["simThick", "thick", 1], ["simHx", "hx", 0.5], ["simHy", "hy", 0.5]] as [string, string, number][])
-  $(id).addEventListener("change", e => { const v = Number(e.target.value); if (!(v >= 0)) return; SIM[key] = v*mul; if (key === "hx" || key === "hy") syncCutSlider(); markDirty(); });
+  $(id).addEventListener("change", e => { const v = Number(e.target.value); if (!(v >= 0)) return; SIM[key] = v*mul; if (key === "hx" || key === "hy") syncSecUI("maskCanvas"); markDirty(); });
 $("simQual").addEventListener("change", e => { SIM.quality = e.target.value; markDirty(); });
 $("simT").addEventListener("input", e => { SIM.tv = Number(e.target.value); $("simTnow").textContent = `${SIM.tv.toFixed(0)} min`; requestView(SIM.tv); });
 $("bSimPlay").addEventListener("click", () => {
@@ -493,16 +485,8 @@ function stepSimPlay(now) {
   if (SIM.tv >= SIM.tSim - 1e-9) { SIM.playing = false; $("bSimPlay").textContent = "Play"; $("bSimPlay").setAttribute("aria-pressed", "false"); }
 }
 $("cSimMask").addEventListener("change", e => { SIM.showMask = e.target.checked; buildSim(false); });
-$("simColor").addEventListener("change", e => { SIM.color = e.target.value; $("simPlaneLegend").classList.toggle("hidden", SIM.color !== "plane"); buildSim(false); });
-$("cSimCut").addEventListener("change", e => { SIM.cutOn = e.target.checked; requestView(SIM.tv); });
-$("segCut").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; SIM.cutAxis = b.dataset.a; SIM.cutPos = 0; pressed($("segCut"), "a", SIM.cutAxis); syncCutSlider(); drawMaskEditor(); requestView(SIM.tv); });
-$("simCutPos").addEventListener("input", e => { SIM.cutPos = Number(e.target.value); syncCutSlider(); drawMaskEditor(); requestView(SIM.tv); });
-// the same position typed in µm (clamped to the simulated area)
-$("simCutNum").addEventListener("change", e => { setCutPos(Number(e.target.value)); e.target.value = String(SIM.cutPos); });
-function setCutPos(v: number) {
-  const h = SIM.cutAxis === "y" ? SIM.hy : SIM.hx; if (!isFinite(v)) return;
-  SIM.cutPos = Math.max(-h, Math.min(h, v)); syncCutSlider(); drawMaskEditor(); requestView(SIM.tv);
-}
+$("simColor").addEventListener("change", e => { SIM.color = e.target.value; buildSim(false); });
+$("cSimCut").addEventListener("change", e => { SIM.cutOn = e.target.checked; buildSim(false); });
 $("shapeList").addEventListener("change", e => {
   const el = e.target, i = Number(el.dataset.i), k = el.dataset.k; if (!(i >= 0) || !k) return;
   if (el.value === "" && el.tagName === "SELECT") return;

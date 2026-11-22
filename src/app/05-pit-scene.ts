@@ -1,5 +1,4 @@
 // --------------------------------------------------------------------- PIT scene
-const PL_CUT = [new THREE.Plane(new V3(0, 1, 0), 0)];
 let pit = null;
 // openings of the current etch: one preset, or the user's list. Each opening is cut into convex pieces (g = which opening);
 // each piece is etched on its own and the cavity drawn is the union of the pieces' cavities.
@@ -247,10 +246,10 @@ function buildPit() {
   const t = S.t;
   const cavs = items.map((it, k) => S.final ? fins[k] : pe(it.o, { t, T: T_WAFER, pre: it.pre, rates: R }));
   pit.cavs = cavs;
-  const [x0, x1, y0, y1b] = box, yA = S.cut ? 0 : y0, yB = y1b;
+  const [x0, x1, y0, y1b] = box, yA = y0, yB = y1b;
   const cx = (x0 + x1)/2, cy = (y0 + y1b)/2;
   radius = 0.5*Math.hypot(x1 - x0, y1b - y0, zb)*0.92;
-  const clip = S.cut ? PL_CUT : null;
+  const cutL = pitLine(), clip = S.cut ? [secPlane(cutL)] : null;   // section line A -> B (module 23); the right-hand side is removed
   const g = new THREE.Group(); scene.add(g);
   pit.pick = [];
   const rmax = Math.max(...(Object.values(R) as number[])), mode = S.pitColor;
@@ -281,31 +280,35 @@ function buildPit() {
   // silicon block
   if (S.block) {
     const outs = cavs.map(c => C.outline(c.H, 0)).filter(O => O.length >= 3);
-    const top = holePlane(x0, x1, yA, yB, outs, COL["s-top"], m => { m.position.z = 0; });
+    const top = holePlane(x0, x1, yA, yB, outs, COL["s-top"], m => { m.position.z = 0; }, { clippingPlanes: clip });
     top.userData.block = true; g.add(top); pit.pick.push(top);
     const polys = [], cols = [];
-    const sides = [[[x1, yA], [x1, yB], [1, 0, 0]], [[x0, yB], [x0, yA], [-1, 0, 0]], [[x1, yB], [x0, yB], [0, 1, 0]]];
-    if (!S.cut) sides.push([[x0, yA], [x1, yA], [0, -1, 0]]);
+    const sides = [[[x1, yA], [x1, yB], [1, 0, 0]], [[x0, yB], [x0, yA], [-1, 0, 0]], [[x1, yB], [x0, yB], [0, 1, 0]], [[x0, yA], [x1, yA], [0, -1, 0]]];
     for (const [a, b, n] of sides) { polys.push([[a[0], a[1], 0], [b[0], b[1], 0], [b[0], b[1], -zb], [a[0], a[1], -zb]]); cols.push(shadeColor(COL["s-side"], n)); }
-    const blk = meshFromPolys(polys, cols, { polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 });
+    const blk = meshFromPolys(polys, cols, { clippingPlanes: clip, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 });
     blk.userData.block = true; g.add(blk); pit.pick.push(blk);
     const outsB = zb >= T_WAFER ? cavs.map(c => C.outline(c.H, -zb + 1e-6)).filter(O => O.length >= 3) : [];
-    const bot = holePlane(x0, x1, yA, yB, outsB, COL["s-side"], m => { m.position.z = -zb; });
+    const bot = holePlane(x0, x1, yA, yB, outsB, COL["s-side"], m => { m.position.z = -zb; }, { clippingPlanes: clip });
     bot.userData.block = true; g.add(bot); pit.pick.push(bot);
-    if (S.cut) {
-      const secs = cavs.map(c => C.vsectionY(c.H, 0)).filter(P => P.length >= 3);
-      const cutp = holePlane(x0, x1, -zb, 0, secs, COL["s-cut"], m => { m.rotation.x = Math.PI/2; });   // (x, z) plane at y = 0
-      cutp.userData.block = true; g.add(cutp); pit.pick.push(cutp);
-      if (secs.length) g.add(linesFromLoops(unionEdges2(secs, 1e-6).map(([a, b]) => [[a[0], -0.002*zb, a[1]], [b[0], -0.002*zb, b[1]]]), COL["s-ink"]));
+    const sr = S.cut ? lineInBox(cutL, box) : null;
+    if (sr) {   // the cut face: the block section along the line minus the cavity sections, in (s, z) with s measured from A
+      const L = secLen(cutL), ux = (cutL.b[0] - cutL.a[0])/L, uy = (cutL.b[1] - cutL.a[1])/L, nx = -uy, ny = ux;
+      const secs = cavs.map(c => C.section2d(c.H.map(h => [[h.n[0]*ux + h.n[1]*uy, h.n[2]], h.b - h.n[0]*cutL.a[0] - h.n[1]*cutL.a[1]]))).filter(P => P.length >= 3);
+      const cutp = holePlane(sr[0], sr[1], -zb, 0, secs, COL["s-cut"], m => { m.rotation.x = Math.PI/2; });   // local (s, z) plane
+      const cg = new THREE.Group(); cg.position.set(cutL.a[0], cutL.a[1], 0); cg.rotation.z = Math.atan2(uy, ux); cg.add(cutp);
+      cutp.userData.block = true; g.add(cg); pit.pick.push(cutp);
+      const off = -0.002*zb, P3 = (p: number[]) => [cutL.a[0] + ux*p[0] + nx*off, cutL.a[1] + uy*p[0] + ny*off, p[1]];
+      if (secs.length) g.add(linesFromLoops(unionEdges2(secs, 1e-6).filter(([a, b]) => Math.max(a[0], b[0]) > sr[0] - 1e-6 && Math.min(a[0], b[0]) < sr[1] + 1e-6).map(([a, b]) => [P3(a), P3(b)]), COL["s-ink"]));
+      g.add(linesFromLoops([[P3([sr[0], 0]), P3([sr[1], 0]), P3([sr[1], -zb]), P3([sr[0], -zb])]], COL["s-ink"], { opacity: 0.6 }));
     }
     const yl = yB;
-    g.add(linesFromLoops([[[x0, yA, 0], [x1, yA, 0], [x1, yl, 0], [x0, yl, 0]], [[x0, yA, -zb], [x1, yA, -zb], [x1, yl, -zb], [x0, yl, -zb]]], COL["s-ink"], { opacity: 0.6 }));
-    g.add(linesFromLoops([[[x0, yA, 0], [x0, yA, -zb]], [[x1, yA, 0], [x1, yA, -zb]], [[x0, yl, 0], [x0, yl, -zb]], [[x1, yl, 0], [x1, yl, -zb]]], COL["s-ink"], { opacity: 0.6 }));
+    g.add(linesFromLoops([[[x0, yA, 0], [x1, yA, 0], [x1, yl, 0], [x0, yl, 0]], [[x0, yA, -zb], [x1, yA, -zb], [x1, yl, -zb], [x0, yl, -zb]]], COL["s-ink"], { opacity: 0.6, clip }));
+    g.add(linesFromLoops([[[x0, yA, 0], [x0, yA, -zb]], [[x1, yA, 0], [x1, yA, -zb]], [[x0, yl, 0], [x0, yl, -zb]], [[x1, yl, 0], [x1, yl, -zb]]], COL["s-ink"], { opacity: 0.6, clip }));
     if (zb < T_WAFER) addLabel(new V3(x1, yA, -zb), `depth shown: ${zb.toFixed(0)} µm`, "", camDir => camDir.z > -0.2);
     // mask
     if (S.mask) {   // mask film on top of the silicon at its true thickness; it overhangs where the silicon is undercut
       const mf = pitFilm(), tm = mf.left, opens = items.map(it => it.o);
-      const mm = holePlane(x0, x1, yA, yB, opens, COL.mask, m => { m.position.z = tm; }, { opacity: mf.gone ? 0.3 : 0.88, alphaTest: 0.01, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
+      const mm = holePlane(x0, x1, yA, yB, opens, COL.mask, m => { m.position.z = tm; }, { opacity: mf.gone ? 0.3 : 0.88, alphaTest: 0.01, polygonOffsetFactor: -2, polygonOffsetUnits: -4, clippingPlanes: clip });
       mm.renderOrder = 5; mm.userData.noPick = true; g.add(mm);   // its openings are transparent pixels: measure through it
       const os = opens.map(o => ({ pts: o, op: "open" })), inOpen = (x, y) => EE.isOpen(os, x, y);
       g.add(maskRim(pitLoops(), inOpen, tm, clip, [x0, x1, yA, yB]));
@@ -331,7 +334,7 @@ function buildPit() {
   frameR = S.waferOn ? 0.53*WAFER.D : 0;
   if (S.waferOn) { g.add(waferGroup(S.wf, S.wtype, -S.dieX*1000, -S.dieY*1000, { hole: [x0, x1, y0, y1b], clip, flatLabel: idxHTML(e[0], "[", "]"), normalLabel: idxHTML(negIdx(e[1]), "[", "]") })); scene.userData.center = new V3(-S.dieX*1000, -S.dieY*1000, 0); }
   updateReadout(cavs);
-  drawPitGraph(); drawPitEditor();
+  drawPitGraph(); drawPitEditor(); drawPitSection();
   resize();
 }
 function drawPitGraph() {

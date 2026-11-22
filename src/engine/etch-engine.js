@@ -416,6 +416,30 @@ function etchEngineFactory() {
     return { n, Nz, sil, fa, fk, open };
   }
 
+  // 2D section in the vertical plane through the line a -> b (wafer µm): a field whose sign is silicon (> 0) or
+  // etched (<= 0) at view time tv, sampled every dx/2 along the line and at the node depths (k + 0.5) dx.
+  // Live view: phi itself. Earlier times: the arrival time turned into a distance with the fastest rate,
+  // (teff - tv) * rmax, clamped to the band; display only (its zero is right, its slope approximate).
+  function sectionLine(S, a, b, tv) {
+    const { Nx, Ny, Nz, NXY, dx, B } = S, X0 = S.cfg.X0, Y0 = S.cfg.Y0, live = tv >= S.t - 1e-6, rm = S.rmax || 1;
+    const L = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(2, Math.ceil(L/(0.5*dx)) + 1), ds = L/(n - 1);
+    const ux = L > 0 ? (b[0] - a[0])/L : 1, uy = L > 0 ? (b[1] - a[1])/L : 0;
+    const val = new Float32Array(n*Nz), open = new Uint8Array(n);
+    const f = q => live ? S.phi[q] : Math.max(-B, Math.min(B, (teff(S, q) - tv)*rm));
+    for (let m = 0; m < n; m++) {
+      const x = a[0] + ux*m*ds, y = a[1] + uy*m*ds;
+      let fi = (x - X0)/dx - 0.5, fj = (y - Y0)/dx - 0.5;
+      fi = Math.max(0, Math.min(Nx - 1, fi)); fj = Math.max(0, Math.min(Ny - 1, fj));
+      const i0 = Math.min(Nx - 2, Math.floor(fi)), j0 = Math.min(Ny - 2, Math.floor(fj)), wx = fi - i0, wy = fj - j0;
+      open[m] = S.open[Math.round(fj)*Nx + Math.round(fi)];
+      for (let k = 0; k < Nz; k++) {
+        const q = k*NXY + j0*Nx + i0;
+        val[k*n + m] = (f(q)*(1 - wx) + f(q + 1)*wx)*(1 - wy) + (f(q + Nx)*(1 - wx) + f(q + Nx + 1)*wx)*wy;
+      }
+    }
+    return { line: true, n, Nz, val, open, len: L, ds, a, b };
+  }
+
   // ---------------------------------------------------------------- statistics at view time tv
   function stats(S, tv) {
     const { Nx, Ny, Nz, NXY, dx, T, sd } = S;
@@ -489,11 +513,11 @@ function etchEngineFactory() {
     const view = (tv, cut, cutMesh) => {
       const opt = {}; if (cut && cutMesh) { if (cut.axis === "y") opt.cutJ = cut.index; else opt.cutI = cut.index; }
       const m = extract(S, tv, opt);
-      const sec = cut ? section(S, cut.axis, cut.index, tv) : null;
+      const sec = cut ? (cut.a ? sectionLine(S, cut.a, cut.b, tv) : section(S, cut.axis, cut.index, tv)) : null;
       const top = new Uint8Array(S.NXY); for (let q = 0; q < S.NXY; q++) top[q] = S.T[q] <= tv ? 1 : 0;
       return { mesh: m, sec, top, st: stats(S, tv), t: S.t, tv };
     };
-    const tr = r => { const a = [r.mesh.pos.buffer, r.mesh.idx.buffer, r.mesh.tag.buffer, r.mesh.vt.buffer, r.top.buffer]; if (r.sec) a.push(r.sec.sil.buffer, r.sec.fa.buffer, r.sec.fk.buffer, r.sec.open.buffer); return a; };
+    const tr = r => { const a = [r.mesh.pos.buffer, r.mesh.idx.buffer, r.mesh.tag.buffer, r.mesh.vt.buffer, r.top.buffer]; if (r.sec) { if (r.sec.line) a.push(r.sec.val.buffer, r.sec.open.buffer); else a.push(r.sec.sil.buffer, r.sec.fa.buffer, r.sec.fk.buffer, r.sec.open.buffer); } return a; };
     return function (msg, tick) {
       if (msg.cmd === "run") {
         const my = ++job, t0 = Date.now();
@@ -524,5 +548,5 @@ function etchEngineFactory() {
     };
   }
 
-  return { ORIENT, uvOf, makeRate, rateC, create, step, extract, section, teff, isOpen, stats, makeHandler, wasmInit, release, engineKind };
+  return { ORIENT, uvOf, makeRate, rateC, create, step, extract, section, sectionLine, teff, isOpen, stats, makeHandler, wasmInit, release, engineKind };
 }

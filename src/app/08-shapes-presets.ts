@@ -146,7 +146,7 @@ const isConvexType = t => ["rect", "circle", "ellipse", "tri", "poly", "para"].i
 const SPRESETS = loadSimExamples(readDb("sim-examples"));   // data/sim-examples.json
 
 const SIM: SimState = { rot: 0, probes: null, color: "plane", hist: null, fk: "100", rate: "PAL30", t: 60, thick: T_WAFER_SIM, pre: 0, quality: "normal", hx: 200, hy: 130, shapes: [], preset: 0,
-              tv: 0, tSim: 0, tEnd: 0, res: null, running: false, cutOn: false, cutAxis: "y", cutPos: 0, showMask: true, sel: -1,
+              tv: 0, tSim: 0, tEnd: 0, res: null, running: false, cutOn: false, cutAxis: "y", cutPos: 0, cutLine: null, showMask: true, sel: -1,
               grid: null, id: 0, dirty: false, playing: false, viewBusy: false, viewWant: null, worker: null };
 function simFrame() { return SFR[SIM.fk]; }
 // crystal components of the wafer axes with the flat error: the crystal is turned by SIM.rot about the normal

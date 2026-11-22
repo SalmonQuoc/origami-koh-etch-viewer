@@ -171,7 +171,7 @@ $("pcToSim").addEventListener("click", () => {
   SIM.fk = { "100": "100", "110": "110f", "111": "111" }[S.wf]; SIM.rate = PIT2SIM[S.rate];
   SIM.rot = S.rot || 0; SIM.probes = null;
   SIM.t = Math.max(5, Math.round(S.final ? pit.tmax : S.t)); SIM.pre = Math.max(0, ...pit.items.map(it => it.pre)); SIM.hx = hx; SIM.hy = hy; SIM.dxMax = 0;
-  SIM.shapes = shapes; SIM.sel = -1; SIM.preset = -1; SIM.cutPos = 0; SIM.cutAxis = "y"; SIM.wfLoaded = S.wf; SIM.owner = "sim"; SIM.cl = null;
+  SIM.shapes = shapes; SIM.sel = -1; SIM.preset = -1; SIM.cutPos = 0; SIM.cutAxis = "y"; SIM.cutLine = null; SIM.wfLoaded = S.wf; SIM.owner = "sim"; SIM.cl = null;
   fillSimPresets(); $("simPreset").value = "-1";
   $("simNote").innerHTML = "Openings sent from the Etched pit scene. Here they keep their real shape, and cavities that meet merge.";
   syncSimInputs(); renderShapeList();

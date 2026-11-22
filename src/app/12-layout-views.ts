@@ -6,7 +6,7 @@ function setTheater(on) {
   if (!layoutBusy) { if (on) document.body.classList.remove("stacked"); SET.layout = on ? "theater" : (SET.layout === "theater" ? "standard" : SET.layout); saveSet(); }
   requestAnimationFrame(redrawPanes);
 }
-function redrawPanes() { resize(); if (simLike()) { drawSection(); drawMaskEditor(); drawSimGraph(); } else if (S.mode === "pit") { drawPitGraph(); drawPitEditor(); } else if (S.mode === "find") { drawFindMap(); drawScope(); drawFdPlot(); } }
+function redrawPanes() { resize(); if (simLike()) { drawSection(); drawMaskEditor(); drawSimGraph(); } else if (S.mode === "pit") { drawPitGraph(); drawPitEditor(); drawPitSection(); } else if (S.mode === "find") { drawFindMap(); drawScope(); drawFdPlot(); } }
 // split view: two panes, draggable divider (width of the 3D pane kept in --splitW)
 function setSplit(on) {
   document.body.classList.toggle("split", on); $("bSplit").setAttribute("aria-pressed", String(on));

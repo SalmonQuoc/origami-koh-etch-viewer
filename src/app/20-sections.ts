@@ -34,8 +34,6 @@ function foldAllIn(box: Element, open: boolean) { for (const h of box.querySelec
       foldSet(h, openFirst && first, false); first = false;
     }
   }
-  // the whole-wafer box (module 06) brings its own heading; it folds inside the section that holds it
-  for (const el of document.querySelectorAll(".waferUI")) makeFolds(el, "H3", false);
   for (const id of ["panelModel", "panelPit", "cornerBox", "simExBox", "panelFind"]) makeFolds($(id), "H3", true);
   makeFolds($("panelSim"), "H3", false);   // its first sections sit in cornerBox and simExBox
   for (const id of ["simBelow", "findBelow", "pitBelow"]) makeFolds($(id), "H2", true);

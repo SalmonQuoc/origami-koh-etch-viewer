@@ -36,7 +36,7 @@ test("page: scenes, simulator kernel, drawing, settings, custom etchant, presets
 
   await t.test("sections: only the first section of each panel is open at first, headings toggle", async () => {
     const open = await ev(() => [...document.querySelectorAll(".foldH")].filter(h => !h.classList.contains("closed")).map(h => h.textContent.trim()));
-    assert.deepEqual(open, ["Cross-section", "Microscope view of the selected item", "Etch history", "Show", "1Mask openings", "Corner result", "1Pick an example", "1Flat error"]);
+    assert.deepEqual(open, ["Cross-section", "Microscope view of the selected item", "Cross-section", "Selected face", "1Mask openings", "Corner result", "1Pick an example", "1Flat error"]);
     assert.ok(await ev(() => [...document.querySelectorAll(".foldH.closed + .foldBody")].every(b => getComputedStyle(b).display === "none")));
     await p.click('#segM button[data-m="sim"]');
     const h = p.locator("#panelSim .foldH", { hasText: "Edit or draw the mask" });
@@ -82,15 +82,38 @@ test("page: scenes, simulator kernel, drawing, settings, custom etchant, presets
     await p.mouse.move(bb.x + ed.ox + 50*ed.s, bb.y + ed.oy - 30*ed.s); await p.waitForTimeout(100);
     const c = await ev(() => window.__o3d.EDC.maskCanvas);
     assert.ok(Math.abs(c[0] - 50) < 1 && Math.abs(c[1] - 30) < 1, JSON.stringify(c));
-    await ev(() => { window.__o3d.SIM.cutAxis = "y"; window.__o3d.SIM.cutPos = 0; });
-    const x = bb.x + ed.ox - 20*ed.s, y = bb.y + ed.oy;
-    await p.mouse.move(x, y); await p.mouse.down(); await p.mouse.move(x, y + 40*ed.s, { steps: 6 }); await p.mouse.up();
-    assert.equal(await ev(() => window.__o3d.SIM.cutPos), -40);
-    assert.equal(await p.inputValue("#simCutNum"), "-40");
-    await p.fill("#simCutNum", "25"); await p.dispatchEvent("#simCutNum", "change");
-    assert.equal(await ev(() => window.__o3d.SIM.cutPos), 25);
+    // the section line A -> B: drag B, drag the line, type A, draw a new line
+    await ev(() => { window.__o3d.SIM.cutLine = { a: [-50, 0], b: [50, 0] }; window.__o3d.SIM.cutOn = true; });
+    await p.fill('.secUI[data-for="maskCanvas"] [data-sl="bx"]', "50"); await p.dispatchEvent('.secUI[data-for="maskCanvas"] [data-sl="bx"]', "change");
+    const drag = async (from, to) => {   // the inputs below the editor may have scrolled the page: measure again
+      await m.scrollIntoViewIfNeeded(); const B = await m.boundingBox(), E = await ev(() => window.__o3d.SIM.ed), at = (wx, wy) => [B.x + E.ox + wx*E.s, B.y + E.oy - wy*E.s];
+      const [x0, y0] = at(...from), [x1, y1] = at(...to); await p.mouse.move(x0, y0); await p.mouse.down(); await p.mouse.move(x1, y1, { steps: 6 }); await p.mouse.up(); await p.waitForTimeout(100); };
+    const line = () => ev(() => window.__o3d.SIM.cutLine);
+    await drag([50, 0], [50, 40]);
+    assert.deepEqual(await line(), { a: [-50, 0], b: [50, 40] });
+    await drag([0, 20], [0, 30]);
+    assert.deepEqual(await line(), { a: [-50, 10], b: [50, 50] });
+    assert.equal(await p.inputValue('.secUI[data-for="maskCanvas"] [data-sl="by"]'), "50");
+    await p.fill('.secUI[data-for="maskCanvas"] [data-sl="ax"]', "-30"); await p.dispatchEvent('.secUI[data-for="maskCanvas"] [data-sl="ax"]', "change");
+    assert.deepEqual((await line()).a, [-30, 10]);
+    await p.click('.secUI[data-for="maskCanvas"] [data-sl="draw"]');
+    await drag([-20, -20], [30, -20]);
+    assert.deepEqual(await line(), { a: [-20, -20], b: [30, -20] });
+    assert.equal(await p.getAttribute('.secUI[data-for="maskCanvas"] [data-sl="draw"]', "aria-pressed"), "false");
+    await p.click('.secUI[data-for="maskCanvas"] [data-sl="x"]');
+    const l2 = await line(); assert.equal(l2.a[1], 0); assert.equal(l2.b[1], 0);
+    // the section plot follows the line (the worker samples along A -> B)
+    await p.waitForFunction(() => { const s = window.__o3d.SIM.res && window.__o3d.SIM.res.sec; return s && s.line && Math.abs(s.len - Math.hypot(window.__o3d.SIM.cutLine.b[0] - window.__o3d.SIM.cutLine.a[0], 0)) < 1; }, null, { timeout: 20000 });
+    // etched pit: the same line, its own cross-section, and the 3D cut along a slanted line
+    await p.click('#segM button[data-m="pit"]'); await p.waitForTimeout(400);
+    await p.fill('.secUI[data-for="pitCanvas"] [data-sl="ay"]', "-60"); await p.dispatchEvent('.secUI[data-for="pitCanvas"] [data-sl="ay"]', "change");
+    assert.equal(await ev(() => window.__o3d.S.pitLine.a[1]), -60);
+    assert.ok(await ev(() => document.getElementById("pitSecCanvas").height > 50));
+    await ev(() => { const c = document.getElementById("cCut"); c.checked = true; c.dispatchEvent(new Event("change", { bubbles: true })); });
+    assert.equal(await ev(() => window.__o3d.S.cut), true);
+    await ev(() => { const c = document.getElementById("cCut"); c.checked = false; c.dispatchEvent(new Event("change", { bubbles: true })); });
+    await p.click('#segM button[data-m="sim"]'); await p.waitForTimeout(300);
   });
-
   await t.test("mask film at its true thickness: SiO₂ thins and is used up; toggles take the accent colour", async () => {
     await p.click('#segM button[data-m="pit"]');
     const k57 = await ev(() => [...document.querySelectorAll("#selRate option")].find(o => /57/.test(o.textContent)).value);
@@ -147,7 +170,6 @@ test("page: scenes, simulator kernel, drawing, settings, custom etchant, presets
     const set = (k, on) => p.evaluate(([k, on]) => { const c = document.querySelector(`#dlgSet [data-arr="${k}"]`); c.checked = on; c.dispatchEvent(new Event("change", { bubbles: true })); }, [k, on]);
     await set("arrAlong", false); await set("arrPerp", false); await p.waitForTimeout(300);
     assert.doesNotMatch(await txt(), /along flat|⊥ flat/);
-    assert.equal(await ev(() => document.querySelector('#panelSim [data-arr="arrPerp"]').checked), false);
     assert.deepEqual(await ev(() => { const s = JSON.parse(localStorage.getItem("o3d-settings")); return [s.arrAlong, s.arrPerp]; }), [false, false]);
     await set("arrAlong", true); await set("arrPerp", true); await p.waitForTimeout(300);
     assert.match(await txt(), /along flat/);

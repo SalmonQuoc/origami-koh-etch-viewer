@@ -411,8 +411,10 @@ canvas.measuring { cursor: crosshair !important; }
       <canvas id="fdPlot" class="graphcv"></canvas>
       <div class="glegend" id="fdPlotLeg"></div>
     </div>
-    <div class="panel hidden enl" data-title="Etch history" id="pitBelow" style="margin-top:12px">
-      <h2 style="margin-bottom:4px">Etch history</h2>
+    <div class="panel hidden enl" data-title="Cross-section and etch history" id="pitBelow" style="margin-top:12px">
+      <h2 style="margin-bottom:4px">Cross-section</h2>
+      <canvas id="pitSecCanvas" class="seccv"></canvas>
+      <h2 style="margin:14px 0 4px">Etch history</h2>
       <canvas id="pitGraph" class="graphcv"></canvas>
       <div class="glegend" id="pitGraphLeg"></div>
     </div>
@@ -422,11 +424,6 @@ canvas.measuring { cursor: crosshair !important; }
   <aside class="panel" id="panelModel">
     <h2 id="holdTitle">How to hold it</h2>
     <ol id="holdSteps"></ol>
-    <h3>Show</h3>
-    <div class="row"><label><input type="checkbox" id="cCorners" checked> corner directions</label></div>
-    <div class="row"><label><input type="checkbox" id="cFaces"> face indices</label></div>
-    <div class="row"><label><input type="checkbox" id="cUpper" checked> upper half (above the wafer)</label></div>
-    <div class="arrUI"></div>
     <h3>Selected face</h3>
     <div id="faceInfo" class="note">Click any face. The page then draws where its plane cuts the wafer surface, the two normals and the angle between the planes. Use "Along the selected line" to see the angle at true size.</div>
   </aside>
@@ -442,7 +439,7 @@ canvas.measuring { cursor: crosshair !important; }
     <p class="note" style="margin:4px 0 6px"><b>Drag</b> a shape to move it (<b>Alt</b>-drag moves a copy), <b>click</b> to select it, <b>double-click</b> an empty spot to add the chosen shape there. With the editor focused, the <span class="kbd">←</span><span class="kbd">→</span><span class="kbd">↑</span><span class="kbd">↓</span> keys move the selected shape by one snap step (with Shift, five), <span class="kbd">Ctrl</span>+<span class="kbd">D</span> duplicates it and <span class="kbd">Delete</span> removes it. <b>Draw</b> lets you draw your own outline. The 3D view updates when you let go.</p>
     <p class="drawhelp hidden" id="pcDrawHelp"></p>
     <canvas id="pitCanvas" class="maskcv" tabindex="0" aria-label="Mask editor for the etched pit"></canvas>
-    <div class="legend" style="margin-top:4px"><span><i class="sw" style="background:var(--mask)"></i>mask</span><span><i class="sw" style="background:var(--scene-bg);border:1px solid var(--s-ink)"></i>opening</span><span><i class="sw" style="background:var(--ghost)"></i>cavity edge at the surface now</span><label><input type="checkbox" class="cCompass" checked> crystal compass (orange: {111} traces)</label></div>
+    <div class="legend" style="margin-top:4px"><span><i class="sw" style="background:var(--mask)"></i>mask</span><span><i class="sw" style="background:var(--scene-bg);border:1px solid var(--s-ink)"></i>opening</span><span><i class="sw" style="background:var(--ghost)"></i>cavity edge at the surface now</span><span><i class="sw" style="background:var(--ghost);height:2px"></i>section line A → B</span></div>
     <div class="addrow"><select id="pcType" aria-label="shape to add"></select><button class="btn primary" id="pcAdd">Add shape</button><button class="btn" id="pcDraw" title="Click to place corners or drag to draw freely">✎ Draw</button><button class="btn" id="pcDup">Duplicate</button><button class="btn" id="pcDel">Delete</button><button class="btn" id="pcClear">Clear all</button></div>
     <div id="pcList" class="cards"></div>
     <p class="warn hidden" id="pcWarn"></p>
@@ -455,21 +452,16 @@ canvas.measuring { cursor: crosshair !important; }
     <div class="row"><select id="selRate" style="flex:1;min-width:0"></select><button class="btn" data-etch-open="pit">Custom etchant…</button></div>
     <div class="fields"><label>flat error δ (crystal turned from the flat) <span><input type="number" id="pitRot" step="0.5" value="0"> °</span></label></div>
     <p class="note src">δ = 0: edges drawn along the flat lie exactly on ⟨110⟩. Lec 10 p. 18: the flat itself is only good to 2–5°; see the “Find orientation” scene.</p>
+    <div class="maskUI"></div>
     <h3><span class="stepn">3</span>Etch time</h3>
     <div class="tline"><span id="tNow">0 min</span><span id="tMax"></span></div>
     <input type="range" id="tSlider" min="0" max="1000" value="350">
     <div class="row"><button class="btn primary" id="bPlay">Play</button>
       <label><input type="checkbox" id="cFinal"> long-etch limit ({111} only)</label></div>
-    <h3>Show</h3>
-    <div class="row"><label><input type="checkbox" id="cCut"> cut open along the x axis (y = 0)</label></div>
-    <div class="row"><label><input type="checkbox" id="cBlock" checked> silicon block (off: cast of the pit)</label></div>
-    <div class="row"><label><input type="checkbox" id="cGhost" checked> final {111} shape (wire)</label></div>
-    <div class="row"><label><input type="checkbox" id="cMask" checked> mask layer</label></div>
-    <div class="arrUI"></div>
-    <div class="legend"><span><i class="sw" style="background:var(--mask)"></i>mask film (drawn at its true thickness)</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span></div>
-    <div class="maskUI"></div>
+    <h3>Section line</h3>
+    <div class="secUI" data-for="pitCanvas"></div>
+    <h3>Whole wafer</h3>
     <div class="waferUI"></div>
-    <div class="row"><span class="lbl">Colour</span><select id="pitColor" style="width:auto"><option value="plane">crystal plane family</option><option value="depth">depth below the surface</option><option value="rate">etch rate of the wall</option></select></div>
     <h3>Now</h3>
     <dl class="kv" id="readout"></dl>
     <h3>Walls now</h3>
@@ -512,7 +504,7 @@ canvas.measuring { cursor: crosshair !important; }
     <p class="note" style="margin:0 0 4px">Shapes are applied top to bottom: “open” removes the mask, “mask” puts it back (solid outline: open; dashed: mask). <b>Drag</b> a shape to move it (<b>Alt</b>-drag moves a copy), <b>double-click</b> an empty spot to add the chosen shape there; with the editor focused, the arrow keys move the selected shape by one snap step (Shift: five), <span class="kbd">Ctrl</span>+<span class="kbd">D</span> duplicates it and <span class="kbd">Delete</span> removes it. <b>Draw</b> lets you draw your own outline. Press Run to etch the new mask.</p>
     <p class="drawhelp hidden" id="simDrawHelp"></p>
     <canvas id="maskCanvas" class="maskcv"></canvas>
-    <div class="legend"><label><input type="checkbox" class="cCompass" checked> crystal compass (orange: {111} traces)</label></div>
+    <div class="legend"><span><i class="sw" style="background:var(--ghost);height:2px"></i>section line A → B</span></div>
     <div class="addrow"><select id="addType"></select><select id="addOp"><option value="open">as opening</option><option value="mask">as mask</option></select><button class="btn" id="bAddShape">Add shape</button><button class="btn" id="bDraw" title="Click to place corners or drag to draw freely">✎ Draw</button><button class="btn" id="bDupShape">Duplicate selected</button></div>
     <p class="note" style="margin:4px 0 0">Columns: w, h = size; t = arm width (L, U, cross, frame) or inner size (ring, star); n = sides or points; array = copies nx × ny at pitch px, py (µm).</p>
     <div class="tblwrap"><table class="shapes" id="shapeList"></table></div>
@@ -528,26 +520,19 @@ canvas.measuring { cursor: crosshair !important; }
       <label>domain x × y <span><input type="number" id="simHx" min="40" step="20"> × <input type="number" id="simHy" min="40" step="20"> µm</span></label>
       <label>resolution <span><select id="simQual"><option value="draft">draft (fast)</option><option value="normal">normal</option><option value="fine">fine (slow)</option><option value="ultra">very fine (slowest)</option></select></span></label>
     </div>
+    <div class="maskUI"></div>
     <div class="row"><button class="btn primary" id="bSimRun">Run</button><span class="note hidden" id="simDirty">Mask or process changed: press Run.</span></div>
     <div class="pbar"><div id="simBar"></div></div>
     <p class="note" id="simStatus" style="margin:4px 0 0"></p>
     <h3>Time</h3>
     <div class="tline"><span id="simTnow">0 min</span><span id="simTmax"></span></div>
     <input type="range" id="simT" min="0" max="1" step="any" value="0">
-    <div class="row"><button class="btn" id="bSimPlay">Play</button>
-      <label><input type="checkbox" id="cSimMask" checked> mask layer</label>
-      <label><input type="checkbox" id="cSimCut"> cut away at the section</label></div>
-    <div class="arrUI"></div>
-    <div class="legend"><span><i class="sw" style="background:var(--mask)"></i>mask film (true thickness)</span><span><i class="sw" style="background:var(--mask);filter:brightness(.55)"></i>mask with no silicon under it</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span></div>
-    <div class="maskUI"></div>
+    <div class="row"><button class="btn" id="bSimPlay">Play</button></div>
     <h3>Section line</h3>
-    <div class="row"><span class="seg" id="segCut"><button data-a="y" aria-pressed="true">along x</button><button data-a="x" aria-pressed="false">along y</button></span><label class="note" title="position of the section line; you can also drag the line in the mask editor"><span id="simCutLbl">y</span> = <input type="number" id="simCutNum" step="1" style="width:6em"> µm</label></div>
-    <input type="range" id="simCutPos" min="-100" max="100" step="1" value="0">
+    <div class="secUI" data-for="maskCanvas"></div>
     <h3>Now</h3>
     <dl class="kv" id="simReadout"></dl>
-    <h3>Colour</h3>
-    <select id="simColor"><option value="plane">crystal plane family</option><option value="depth">depth below the surface</option><option value="rate">local etch rate R(n)</option><option value="time">time the etch front reached the surface</option></select>
-    <div class="legend" id="simPlaneLegend" style="margin-top:6px"><span><i class="sw" style="background:var(--f111)"></i>{111}</span><span><i class="sw" style="background:var(--f100)"></i>{100}</span><span><i class="sw" style="background:var(--f110)"></i>{110}</span><span><i class="sw" style="background:var(--fhi)"></i>higher index ({311}, {211}, {411} …)</span><span><i class="sw" style="background:var(--s-side)"></i>no plane within 4°</span><span><i class="sw" style="background:var(--s-cut)"></i>cut face</span></div>
+    <h3>Whole wafer</h3>
     <div class="waferUI"></div>
     <details class="srcs"><summary>Model, sources and assumptions</summary>
       <ul>
@@ -585,7 +570,6 @@ canvas.measuring { cursor: crosshair !important; }
     <div class="enl" data-title="Mask on the wafer">
     <p class="note" style="margin:0 0 4px"><b>Drag</b> an item to move it (<b>Alt</b>-drag moves a copy), <b>double-click</b> an empty spot to add the chosen item there. With the map focused, the arrow keys move the selected item by 1 mm (Shift: 5 mm), <span class="kbd">Ctrl</span>+<span class="kbd">D</span> duplicates it and <span class="kbd">Delete</span> removes it. Test structures: slot fan and circle arc; everything else is a device shape (µm).</p>
     <canvas id="fdCanvas" class="maskcv" tabindex="0" aria-label="Mask map of the whole wafer"></canvas>
-    <div class="arrUI" data-only="perp"></div>
     <div class="addrow"><select id="fdType" aria-label="item to add"></select><button class="btn primary" id="fdAdd">Add</button><button class="btn" id="fdDup">Duplicate</button><button class="btn" id="fdDel">Delete</button><button class="btn" id="fdReset">Lecture layout</button></div>
     <div id="fdList" class="cards"></div>
     </div>
@@ -634,7 +618,7 @@ canvas.measuring { cursor: crosshair !important; }
     <tr><td>scroll, pinch</td><td>zoom (also <b>+</b> <b>−</b> <b>⤢</b> at the top left of the view)</td></tr>
     <tr><td>hover, click</td><td>name a plane, select a face</td></tr>
     <tr><td>axis gizmo</td><td>bottom left: the crystal axes x = [100], y = [010], z = [001] (Miller indices, Lec 4-1 p. 6; Pal &amp; Sato Fig. 2.8, p. 31) as they sit in the wafer, the primary flat F and the surface normal n; click one to look along it. Positions in the mask editors are measured along the flat, the reference for aligning masks (Pal &amp; Sato p. 29)</td></tr>
-    <tr><td>👁 Show tab</td><td>top right of the 3D view (key V): every show/hide and colour option of the scene in one list: layers (mask film, silicon block, {111} wire, cut, whole wafer), flat arrows (along the flat, ⊥ flat outward), colour mode and theme, 3D labels, axis gizmo, scale bar and the mask-editor overlays. It changes the same settings as the panel and ⚙ Settings</td></tr>
+    <tr><td>👁 Show tab</td><td>top right of the 3D view (key V): every show/hide and colour option of the scene in one list: layers (mask film, silicon block, {111} wire, cut open at the section line, whole wafer), flat arrows (along the flat, ⊥ flat outward), colour mode with its legend and theme, 3D labels, axis gizmo, scale bar and the mask-editor overlays. The panels hold no show or colour options of their own</td></tr>
     <tr><td>📏</td><td>(not on the paper model, which has no length unit) measure: click two points on a surface for the distance and Δx, Δy, Δz; <span class="kbd">Esc</span> clears. The scale bar (bottom right) holds for lengths parallel to the screen</td></tr>
     <tr><td><span class="kbd">S</span></td><td>split view on or off</td></tr>
     <tr><td><span class="kbd">V</span></td><td>Show tab (visibility and colours) open or closed</td></tr>
@@ -651,6 +635,7 @@ canvas.measuring { cursor: crosshair !important; }
     <tr><td><span class="kbd">Ctrl</span> + <span class="kbd">D</span></td><td>duplicate the selected shape</td></tr>
     <tr><td><span class="kbd">Delete</span></td><td>remove it</td></tr>
     <tr><td><span class="kbd">Ctrl</span> + scroll, <span class="kbd">+</span> <span class="kbd">−</span> <span class="kbd">0</span></td><td>zoom in, out (to 25 %) and back to 100 %; <span class="kbd">Space</span> + drag pans</td></tr>
+    <tr><td>Section line A → B, <span class="kbd">L</span></td><td>(etched pit, simulator, corner lab) drag <b>A</b> or <b>B</b> to move an end, drag the dashed line to move it, or press ✎ Draw line (or <span class="kbd">L</span> in the editor) and drag a new one; the coordinates can also be typed. The cross-section under the 3D view shows the vertical plane through A → B; “cut open at the section line” in 👁 Show removes the silicon on the right of A → B</td></tr>
     <tr><td>📏 Measure, <span class="kbd">M</span></td><td>drag to measure a distance and its angle to x; <span class="kbd">Esc</span> clears</td></tr>
     <tr><td>✎ Draw</td><td>click corners or drag a free outline; <span class="kbd">Enter</span> or double-click finishes, <span class="kbd">Backspace</span> undoes a corner, <span class="kbd">Esc</span> cancels</td></tr>
   </table>
@@ -882,6 +867,9 @@ canvas.measuring { cursor: crosshair !important; }
   </ol>
 </section>
 </div>
+
+<!-- controls of the 3D view, set from the 👁 Show tab (module 22); kept here so their handlers still run -->
+<div id="ctlStore" hidden><label><input type="checkbox" id="cCorners" checked> corner directions</label><label><input type="checkbox" id="cFaces"> face indices</label><label><input type="checkbox" id="cUpper" checked> upper half (above the wafer)</label><label><input type="checkbox" id="cCut"> cut open at the section line</label><label><input type="checkbox" id="cBlock" checked> silicon block (off: cast of the pit)</label><label><input type="checkbox" id="cGhost" checked> final {111} shape (wire)</label><label><input type="checkbox" id="cMask" checked> mask layer</label><select id="pitColor"><option value="plane">crystal plane family</option><option value="depth">depth below the surface</option><option value="rate">etch rate of the wall</option></select><label><input type="checkbox" class="cCompass" checked> crystal compass</label><div id="pitLegend"><span><i class="sw" style="background:var(--mask)"></i>mask film (true thickness)</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span><span><i class="sw" style="background:var(--s-cut)"></i>cut face</span></div><label><input type="checkbox" id="cSimMask" checked> mask layer</label><label><input type="checkbox" id="cSimCut"> cut open at the section line</label><div id="simLegend"><span><i class="sw" style="background:var(--mask)"></i>mask film (true thickness)</span><span><i class="sw" style="background:var(--mask);filter:brightness(.55)"></i>mask with no silicon under it</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span></div><select id="simColor"><option value="plane">crystal plane family</option><option value="depth">depth below the surface</option><option value="rate">local etch rate R(n)</option><option value="time">time the etch front reached the surface</option></select><div id="simPlaneLegend" style="margin-top:6px"><span><i class="sw" style="background:var(--f111)"></i>{111}</span><span><i class="sw" style="background:var(--f100)"></i>{100}</span><span><i class="sw" style="background:var(--f110)"></i>{110}</span><span><i class="sw" style="background:var(--fhi)"></i>higher index ({311}, {211}, {411} …)</span><span><i class="sw" style="background:var(--s-side)"></i>no plane within 4°</span><span><i class="sw" style="background:var(--s-cut)"></i>cut face</span></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -1526,6 +1514,30 @@ function etchEngineFactory() {
     return { n, Nz, sil, fa, fk, open };
   }
 
+  // 2D section in the vertical plane through the line a -> b (wafer µm): a field whose sign is silicon (> 0) or
+  // etched (<= 0) at view time tv, sampled every dx/2 along the line and at the node depths (k + 0.5) dx.
+  // Live view: phi itself. Earlier times: the arrival time turned into a distance with the fastest rate,
+  // (teff - tv) * rmax, clamped to the band; display only (its zero is right, its slope approximate).
+  function sectionLine(S, a, b, tv) {
+    const { Nx, Ny, Nz, NXY, dx, B } = S, X0 = S.cfg.X0, Y0 = S.cfg.Y0, live = tv >= S.t - 1e-6, rm = S.rmax || 1;
+    const L = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(2, Math.ceil(L/(0.5*dx)) + 1), ds = L/(n - 1);
+    const ux = L > 0 ? (b[0] - a[0])/L : 1, uy = L > 0 ? (b[1] - a[1])/L : 0;
+    const val = new Float32Array(n*Nz), open = new Uint8Array(n);
+    const f = q => live ? S.phi[q] : Math.max(-B, Math.min(B, (teff(S, q) - tv)*rm));
+    for (let m = 0; m < n; m++) {
+      const x = a[0] + ux*m*ds, y = a[1] + uy*m*ds;
+      let fi = (x - X0)/dx - 0.5, fj = (y - Y0)/dx - 0.5;
+      fi = Math.max(0, Math.min(Nx - 1, fi)); fj = Math.max(0, Math.min(Ny - 1, fj));
+      const i0 = Math.min(Nx - 2, Math.floor(fi)), j0 = Math.min(Ny - 2, Math.floor(fj)), wx = fi - i0, wy = fj - j0;
+      open[m] = S.open[Math.round(fj)*Nx + Math.round(fi)];
+      for (let k = 0; k < Nz; k++) {
+        const q = k*NXY + j0*Nx + i0;
+        val[k*n + m] = (f(q)*(1 - wx) + f(q + 1)*wx)*(1 - wy) + (f(q + Nx)*(1 - wx) + f(q + Nx + 1)*wx)*wy;
+      }
+    }
+    return { line: true, n, Nz, val, open, len: L, ds, a, b };
+  }
+
   // ---------------------------------------------------------------- statistics at view time tv
   function stats(S, tv) {
     const { Nx, Ny, Nz, NXY, dx, T, sd } = S;
@@ -1599,11 +1611,11 @@ function etchEngineFactory() {
     const view = (tv, cut, cutMesh) => {
       const opt = {}; if (cut && cutMesh) { if (cut.axis === "y") opt.cutJ = cut.index; else opt.cutI = cut.index; }
       const m = extract(S, tv, opt);
-      const sec = cut ? section(S, cut.axis, cut.index, tv) : null;
+      const sec = cut ? (cut.a ? sectionLine(S, cut.a, cut.b, tv) : section(S, cut.axis, cut.index, tv)) : null;
       const top = new Uint8Array(S.NXY); for (let q = 0; q < S.NXY; q++) top[q] = S.T[q] <= tv ? 1 : 0;
       return { mesh: m, sec, top, st: stats(S, tv), t: S.t, tv };
     };
-    const tr = r => { const a = [r.mesh.pos.buffer, r.mesh.idx.buffer, r.mesh.tag.buffer, r.mesh.vt.buffer, r.top.buffer]; if (r.sec) a.push(r.sec.sil.buffer, r.sec.fa.buffer, r.sec.fk.buffer, r.sec.open.buffer); return a; };
+    const tr = r => { const a = [r.mesh.pos.buffer, r.mesh.idx.buffer, r.mesh.tag.buffer, r.mesh.vt.buffer, r.top.buffer]; if (r.sec) { if (r.sec.line) a.push(r.sec.val.buffer, r.sec.open.buffer); else a.push(r.sec.sil.buffer, r.sec.fa.buffer, r.sec.fk.buffer, r.sec.open.buffer); } return a; };
     return function (msg, tick) {
       if (msg.cmd === "run") {
         const my = ++job, t0 = Date.now();
@@ -1634,7 +1646,7 @@ function etchEngineFactory() {
     };
   }
 
-  return { ORIENT, uvOf, makeRate, rateC, create, step, extract, section, teff, isOpen, stats, makeHandler, wasmInit, release, engineKind };
+  return { ORIENT, uvOf, makeRate, rateC, create, step, extract, section, sectionLine, teff, isOpen, stats, makeHandler, wasmInit, release, engineKind };
 }
 </script>
 <script>
@@ -2431,7 +2443,6 @@ function addLabelEl(html, cls) {
 }
 
 // ---- src/app/05-pit-scene.ts
-const PL_CUT = [new THREE.Plane(new V3(0, 1, 0), 0)];
 let pit = null;
 function pitItems() {
   if (S.open === "custom") return S.pitShapes.flatMap((sh, g) => shapePieces(sh).map((o) => ({ o, pre: sh.pre || 0, g })));
@@ -2764,10 +2775,10 @@ function buildPit() {
   const t = S.t;
   const cavs = items.map((it, k) => S.final ? fins[k] : pe(it.o, { t, T: T_WAFER, pre: it.pre, rates: R }));
   pit.cavs = cavs;
-  const [x0, x1, y0, y1b] = box, yA = S.cut ? 0 : y0, yB = y1b;
+  const [x0, x1, y0, y1b] = box, yA = y0, yB = y1b;
   const cx = (x0 + x1) / 2, cy = (y0 + y1b) / 2;
   radius = 0.5 * Math.hypot(x1 - x0, y1b - y0, zb) * 0.92;
-  const clip = S.cut ? PL_CUT : null;
+  const cutL = pitLine(), clip = S.cut ? [secPlane(cutL)] : null;
   const g = new THREE.Group();
   scene.add(g);
   pit.pick = [];
@@ -2804,47 +2815,54 @@ function buildPit() {
     const outs = cavs.map((c) => C.outline(c.H, 0)).filter((O) => O.length >= 3);
     const top = holePlane(x0, x1, yA, yB, outs, COL["s-top"], (m) => {
       m.position.z = 0;
-    });
+    }, { clippingPlanes: clip });
     top.userData.block = true;
     g.add(top);
     pit.pick.push(top);
     const polys = [], cols = [];
-    const sides = [[[x1, yA], [x1, yB], [1, 0, 0]], [[x0, yB], [x0, yA], [-1, 0, 0]], [[x1, yB], [x0, yB], [0, 1, 0]]];
-    if (!S.cut) sides.push([[x0, yA], [x1, yA], [0, -1, 0]]);
+    const sides = [[[x1, yA], [x1, yB], [1, 0, 0]], [[x0, yB], [x0, yA], [-1, 0, 0]], [[x1, yB], [x0, yB], [0, 1, 0]], [[x0, yA], [x1, yA], [0, -1, 0]]];
     for (const [a, b, n] of sides) {
       polys.push([[a[0], a[1], 0], [b[0], b[1], 0], [b[0], b[1], -zb], [a[0], a[1], -zb]]);
       cols.push(shadeColor(COL["s-side"], n));
     }
-    const blk = meshFromPolys(polys, cols, { polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 });
+    const blk = meshFromPolys(polys, cols, { clippingPlanes: clip, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 });
     blk.userData.block = true;
     g.add(blk);
     pit.pick.push(blk);
     const outsB = zb >= T_WAFER ? cavs.map((c) => C.outline(c.H, -zb + 1e-6)).filter((O) => O.length >= 3) : [];
     const bot = holePlane(x0, x1, yA, yB, outsB, COL["s-side"], (m) => {
       m.position.z = -zb;
-    });
+    }, { clippingPlanes: clip });
     bot.userData.block = true;
     g.add(bot);
     pit.pick.push(bot);
-    if (S.cut) {
-      const secs = cavs.map((c) => C.vsectionY(c.H, 0)).filter((P) => P.length >= 3);
-      const cutp = holePlane(x0, x1, -zb, 0, secs, COL["s-cut"], (m) => {
+    const sr = S.cut ? lineInBox(cutL, box) : null;
+    if (sr) {
+      const L = secLen(cutL), ux = (cutL.b[0] - cutL.a[0]) / L, uy = (cutL.b[1] - cutL.a[1]) / L, nx = -uy, ny = ux;
+      const secs = cavs.map((c) => C.section2d(c.H.map((h) => [[h.n[0] * ux + h.n[1] * uy, h.n[2]], h.b - h.n[0] * cutL.a[0] - h.n[1] * cutL.a[1]]))).filter((P) => P.length >= 3);
+      const cutp = holePlane(sr[0], sr[1], -zb, 0, secs, COL["s-cut"], (m) => {
         m.rotation.x = Math.PI / 2;
       });
+      const cg = new THREE.Group();
+      cg.position.set(cutL.a[0], cutL.a[1], 0);
+      cg.rotation.z = Math.atan2(uy, ux);
+      cg.add(cutp);
       cutp.userData.block = true;
-      g.add(cutp);
+      g.add(cg);
       pit.pick.push(cutp);
-      if (secs.length) g.add(linesFromLoops(unionEdges2(secs, 1e-6).map(([a, b]) => [[a[0], -2e-3 * zb, a[1]], [b[0], -2e-3 * zb, b[1]]]), COL["s-ink"]));
+      const off = -2e-3 * zb, P3 = (p) => [cutL.a[0] + ux * p[0] + nx * off, cutL.a[1] + uy * p[0] + ny * off, p[1]];
+      if (secs.length) g.add(linesFromLoops(unionEdges2(secs, 1e-6).filter(([a, b]) => Math.max(a[0], b[0]) > sr[0] - 1e-6 && Math.min(a[0], b[0]) < sr[1] + 1e-6).map(([a, b]) => [P3(a), P3(b)]), COL["s-ink"]));
+      g.add(linesFromLoops([[P3([sr[0], 0]), P3([sr[1], 0]), P3([sr[1], -zb]), P3([sr[0], -zb])]], COL["s-ink"], { opacity: 0.6 }));
     }
     const yl = yB;
-    g.add(linesFromLoops([[[x0, yA, 0], [x1, yA, 0], [x1, yl, 0], [x0, yl, 0]], [[x0, yA, -zb], [x1, yA, -zb], [x1, yl, -zb], [x0, yl, -zb]]], COL["s-ink"], { opacity: 0.6 }));
-    g.add(linesFromLoops([[[x0, yA, 0], [x0, yA, -zb]], [[x1, yA, 0], [x1, yA, -zb]], [[x0, yl, 0], [x0, yl, -zb]], [[x1, yl, 0], [x1, yl, -zb]]], COL["s-ink"], { opacity: 0.6 }));
+    g.add(linesFromLoops([[[x0, yA, 0], [x1, yA, 0], [x1, yl, 0], [x0, yl, 0]], [[x0, yA, -zb], [x1, yA, -zb], [x1, yl, -zb], [x0, yl, -zb]]], COL["s-ink"], { opacity: 0.6, clip }));
+    g.add(linesFromLoops([[[x0, yA, 0], [x0, yA, -zb]], [[x1, yA, 0], [x1, yA, -zb]], [[x0, yl, 0], [x0, yl, -zb]], [[x1, yl, 0], [x1, yl, -zb]]], COL["s-ink"], { opacity: 0.6, clip }));
     if (zb < T_WAFER) addLabel(new V3(x1, yA, -zb), `depth shown: ${zb.toFixed(0)} \xB5m`, "", (camDir) => camDir.z > -0.2);
     if (S.mask) {
       const mf = pitFilm(), tm = mf.left, opens = items.map((it) => it.o);
       const mm = holePlane(x0, x1, yA, yB, opens, COL.mask, (m) => {
         m.position.z = tm;
-      }, { opacity: mf.gone ? 0.3 : 0.88, alphaTest: 0.01, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
+      }, { opacity: mf.gone ? 0.3 : 0.88, alphaTest: 0.01, polygonOffsetFactor: -2, polygonOffsetUnits: -4, clippingPlanes: clip });
       mm.renderOrder = 5;
       mm.userData.noPick = true;
       g.add(mm);
@@ -2879,6 +2897,7 @@ function buildPit() {
   updateReadout(cavs);
   drawPitGraph();
   drawPitEditor();
+  drawPitSection();
   resize();
 }
 function drawPitGraph() {
@@ -2979,7 +2998,10 @@ renderer.domElement.addEventListener("pointermove", (ev) => {
   }
   pickAt(ev);
   let hits = ray.intersectObjects(pit.pick || []);
-  if (S.cut) hits = hits.filter((h2) => h2.object.userData.block || h2.point.y >= -1e-6);
+  if (S.cut) {
+    const pl = secPlane(pitLine());
+    hits = hits.filter((h2) => pl.distanceToPoint(h2.point) >= -1e-3);
+  }
   const h = hits[0];
   if (!h || h.object.userData.block) {
     tip.style.display = "none";
@@ -3152,6 +3174,7 @@ $("selOpen").addEventListener("change", (e) => {
   }
   S.open = e.target.value === "custom" ? "custom" : Number(e.target.value);
   S.pitSel = -1;
+  S.pitLine = null;
   if (S.open !== "custom") {
     S.rate = OPENINGS[S.wf][S.open].rate;
     $("selRate").value = S.rate;
@@ -3170,8 +3193,7 @@ $("pitRot").addEventListener("change", (e) => {
   rebuild(false);
 });
 const WAFER_SRC = "100 mm wafer, 525 \xB5m thick (Pal & Sato Table 2.1, p. 30); flat lengths 32.5 mm and 18 mm (Topline drawing A 174004 A); flat positions Lec 10 p. 10, secondary flat measured clockwise from the primary seen from the front. Lec 10 p. 10 labels the (110) flat \u27E8111\u27E9; the (110) frames here follow Lec 4-1. The die is drawn to scale: use \u201CZoom to die\u201D.";
-for (const el of document.querySelectorAll(".waferUI")) el.innerHTML = `<h3>Whole wafer</h3>
-  <div class="row"><label><input type="checkbox" data-wu="on"> show the whole 100 mm wafer around the die</label></div>
+for (const el of document.querySelectorAll(".waferUI")) el.innerHTML = `  <div class="row"><label><input type="checkbox" data-wu="on"> show the whole 100 mm wafer around the die</label></div>
   <div class="fields" data-wu="box">
     <label>doping (sets the secondary flat) <select data-wu="type"><option value="p">p-type</option><option value="n">n-type</option></select></label>
     <label>die centre on the wafer <span><input type="number" data-wu="x" step="1"> , <input type="number" data-wu="y" step="1"> mm</span></label>
@@ -3584,6 +3606,7 @@ $("pcToSim").addEventListener("click", () => {
   SIM.preset = -1;
   SIM.cutPos = 0;
   SIM.cutAxis = "y";
+  SIM.cutLine = null;
   SIM.wfLoaded = S.wf;
   SIM.owner = "sim";
   SIM.cl = null;
@@ -4006,6 +4029,7 @@ const SIM = {
   cutOn: false,
   cutAxis: "y",
   cutPos: 0,
+  cutLine: null,
   showMask: true,
   sel: -1,
   grid: null,
@@ -4071,11 +4095,70 @@ function simConfig() {
   Lz = Math.min(SIM.thick, Math.max(3 * dx, Lz));
   return { frame: simE(), rates: R, probes: SIM.probes || null, shapes, X0, X1, Y0, Y1, depth: Lz, dx, pre: SIM.pre || 0 };
 }
+function simDomain() {
+  const g = SIM.grid;
+  return [-SIM.hx, -SIM.hx + g.Nx * g.dx, -SIM.hy, -SIM.hy + g.Ny * g.dx];
+}
 function cutSpec() {
   if (!SIM.grid) return null;
-  const g = SIM.grid;
-  if (SIM.cutAxis === "y") return { axis: "y", index: Math.max(0, Math.min(g.Ny - 1, Math.round((SIM.cutPos + SIM.hy) / g.dx - 0.5))) };
-  return { axis: "x", index: Math.max(0, Math.min(g.Nx - 1, Math.round((SIM.cutPos + SIM.hx) / g.dx - 0.5))) };
+  const l = simLine(), r = lineInBox(l, simDomain());
+  if (!r) return { a: l.a.slice(), b: l.b.slice() };
+  const L = secLen(l) || 1, ux = (l.b[0] - l.a[0]) / L, uy = (l.b[1] - l.a[1]) / L;
+  return { a: [l.a[0] + ux * r[0], l.a[1] + uy * r[0]], b: [l.a[0] + ux * r[1], l.a[1] + uy * r[1]] };
+}
+function paintSec(ctx, sec, dx, P) {
+  const n = sec.n, Nz = sec.Nz, ds = sec.ds, val = sec.val, Ls = sec.len;
+  const V = (k, m) => {
+    if (m < 0 || m >= n) return -1e9;
+    if (k < 0) return -Math.abs(val[m]);
+    if (k >= Nz) return -Math.abs(val[(Nz - 1) * n + m]);
+    return val[k * n + m];
+  };
+  const pt = (m, k) => P(Math.max(0, Math.min(Ls, m * ds)), Math.max(-Nz * dx, Math.min(0, -(k + 0.5) * dx)));
+  ctx.beginPath();
+  for (let k = -1; k < Nz; k++) for (let m = -1; m < n; m++) {
+    const cs = [[m, k], [m + 1, k], [m + 1, k + 1], [m, k + 1]], v = cs.map(([mm, kk]) => V(kk, mm)), sil = v.map((x) => x > 0);
+    if (!sil.some((x) => x)) continue;
+    const poly = [];
+    for (let e = 0; e < 4; e++) {
+      const [pm, pk] = cs[e], [qm, qk] = cs[(e + 1) % 4];
+      if (sil[e]) poly.push(pt(pm, pk));
+      if (sil[e] !== sil[(e + 1) % 4]) {
+        const va = v[e], vb = v[(e + 1) % 4], f = Math.min(1, Math.max(0, va / (va - vb)));
+        const A = pt(pm, pk), B = pt(qm, qk);
+        poly.push([A[0] + f * (B[0] - A[0]), A[1] + f * (B[1] - A[1])]);
+      }
+    }
+    if (poly.length >= 3) {
+      ctx.moveTo(poly[0][0], poly[0][1]);
+      for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i][0], poly[i][1]);
+      ctx.closePath();
+    }
+  }
+  ctx.fill();
+}
+function simCap(sec, dx, l) {
+  const L = secLen(l) || 1, ux = (l.b[0] - l.a[0]) / L, uy = (l.b[1] - l.a[1]) / L;
+  const off = (sec.a[0] - l.a[0]) * ux + (sec.a[1] - l.a[1]) * uy, Ls = sec.len, zd = sec.Nz * dx;
+  if (Math.abs((sec.b[0] - sec.a[0]) * uy - (sec.b[1] - sec.a[1]) * ux) > 1e-6 * Math.max(1, Ls)) return null;
+  const k = Math.min(8, 2400 / Math.max(Ls, zd)), cv = document.createElement("canvas");
+  cv.width = Math.max(2, Math.round(Ls * k));
+  cv.height = Math.max(2, Math.round(zd * k));
+  const ctx = cv.getContext("2d");
+  ctx.fillStyle = "#" + COL["s-cut"].getHexString();
+  paintSec(ctx, sec, dx, (s, z) => [s * k, -z * k]);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.anisotropy = 4;
+  const geo = new THREE.PlaneGeometry(Ls, zd);
+  geo.translate(off + Ls / 2, -zd / 2, 0);
+  const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+  m.rotation.x = Math.PI / 2;
+  m.userData.noPick = true;
+  const grp = new THREE.Group();
+  grp.position.set(l.a[0], l.a[1], 0);
+  grp.rotation.z = Math.atan2(uy, ux);
+  grp.add(m);
+  return grp;
 }
 function simRun() {
   startWorker();
@@ -4090,7 +4173,7 @@ function simRun() {
   SIM.res = null;
   SIM.cfg = cfg;
   SIM.grid = { Nx: Math.round((cfg.X1 - cfg.X0) / cfg.dx), Ny: Math.round((cfg.Y1 - cfg.Y0) / cfg.dx), Nz: Math.max(3, Math.round(cfg.depth / cfg.dx)), dx: cfg.dx, depth: cfg.depth };
-  const msg = { cmd: "run", cfg, tEnd: SIM.t, id: SIM.id, cut: cutSpec(), cutMesh: SIM.cutOn };
+  const msg = { cmd: "run", cfg, tEnd: SIM.t, id: SIM.id, cut: cutSpec(), cutMesh: false };
   SIM.pendingRun = msg;
   SIM.worker.post(msg);
   $("simStatus").textContent = `Grid ${SIM.grid.Nx} \xD7 ${SIM.grid.Ny} \xD7 ${SIM.grid.Nz}, cell ${cfg.dx} \xB5m, depth simulated ${cfg.depth.toFixed(0)} \xB5m. Etching\u2026`;
@@ -4146,7 +4229,7 @@ function requestView(tv) {
     return;
   }
   SIM.viewBusy = true;
-  SIM.worker.post({ cmd: "view", tv, cut: cutSpec(), cutMesh: SIM.cutOn, id: SIM.id });
+  SIM.worker.post({ cmd: "view", tv, cut: cutSpec(), cutMesh: false, id: SIM.id });
 }
 const FAMS = ["100", "110", "111", "311", "211", "221", "331", "210", "310", "320", "411", "511", "321"].map((k) => {
   const v = k.split("").map(Number), n = Math.hypot(...v);
@@ -4187,12 +4270,7 @@ function buildSim(resetView) {
   scene.add(g);
   simScene = { pick: null, triInfo: null };
   const r = SIM.res;
-  const cut = SIM.cutOn ? cutSpec() : null;
-  let clip = null;
-  if (cut && SIM.grid) {
-    const d = SIM.grid.dx;
-    clip = cut.axis === "y" ? [new THREE.Plane(new V3(0, -1, 0), Y0 + (cut.index + 1) * d)] : [new THREE.Plane(new V3(-1, 0, 0), X0 + (cut.index + 1) * d)];
-  }
+  const clip = SIM.cutOn && SIM.grid ? [secPlane(simLine())] : null;
   if (r && r.mesh && r.mesh.idx.length) {
     const { pos, idx, tag } = r.mesh, nt = idx.length / 3, nv = pos.length / 3;
     const P = new Float32Array(nt * 9), Cc = new Float32Array(nt * 9), info = new Array(nt), VN = new Float32Array(nv * 3), FN = new Float32Array(nt * 3);
@@ -4291,10 +4369,14 @@ function buildSim(resetView) {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.BufferAttribute(P, 3));
     geo.setAttribute("color", new THREE.BufferAttribute(Cc, 3));
-    const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }));
+    const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, clippingPlanes: clip, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }));
     g.add(mesh);
     simScene.pick = mesh;
     simScene.triInfo = info;
+    if (clip && r.sec && r.sec.line) {
+      const cap = simCap(r.sec, SIM.grid.dx, simLine());
+      if (cap) g.add(cap);
+    }
   }
   const zbb = -zb;
   g.add(linesFromLoops([[[X0, Y0, 0], [X1, Y0, 0], [X1, Y1, 0], [X0, Y1, 0]], [[X0, Y0, zbb], [X1, Y0, zbb], [X1, Y1, zbb], [X0, Y1, zbb]]], COL["s-ink"], { opacity: 0.35, clip }));
@@ -4470,17 +4552,16 @@ function updateSimReadout() {
 function drawSection() {
   const cv = $("secCanvas"), ctx = cv.getContext("2d");
   const wcss = cv.clientWidth || 600, r = SIM.res;
-  const sec = r && r.sec, g = SIM.grid;
-  const along = SIM.cutAxis === "y" ? 2 * SIM.hx : 2 * SIM.hy, a0 = SIM.cutAxis === "y" ? -SIM.hx : -SIM.hy;
+  const sec = r && r.sec && r.sec.line ? r.sec : null, g = SIM.grid, l = simLine(), L = secLen(l) || 1;
   const zd = g ? g.Nz * g.dx : 100;
-  const pad = 34, sc = (wcss - 2 * pad) / along, hcss = Math.min(bigBox(cv) ? Math.round(window.innerHeight * 0.55) : 420, Math.max(120, zd * sc + 2 * pad));
+  const pad = 34, sc = (wcss - 2 * pad) / L, hcss = Math.min(bigBox(cv) ? Math.round(window.innerHeight * 0.55) : 420, Math.max(120, zd * sc + 2 * pad));
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   cv.width = Math.round(wcss * dpr);
   cv.height = Math.round(hcss * dpr);
   cv.style.height = `${hcss}px`;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, wcss, hcss);
-  const X = (a) => pad + (a - a0) * sc, Z = (z) => pad - z * sc;
+  const X = (a) => pad + a * sc, Z = (z) => pad - z * sc;
   const ink = "#" + COL["s-ink"].getHexString(), si = "#" + COL["s-top"].getHexString(), maskc = "#" + COL.mask.getHexString();
   ctx.font = "11px IBM Plex Mono, monospace";
   ctx.fillStyle = ink;
@@ -4489,82 +4570,38 @@ function drawSection() {
     ctx.fillText("Run the simulation to see the section.", pad, pad + 14);
     return;
   }
-  const n = sec.n, Nz = sec.Nz, dx = g.dx;
-  const ax = (a) => a0 + (a + 0.5) * dx, zk = (k) => -(k + 0.5) * dx;
+  const n = sec.n, dx = g.dx, ds = sec.ds, Ls = sec.len;
+  const ux = (l.b[0] - l.a[0]) / L, uy = (l.b[1] - l.a[1]) / L, off = (sec.a[0] - l.a[0]) * ux + (sec.a[1] - l.a[1]) * uy;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(X(0), 0, L * sc, hcss);
+  ctx.clip();
   ctx.fillStyle = si;
-  ctx.beginPath();
-  const S2 = (k, a) => k < 0 || a < 0 || a >= n || k >= Nz ? 0 : sec.sil[k * n + a];
-  const pt = (a, k) => [X(ax(a)), Z(zk(k))];
-  for (let k = -1; k < Nz; k++) for (let a = -1; a < n; a++) {
-    const cs = [[a, k], [a + 1, k], [a + 1, k + 1], [a, k + 1]];
-    const v = cs.map(([aa, kk]) => S2(kk, aa));
-    if (!v.some((x) => x)) continue;
-    const poly = [];
-    for (let e = 0; e < 4; e++) {
-      const [pa, pk] = cs[e], [qa, qk] = cs[(e + 1) % 4], va = v[e], vb = v[(e + 1) % 4];
-      if (va) poly.push(pt(pa, pk));
-      if (va !== vb) {
-        let f = 0.5;
-        const inside = (aa, kk) => aa >= 0 && aa < n && kk >= 0 && kk < Nz;
-        if (inside(pa, pk) && inside(qa, qk)) {
-          if (pk === qk) {
-            const lo = Math.min(pa, qa), fr = sec.fa[pk * n + lo];
-            if (fr >= 0) f = pa < qa ? fr : 1 - fr;
-          } else {
-            const lo = Math.min(pk, qk), fr = sec.fk[lo * n + pa];
-            if (fr >= 0) f = pk < qk ? fr : 1 - fr;
-          }
-        }
-        const A = pt(pa, pk), B = pt(qa, qk);
-        poly.push([A[0] + f * (B[0] - A[0]), A[1] + f * (B[1] - A[1])]);
-      }
-    }
-    if (poly.length >= 3) {
-      ctx.moveTo(poly[0][0], poly[0][1]);
-      for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i][0], poly[i][1]);
-      ctx.closePath();
-    }
-  }
-  ctx.fill();
+  paintSec(ctx, sec, dx, (s, z) => [X(off + s), Z(z)]);
   ctx.fillStyle = maskc;
-  for (let a = 0; a < n; a++) if (!sec.open[a]) ctx.fillRect(X(a0 + a * dx), Z(0) - 3, dx * sc + 0.6, 3);
-  ctx.fillStyle = ink;
-  ctx.globalAlpha = 0.8;
-  ctx.beginPath();
-  ctx.moveTo(X(a0), Z(0));
-  ctx.lineTo(X(a0 + along), Z(0));
-  ctx.lineWidth = 0.5;
-  ctx.stroke();
-  const step = edGrid(along);
-  for (let v = Math.ceil(a0 / step) * step; v <= a0 + along + 1e-6; v += step) {
-    ctx.fillRect(X(v), Z(0) + 1, 0.8, 4);
-    ctx.fillText(`${v.toFixed(0)}`, X(v) - 8, Z(0) - 7);
-  }
-  const zs = niceStep(zd / 4);
-  for (let v = 0; v <= zd + 1e-6; v += zs) {
-    ctx.fillRect(X(a0) - 5, Z(-v), 4, 0.8);
-    ctx.fillText(`${v.toFixed(0)}`, 2, Z(-v) + 4);
-  }
-  ctx.fillText(SIM.cutAxis === "y" ? "x (\xB5m)" : "y (\xB5m)", X(a0 + along) - 44, Z(0) - 20);
+  for (let m = 0; m < n; m++) if (!sec.open[m]) ctx.fillRect(X(off + Math.max(0, (m - 0.5) * ds)), Z(0) - 3, ds * sc + 0.6, 3);
+  ctx.restore();
+  secAxes(ctx, X, Z, L, zd, ink, wcss, hcss, pad);
   {
     const c = EDC.maskCanvas;
     if (c && SET.coords !== false) {
-      const v = SIM.cutAxis === "y" ? c[0] : c[1];
-      ctx.save();
-      ctx.strokeStyle = "#" + COL.accent.getHexString();
-      ctx.globalAlpha = 0.7;
-      ctx.setLineDash([3, 3]);
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(X(v), Z(0) - 4);
-      ctx.lineTo(X(v), Z(-zd));
-      ctx.stroke();
-      ctx.restore();
+      const v = (c[0] - l.a[0]) * ux + (c[1] - l.a[1]) * uy;
+      if (v >= 0 && v <= L) {
+        ctx.save();
+        ctx.strokeStyle = "#" + COL.accent.getHexString();
+        ctx.globalAlpha = 0.7;
+        ctx.setLineDash([3, 3]);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(X(v), Z(0) - 4);
+        ctx.lineTo(X(v), Z(-zd));
+        ctx.stroke();
+        ctx.restore();
+      }
     }
   }
-  ctx.globalAlpha = 1;
-  const ci = cutSpec().index, lab = SIM.cutAxis === "y" ? `section along x at y = ${(-SIM.hy + (ci + 0.5) * dx).toFixed(0)} \xB5m` : `section along y at x = ${(-SIM.hx + (ci + 0.5) * dx).toFixed(0)} \xB5m`;
-  ctx.fillText(lab + "  (\xB5m, true scale; mask drawn on top)", pad, hcss - 8);
+  ctx.fillStyle = ink;
+  ctx.fillText(`section A (${l.a.map((v) => v.toFixed(0)).join(", ")}) \u2192 B (${l.b.map((v) => v.toFixed(0)).join(", ")}) \xB5m, ${fmtLen(L)} long  (true scale; mask on top)`, pad, hcss - 8);
 }
 function niceStep(x) {
   const p = Math.pow(10, Math.floor(Math.log10(x)));
@@ -4638,38 +4675,7 @@ function drawMaskEditor() {
     ctx.stroke();
   });
   ctx.setLineDash([]);
-  ctx.strokeStyle = "#" + COL.ghost.getHexString();
-  ctx.setLineDash([6, 4]);
-  ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  if (SIM.cutAxis === "y") {
-    const y = SIM.ed.oy - SIM.cutPos * zs;
-    ctx.moveTo(10, y);
-    ctx.lineTo(10 + W * s, y);
-  } else {
-    const x = SIM.ed.ox + SIM.cutPos * zs;
-    ctx.moveTo(x, 10);
-    ctx.lineTo(x, 10 + H * s);
-  }
-  ctx.stroke();
-  ctx.setLineDash([]);
-  {
-    const lab = `${SIM.cutAxis === "y" ? "y" : "x"} = ${+(+SIM.cutPos).toFixed(1)} \xB5m`;
-    ctx.font = "600 10px IBM Plex Mono, monospace";
-    const tw = ctx.measureText(lab).width;
-    const [gx, gy] = SIM.cutAxis === "y" ? [10 + W * s - tw - 14, SIM.ed.oy - SIM.cutPos * zs] : [SIM.ed.ox + SIM.cutPos * zs, 10 + 16];
-    const bx = SIM.cutAxis === "y" ? gx : Math.min(Math.max(gx + 6, 12), 10 + W * s - tw - 10), by = SIM.cutAxis === "y" ? gy - 18 < 12 ? gy + 4 : gy - 18 : gy - 7;
-    ctx.fillStyle = "#" + COL["scene-bg"].getHexString();
-    ctx.globalAlpha = 0.85;
-    ctx.fillRect(bx - 3, by, tw + 6, 14);
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = "#" + COL.ghost.getHexString();
-    ctx.fillText(lab, bx, by + 10);
-    const [hx_, hy_] = SIM.cutAxis === "y" ? [10 + W * s - 6, gy] : [gx, 10 + 6];
-    ctx.beginPath();
-    ctx.arc(hx_, hy_, 4, 0, 2 * Math.PI);
-    ctx.fill();
-  }
+  drawSecLine(ctx, "maskCanvas", toC);
   ctx.restore();
   ctx.fillStyle = "#" + COL.accent.getHexString();
   ctx.fillRect(10, 10 + H * s + 2, W * s, 3);
@@ -4723,6 +4729,7 @@ function loadPreset(wf, i) {
   SIM.sel = -1;
   SIM.cutPos = 0;
   SIM.cutAxis = "y";
+  SIM.cutLine = null;
   $("simNote").innerHTML = p.note;
   syncSimInputs();
   renderShapeList();
@@ -4738,22 +4745,9 @@ function syncSimInputs() {
   $("simHx").value = 2 * SIM.hx;
   $("simHy").value = 2 * SIM.hy;
   $("simQual").value = SIM.quality;
-  pressed($("segCut"), "a", SIM.cutAxis);
-  syncCutSlider();
+  syncSecUI("maskCanvas");
   $("simFrameSrc").textContent = SFR[SIM.fk].src;
   $("simRateSrc").textContent = SRATES[SIM.rate].src;
-}
-function syncCutSlider() {
-  const h = SIM.cutAxis === "y" ? SIM.hy : SIM.hx;
-  $("simCutPos").min = String(-h);
-  $("simCutPos").max = String(h);
-  $("simCutPos").value = String(SIM.cutPos);
-  $("simCutLbl").textContent = SIM.cutAxis === "y" ? "y" : "x";
-  const nb = $("simCutNum");
-  nb.min = String(-h);
-  nb.max = String(h);
-  nb.step = String(Number(SET.snap) || 1);
-  if (document.activeElement !== nb) nb.value = String(+(+SIM.cutPos).toFixed(1));
 }
 function fillSimPresets() {
   $("simPreset").innerHTML = `<optgroup label="Examples">` + SPRESETS[S.wf].map((p, i) => `<option value="${i}">${p.name}</option>`).join("") + `</optgroup>` + psOptions("sim") + `<option value="-1">Custom (keep the current mask)</option>`;
@@ -4794,7 +4788,7 @@ for (const [id, key, mul] of [["simTime", "t", 1], ["simPre", "pre", 1], ["simTh
     const v = Number(e.target.value);
     if (!(v >= 0)) return;
     SIM[key] = v * mul;
-    if (key === "hx" || key === "hy") syncCutSlider();
+    if (key === "hx" || key === "hy") syncSecUI("maskCanvas");
     markDirty();
   });
 $("simQual").addEventListener("change", (e) => {
@@ -4834,41 +4828,12 @@ $("cSimMask").addEventListener("change", (e) => {
 });
 $("simColor").addEventListener("change", (e) => {
   SIM.color = e.target.value;
-  $("simPlaneLegend").classList.toggle("hidden", SIM.color !== "plane");
   buildSim(false);
 });
 $("cSimCut").addEventListener("change", (e) => {
   SIM.cutOn = e.target.checked;
-  requestView(SIM.tv);
+  buildSim(false);
 });
-$("segCut").addEventListener("click", (e) => {
-  const b = e.target.closest("button");
-  if (!b) return;
-  SIM.cutAxis = b.dataset.a;
-  SIM.cutPos = 0;
-  pressed($("segCut"), "a", SIM.cutAxis);
-  syncCutSlider();
-  drawMaskEditor();
-  requestView(SIM.tv);
-});
-$("simCutPos").addEventListener("input", (e) => {
-  SIM.cutPos = Number(e.target.value);
-  syncCutSlider();
-  drawMaskEditor();
-  requestView(SIM.tv);
-});
-$("simCutNum").addEventListener("change", (e) => {
-  setCutPos(Number(e.target.value));
-  e.target.value = String(SIM.cutPos);
-});
-function setCutPos(v) {
-  const h = SIM.cutAxis === "y" ? SIM.hy : SIM.hx;
-  if (!isFinite(v)) return;
-  SIM.cutPos = Math.max(-h, Math.min(h, v));
-  syncCutSlider();
-  drawMaskEditor();
-  requestView(SIM.tv);
-}
 $("shapeList").addEventListener("change", (e) => {
   const el = e.target, i = Number(el.dataset.i), k = el.dataset.k;
   if (!(i >= 0) || !k) return;
@@ -5052,6 +5017,7 @@ function clBuild(run = true) {
     preset: -1,
     cutPos: Math.round(yc - 0.15 * H),
     cutAxis: "y",
+    cutLine: null,
     owner: "corner",
     wfLoaded: null
   });
@@ -5123,7 +5089,8 @@ function simHover(ev) {
     return;
   }
   pickAt(ev);
-  const h = ray.intersectObject(simScene.pick)[0];
+  const cps = simScene.pick.material.clippingPlanes;
+  const h = ray.intersectObject(simScene.pick).find((h2) => !cps || cps.every((pl) => pl.distanceToPoint(h2.point) >= -1e-3));
   if (!h) {
     tip.style.display = "none";
     return;
@@ -6084,6 +6051,7 @@ $("fdToSim").addEventListener("click", () => {
     preset: -1,
     cutPos: 0,
     cutAxis: "y",
+    cutLine: null,
     wfLoaded: S.wf,
     owner: "sim",
     probes: null,
@@ -6122,6 +6090,7 @@ function redrawPanes() {
   } else if (S.mode === "pit") {
     drawPitGraph();
     drawPitEditor();
+    drawPitSection();
   } else if (S.mode === "find") {
     drawFindMap();
     drawScope();
@@ -7048,6 +7017,7 @@ function psCapture(kind) {
     dxMax: SIM.dxMax || 0,
     cutAxis: SIM.cutAxis,
     cutPos: SIM.cutPos,
+    cutLine: SIM.cutLine || null,
     shapes: JSON.parse(JSON.stringify(SIM.shapes))
   };
   return { rate: S.rate, rot: S.rot || 0, shapes: JSON.parse(JSON.stringify(pitShapesNow())) };
@@ -7088,6 +7058,7 @@ function psLoad(id) {
       dxMax: d.dxMax || 0,
       cutAxis: d.cutAxis || "y",
       cutPos: d.cutPos || 0,
+      cutLine: d.cutLine && d.cutLine.a && d.cutLine.b ? d.cutLine : null,
       shapes: JSON.parse(JSON.stringify(d.shapes)),
       sel: -1,
       probes: null,
@@ -7546,13 +7517,6 @@ function redrawEditors() {
     const ed = ED[id].ed(), r = $(id).getBoundingClientRect();
     return ed ? [(ev.clientX - r.left - ed.ox) / ed.s, -(ev.clientY - r.top - ed.oy) / ed.s] : null;
   };
-  const cutDist = (ev) => {
-    const ed = SIM.ed, r = $("maskCanvas").getBoundingClientRect();
-    if (!ed) return Infinity;
-    const px = ev.clientX - r.left, py = ev.clientY - r.top;
-    return SIM.cutAxis === "y" ? Math.abs(py - (ed.oy - SIM.cutPos * ed.s)) : Math.abs(px - (ed.ox + SIM.cutPos * ed.s));
-  };
-  let cutDrag = false;
   for (const id of Object.keys(ED)) {
     const cv = $(id);
     if (!cv) continue;
@@ -7562,42 +7526,17 @@ function redrawEditors() {
       const w = world(id, ev);
       if (!w) return;
       EDC[id] = w;
-      if (id === "maskCanvas") {
-        if (cutDrag) {
-          ev.stopPropagation();
-          setCutPos(snapV(SIM.cutAxis === "y" ? w[1] : w[0]));
-          return;
-        }
-        cv.style.cursor = DRAW.on !== id && ev.buttons === 0 && cutDist(ev) <= 5 ? SIM.cutAxis === "y" ? "ns-resize" : "ew-resize" : "";
-      }
       if (ev.buttons === 0 && DRAW.on !== id) later(id);
     }, true);
     host.addEventListener("pointerleave", (ev) => {
-      if (!mine(ev) || cutDrag) return;
+      if (!mine(ev)) return;
       delete EDC[id];
       later(id);
     }, true);
     cv.addEventListener("pointerleave", () => {
-      if (cutDrag) return;
       delete EDC[id];
       later(id);
     });
-    if (id === "maskCanvas") {
-      host.addEventListener("pointerdown", (ev) => {
-        if (!mine(ev) || DRAW.on === id || cutDist(ev) > 5) return;
-        ev.stopPropagation();
-        ev.preventDefault();
-        cutDrag = true;
-        cv.setPointerCapture(ev.pointerId);
-      }, true);
-      const end = (ev) => {
-        if (!cutDrag) return;
-        ev.stopPropagation();
-        cutDrag = false;
-      };
-      host.addEventListener("pointerup", end, true);
-      host.addEventListener("pointercancel", end, true);
-    }
   }
 })();
 const ED_ZMIN = 0.25;
@@ -7825,7 +7764,6 @@ function foldAllIn(box, open) {
       first = false;
     }
   }
-  for (const el of document.querySelectorAll(".waferUI")) makeFolds(el, "H3", false);
   for (const id of ["panelModel", "panelPit", "cornerBox", "simExBox", "panelFind"]) makeFolds($(id), "H3", true);
   makeFolds($("panelSim"), "H3", false);
   for (const id of ["simBelow", "findBelow", "pitBelow"]) makeFolds($(id), "H2", true);
@@ -8163,8 +8101,8 @@ const SHOW_ITEMS = [
   { g: "Layers", label: "mask layer", modes: "p", get: chk("#cMask"), set: (v) => viaCtl("#cMask", v) },
   { g: "Layers", label: "mask layer", modes: "s", get: chk("#cSimMask"), set: (v) => viaCtl("#cSimMask", v) },
   { g: "Layers", label: "final {111} shape (wire)", modes: "p", get: chk("#cGhost"), set: (v) => viaCtl("#cGhost", v) },
-  { g: "Layers", label: "cut open along x (y = 0)", modes: "p", get: chk("#cCut"), set: (v) => viaCtl("#cCut", v) },
-  { g: "Layers", label: "cut away at the section line", modes: "s", get: chk("#cSimCut"), set: (v) => viaCtl("#cSimCut", v) },
+  { g: "Layers", label: "cut open at the section line (A \u2192 B)", modes: "p", get: chk("#cCut"), set: (v) => viaCtl("#cCut", v) },
+  { g: "Layers", label: "cut open at the section line (A \u2192 B)", modes: "s", get: chk("#cSimCut"), set: (v) => viaCtl("#cSimCut", v) },
   { g: "Layers", label: "whole 100 mm wafer around the die", modes: "p", get: () => !!S.waferOn, set: (v) => viaCtl('#panelPit [data-wu="on"]', v) },
   { g: "Layers", label: "whole 100 mm wafer around the die", modes: "s", get: () => !!S.waferOn, set: (v) => viaCtl('#panelSim [data-wu="on"]', v) },
   { g: "Layers", label: "true flat error \u03B4", modes: "f", get: chk("#fdReveal"), set: (v) => viaCtl("#fdReveal", v) },
@@ -8172,6 +8110,8 @@ const SHOW_ITEMS = [
   { g: "Flat arrows", label: "\u22A5 flat, outward", modes: "mpsf", get: () => SET.arrPerp !== false, set: (v) => viaCtl('#dlgSet [data-arr="arrPerp"]', v) },
   { g: "Colours", label: "colour by", modes: "p", get: () => $("pitColor").value, set: (v) => viaCtl("#pitColor", v), opts: () => $("pitColor").innerHTML },
   { g: "Colours", label: "colour by", modes: "s", get: () => $("simColor").value, set: (v) => viaCtl("#simColor", v), opts: () => $("simColor").innerHTML },
+  { g: "Colours", label: "", modes: "p", legend: () => $("pitLegend").innerHTML },
+  { g: "Colours", label: "", modes: "s", legend: () => $("simLegend").innerHTML + (SIM.color === "plane" ? $("simPlaneLegend").innerHTML : "") },
   { g: "Colours", label: "theme", modes: "mpsf", get: () => SET.theme, set: (v) => viaCtl("#stTheme", v), opts: () => $("stTheme").innerHTML },
   { g: "Labels and guides", label: "labels in the 3D view", modes: "mpsf", get: () => SET.labels, set: (v) => viaCtl("#stLabels", v), opts: () => $("stLabels").innerHTML },
   { g: "Labels and guides", label: "axis gizmo", modes: "mpsf", get: () => SET.gizmo !== false, set: (v) => {
@@ -8201,7 +8141,7 @@ function renderShowTab() {
       html += `${g ? "</div>" : ""}<div class="shG"><div class="shH">${it.g}</div>`;
       g = it.g;
     }
-    html += it.opts ? `<label class="shSel"><span>${it.label}</span><select data-sh="${i}">${it.opts()}</select></label>` : `<label class="shChk"><input type="checkbox" data-sh="${i}"> <span>${it.label}</span></label>`;
+    html += it.legend ? `<div class="legend shLeg" data-shl="${i}"></div>` : it.opts ? `<label class="shSel"><span>${it.label}</span><select data-sh="${i}">${it.opts()}</select></label>` : `<label class="shChk"><input type="checkbox" data-sh="${i}"> <span>${it.label}</span></label>`;
   });
   body.innerHTML = html + (g ? "</div>" : "");
   SHOW.key = mk;
@@ -8209,6 +8149,7 @@ function renderShowTab() {
 }
 function syncShowTab() {
   if (!SHOW.open) return;
+  for (const el of document.querySelectorAll("#showBody [data-shl]")) el.innerHTML = SHOW_ITEMS[Number(el.getAttribute("data-shl"))].legend();
   for (const el of document.querySelectorAll("#showBody [data-sh]")) {
     const it = SHOW_ITEMS[Number(el.getAttribute("data-sh"))], v = it.get();
     if (el.type === "checkbox") el.checked = !!v;
@@ -8256,6 +8197,359 @@ function setShowTab(on) {
     else if (e.key === "Escape" && SHOW.open && !document.querySelector("dialog[open]") && !ST3.meas) setShowTab(false);
   });
 })();
+
+// ---- src/app/23-section-line.ts
+var SLD = {};
+function simLine() {
+  if (SIM.cutLine) return SIM.cutLine;
+  return SIM.cutAxis === "x" ? { a: [SIM.cutPos || 0, -SIM.hy], b: [SIM.cutPos || 0, SIM.hy] } : { a: [-SIM.hx, SIM.cutPos || 0], b: [SIM.hx, SIM.cutPos || 0] };
+}
+function pitBox() {
+  return pit && pit.box ? pit.box : [-100, 100, -100, 100];
+}
+function pitLine() {
+  if (S.pitLine) return S.pitLine;
+  const [x0, x1] = pitBox();
+  return { a: [x0, 0], b: [x1, 0] };
+}
+function secPlane(l) {
+  const dx = l.b[0] - l.a[0], dy = l.b[1] - l.a[1], L = Math.hypot(dx, dy) || 1, n = new V3(-dy / L, dx / L, 0);
+  return new THREE.Plane(n, -(n.x * l.a[0] + n.y * l.a[1]));
+}
+function secLen(l) {
+  return Math.hypot(l.b[0] - l.a[0], l.b[1] - l.a[1]);
+}
+function lineInBox(l, box) {
+  const L = secLen(l) || 1, u = [(l.b[0] - l.a[0]) / L, (l.b[1] - l.a[1]) / L];
+  let s0 = -Infinity, s1 = Infinity;
+  for (let k = 0; k < 2; k++) {
+    const lo = box[2 * k], hi = box[2 * k + 1];
+    if (Math.abs(u[k]) < 1e-12) {
+      if (l.a[k] < lo || l.a[k] > hi) return null;
+      continue;
+    }
+    let t0 = (lo - l.a[k]) / u[k], t1 = (hi - l.a[k]) / u[k];
+    if (t0 > t1) [t0, t1] = [t1, t0];
+    s0 = Math.max(s0, t0);
+    s1 = Math.min(s1, t1);
+  }
+  return s1 - s0 > 1e-9 ? [s0, s1] : null;
+}
+var SL = {
+  maskCanvas: {
+    get: simLine,
+    ed: () => SIM.ed,
+    half: () => [SIM.hx, SIM.hy],
+    set: (l) => {
+      SIM.cutLine = l;
+      syncSecUI("maskCanvas");
+      drawMaskEditor();
+      if (SIM.cutOn) buildSim(false);
+      requestView(SIM.tv);
+      if (SIM.res) drawSection();
+    },
+    redraw: () => drawMaskEditor()
+  },
+  pitCanvas: {
+    get: pitLine,
+    ed: () => S.pitEd,
+    half: () => {
+      const [x0, x1, y0, y1] = pitBox();
+      return [Math.max(-x0, x1), Math.max(-y0, y1)];
+    },
+    set: (l) => {
+      S.pitLine = l;
+      syncSecUI("pitCanvas");
+      drawPitEditor();
+      if (S.cut) buildPit();
+      drawPitSection();
+    },
+    redraw: () => drawPitEditor()
+  }
+};
+function syncSecUI(id) {
+  const box = document.querySelector(`.secUI[data-for="${id}"]`);
+  if (!box || !SL) return;
+  const l = SL[id].get(), v = { ax: l.a[0], ay: l.a[1], bx: l.b[0], by: l.b[1] };
+  for (const k of Object.keys(v)) {
+    const el = box.querySelector(`[data-sl="${k}"]`);
+    if (el && document.activeElement !== el) el.value = String(+v[k].toFixed(1));
+  }
+  const len = box.querySelector("[data-sl=len]");
+  if (len) len.textContent = `length ${fmtLen(secLen(l))}, ${(Math.atan2(l.b[1] - l.a[1], l.b[0] - l.a[0]) * C.DEG).toFixed(1)}\xB0 from x`;
+  const dr = box.querySelector('[data-sl="draw"]');
+  if (dr) dr.setAttribute("aria-pressed", String(!!SLD[id]));
+  const sh = box.querySelector('[data-sl="shift"]'), [hx, hy] = SL[id].half();
+  if (sh && document.activeElement !== sh) {
+    const m = Math.hypot(hx, hy);
+    sh.min = String(-m);
+    sh.max = String(m);
+    sh.value = "0";
+  }
+}
+function setSecDraw(id, on) {
+  SLD[id] = on;
+  $(id).classList.toggle("measuring", on);
+  syncSecUI(id);
+}
+function drawSecLine(ctx, id, toC) {
+  const l = SL[id].get(), A = toC(l.a), B = toC(l.b), col = "#" + COL.ghost.getHexString(), bg = "#" + COL["scene-bg"].getHexString();
+  ctx.save();
+  ctx.strokeStyle = col;
+  ctx.setLineDash([6, 4]);
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(A[0], A[1]);
+  ctx.lineTo(B[0], B[1]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  const ux = B[0] - A[0], uy = B[1] - A[1], ul = Math.hypot(ux, uy) || 1, hx = ux / ul, hy = uy / ul;
+  ctx.fillStyle = col;
+  ctx.beginPath();
+  ctx.moveTo(B[0] + hx * 2, B[1] + hy * 2);
+  ctx.lineTo(B[0] - hx * 9 - hy * 4.5, B[1] - hy * 9 + hx * 4.5);
+  ctx.lineTo(B[0] - hx * 9 + hy * 4.5, B[1] - hy * 9 - hx * 4.5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.font = "700 10px IBM Plex Sans, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (const [P, t] of [[A, "A"], [B, "B"]]) {
+    ctx.beginPath();
+    ctx.arc(P[0], P[1], 6.5, 0, 2 * Math.PI);
+    ctx.fillStyle = bg;
+    ctx.fill();
+    ctx.lineWidth = 1.6;
+    ctx.strokeStyle = col;
+    ctx.stroke();
+    ctx.fillStyle = col;
+    ctx.fillText(t, P[0], P[1] + 0.5);
+  }
+  ctx.textAlign = "start";
+  ctx.textBaseline = "alphabetic";
+  const lab = `section ${fmtLen(secLen(l))}`;
+  ctx.font = "600 10px IBM Plex Mono, monospace";
+  const tw = ctx.measureText(lab).width, mx = (A[0] + B[0]) / 2 - hy * 14 - tw / 2, my = (A[1] + B[1]) / 2 + hx * 14;
+  ctx.globalAlpha = 0.85;
+  ctx.fillStyle = bg;
+  ctx.fillRect(mx - 3, my - 9, tw + 6, 13);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = col;
+  ctx.fillText(lab, mx, my);
+  ctx.restore();
+}
+(() => {
+  for (const box of document.querySelectorAll(".secUI")) {
+    const id = box.getAttribute("data-for");
+    box.innerHTML = `<div class="row"><span class="seg"><button type="button" data-sl="x" title="A horizontal line through the centre">along x</button><button type="button" data-sl="y" title="A vertical line through the centre">along y</button><button type="button" data-sl="draw" aria-pressed="false" title="Drag across the editor to draw the section line (key L); Esc stops">\u270E Draw line</button></span></div>
+      <div class="fields secAB"><label>A (start) <span><input type="number" data-sl="ax" step="1" aria-label="A x"> , <input type="number" data-sl="ay" step="1" aria-label="A y"> \xB5m</span></label>
+      <label>B (end) <span><input type="number" data-sl="bx" step="1" aria-label="B x"> , <input type="number" data-sl="by" step="1" aria-label="B y"> \xB5m</span></label>
+      <label>move across <input type="range" data-sl="shift" step="any" value="0" aria-label="move the line sideways"></label></div>
+      <p class="note" data-sl="len"></p>
+      <p class="note">In the editor: drag <b>A</b> or <b>B</b> to move an end, drag the dashed line to move it, or use \u270E Draw line. The plot below shows the plane through A \u2192 B; \u201Ccut open\u201D in \u{1F441} Show removes the silicon on the right of A \u2192 B.</p>`;
+    let base = null;
+    box.addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (!b) return;
+      const k = b.getAttribute("data-sl"), [hx, hy] = SL[id].half();
+      if (k === "draw") setSecDraw(id, !SLD[id]);
+      else if (k === "x") SL[id].set({ a: [-hx, 0], b: [hx, 0] });
+      else if (k === "y") SL[id].set({ a: [0, -hy], b: [0, hy] });
+    });
+    box.addEventListener("change", (e) => {
+      const t = e.target, k = t.getAttribute("data-sl");
+      if (!k || k === "shift") return;
+      const l = SL[id].get(), v = Number(t.value);
+      if (!isFinite(v)) return;
+      const n = { a: l.a.slice(), b: l.b.slice() };
+      if (k === "ax") n.a[0] = v;
+      else if (k === "ay") n.a[1] = v;
+      else if (k === "bx") n.b[0] = v;
+      else if (k === "by") n.b[1] = v;
+      if (secLen(n) > 1e-6) SL[id].set(n);
+      else syncSecUI(id);
+    });
+    const sh = box.querySelector('[data-sl="shift"]');
+    sh.addEventListener("input", () => {
+      const l = base || (base = SL[id].get()), L = secLen(l) || 1, nx = -(l.b[1] - l.a[1]) / L, ny = (l.b[0] - l.a[0]) / L, d = Number(sh.value);
+      SL[id].set({ a: [snapV(l.a[0] + nx * d), snapV(l.a[1] + ny * d)], b: [snapV(l.b[0] + nx * d), snapV(l.b[1] + ny * d)] });
+    });
+    sh.addEventListener("change", () => {
+      base = null;
+      sh.value = "0";
+    });
+  }
+  for (const id of Object.keys(SL)) {
+    const cv = $(id);
+    if (!cv) continue;
+    const host = cv.parentElement;
+    const px = (e) => {
+      const r = cv.getBoundingClientRect();
+      return [e.clientX - r.left, e.clientY - r.top];
+    };
+    const world = (e, snap = true) => {
+      const ed = SL[id].ed(), [x, y] = px(e), w = [(x - ed.ox) / ed.s, -(y - ed.oy) / ed.s];
+      return snap ? w.map(snapV) : w;
+    };
+    const scr = (p) => {
+      const ed = SL[id].ed();
+      return [ed.ox + p[0] * ed.s, ed.oy - p[1] * ed.s];
+    };
+    const hit = (e) => {
+      const ed = SL[id].ed();
+      if (!ed) return null;
+      const l = SL[id].get(), P = px(e), A = scr(l.a), B = scr(l.b);
+      if (Math.hypot(P[0] - A[0], P[1] - A[1]) <= 8) return "a";
+      if (Math.hypot(P[0] - B[0], P[1] - B[1]) <= 8) return "b";
+      const vx = B[0] - A[0], vy = B[1] - A[1], L2 = vx * vx + vy * vy || 1, t = Math.max(0, Math.min(1, ((P[0] - A[0]) * vx + (P[1] - A[1]) * vy) / L2));
+      return Math.hypot(P[0] - A[0] - t * vx, P[1] - A[1] - t * vy) <= 5 ? "line" : null;
+    };
+    let drag = null;
+    host.addEventListener("pointerdown", (e) => {
+      if (e.target !== cv || e.button !== 0 || DRAW.on === id || EDM[id] && EDM[id].on || !SL[id].ed()) return;
+      const mode = SLD[id] ? "new" : hit(e);
+      if (!mode) return;
+      e.stopPropagation();
+      e.preventDefault();
+      cv.setPointerCapture(e.pointerId);
+      const w = world(e);
+      drag = { mode, w0: w, l0: SL[id].get() };
+      if (mode === "new") {
+        if (id === "maskCanvas") SIM.cutLine = { a: w, b: w.slice() };
+        else S.pitLine = { a: w, b: w.slice() };
+        SL[id].redraw();
+      }
+    }, true);
+    host.addEventListener("pointermove", (e) => {
+      if (e.target !== cv) return;
+      if (!drag) {
+        if (e.buttons === 0 && DRAW.on !== id && !(EDM[id] && EDM[id].on)) {
+          const h = SLD[id] ? "new" : hit(e);
+          if (h) cv.style.cursor = h === "line" ? "move" : h === "new" ? "crosshair" : "grab";
+          else if (cv.style.cursor === "move" || cv.style.cursor === "grab" || cv.style.cursor === "crosshair") cv.style.cursor = "";
+        }
+        return;
+      }
+      e.stopPropagation();
+      const w = world(e), l = drag.l0, d = [w[0] - drag.w0[0], w[1] - drag.w0[1]];
+      const n = drag.mode === "a" ? { a: w, b: l.b.slice() } : drag.mode === "b" ? { a: l.a.slice(), b: w } : drag.mode === "new" ? { a: drag.w0, b: w } : { a: [l.a[0] + d[0], l.a[1] + d[1]], b: [l.b[0] + d[0], l.b[1] + d[1]] };
+      if (id === "maskCanvas") SIM.cutLine = n;
+      else S.pitLine = n;
+      SL[id].redraw();
+      syncSecUI(id);
+      if (id === "maskCanvas") requestView(SIM.tv);
+      else drawPitSection();
+    }, true);
+    const end = (e) => {
+      if (!drag) return;
+      e.stopPropagation();
+      const d = drag;
+      drag = null;
+      if (secLen(SL[id].get()) < 1e-6) {
+        if (id === "maskCanvas") SIM.cutLine = d.l0;
+        else S.pitLine = d.l0;
+      }
+      if (d.mode === "new") setSecDraw(id, false);
+      SL[id].set(SL[id].get());
+    };
+    host.addEventListener("pointerup", end, true);
+    host.addEventListener("pointercancel", end, true);
+    cv.addEventListener("keydown", (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === "l" || e.key === "L") {
+        e.preventDefault();
+        setSecDraw(id, !SLD[id]);
+      } else if (e.key === "Escape" && SLD[id]) {
+        e.preventDefault();
+        setSecDraw(id, false);
+      }
+    });
+  }
+  for (const id of Object.keys(SL)) syncSecUI(id);
+})();
+function drawPitSection() {
+  const cv = $("pitSecCanvas");
+  if (!cv || S.mode !== "pit" || !pit || !pit.cavs) return;
+  const ctx = cv.getContext("2d"), l = pitLine(), L = secLen(l) || 1, ux = (l.b[0] - l.a[0]) / L, uy = (l.b[1] - l.a[1]) / L;
+  const zb = pit.zb, wcss = cv.clientWidth || 600, pad = 34, sc = (wcss - 2 * pad) / L;
+  const hcss = Math.min(bigBox(cv) ? Math.round(window.innerHeight * 0.55) : 420, Math.max(120, zb * sc + 2 * pad));
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = Math.round(wcss * dpr);
+  cv.height = Math.round(hcss * dpr);
+  cv.style.height = `${hcss}px`;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, wcss, hcss);
+  const X = (s) => pad + s * sc, Z = (z) => pad - z * sc;
+  const ink = "#" + COL["s-ink"].getHexString(), si = "#" + COL["s-top"].getHexString(), maskc = "#" + COL.mask.getHexString();
+  const secs = pit.cavs.map((c) => C.section2d(c.H.map((h) => [[h.n[0] * ux + h.n[1] * uy, h.n[2]], h.b - h.n[0] * l.a[0] - h.n[1] * l.a[1]]))).filter((P) => P.length >= 3);
+  ctx.fillStyle = si;
+  ctx.beginPath();
+  ctx.rect(X(0), Z(0), L * sc, zb * sc);
+  for (const P of secs) {
+    P.forEach((p, k) => k ? ctx.lineTo(X(p[0]), Z(Math.max(-zb, Math.min(0, p[1])))) : ctx.moveTo(X(p[0]), Z(Math.max(-zb, Math.min(0, p[1])))));
+    ctx.closePath();
+  }
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(X(0), Z(0), L * sc, zb * sc);
+  ctx.clip();
+  ctx.beginPath();
+  ctx.rect(X(0), Z(0), L * sc, zb * sc);
+  for (const P of secs) {
+    P.forEach((p, k) => k ? ctx.lineTo(X(p[0]), Z(p[1])) : ctx.moveTo(X(p[0]), Z(p[1])));
+    ctx.closePath();
+  }
+  ctx.fill("evenodd");
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 1;
+  for (const [a, b] of unionEdges2(secs, 1e-6)) {
+    ctx.beginPath();
+    ctx.moveTo(X(a[0]), Z(a[1]));
+    ctx.lineTo(X(b[0]), Z(b[1]));
+    ctx.stroke();
+  }
+  ctx.restore();
+  if (S.mask) {
+    const os = pit.items.map((it) => ({ pts: it.o, op: "open" })), N = Math.max(2, Math.ceil(L * sc / 2));
+    ctx.fillStyle = maskc;
+    for (let m = 0; m < N; m++) {
+      const s = (m + 0.5) * L / N;
+      if (!EE.isOpen(os, l.a[0] + ux * s, l.a[1] + uy * s)) ctx.fillRect(X(m * L / N), Z(0) - 3, L / N * sc + 0.6, 3);
+    }
+  }
+  secAxes(ctx, X, Z, L, zb, ink, wcss, hcss, pad);
+  ctx.fillStyle = ink;
+  ctx.fillText(`section A \u2192 B, ${fmtLen(L)} long, at t = ${S.final ? "long-etch limit" : `${S.t.toFixed(0)} min`}  (\xB5m, true scale; mask on top)`, pad, hcss - 8);
+}
+function secAxes(ctx, X, Z, L, zd, ink, wcss, hcss, pad) {
+  ctx.fillStyle = ink;
+  ctx.strokeStyle = ink;
+  ctx.globalAlpha = 0.8;
+  ctx.font = "11px IBM Plex Mono, monospace";
+  ctx.beginPath();
+  ctx.moveTo(X(0), Z(0));
+  ctx.lineTo(X(L), Z(0));
+  ctx.lineWidth = 0.5;
+  ctx.stroke();
+  const step = edGrid(L);
+  for (let v = 0; v <= L + 1e-6; v += step) {
+    ctx.fillRect(X(v), Z(0) + 1, 0.8, 4);
+    ctx.fillText(`${v.toFixed(0)}`, X(v) - 8, Z(0) - 7);
+  }
+  const zs = niceStep(zd / 4);
+  for (let v = 0; v <= zd + 1e-6; v += zs) {
+    ctx.fillRect(X(0) - 5, Z(-v), 4, 0.8);
+    ctx.fillText(`${v.toFixed(0)}`, 2, Z(-v) + 4);
+  }
+  ctx.globalAlpha = 1;
+  ctx.font = "700 11px IBM Plex Sans, sans-serif";
+  ctx.fillStyle = "#" + COL.ghost.getHexString();
+  ctx.fillText("A", X(0) - 4, Z(0) - 20);
+  ctx.fillText("B", X(L) - 4, Z(0) - 20);
+  ctx.font = "11px IBM Plex Mono, monospace";
+  ctx.fillStyle = ink;
+  ctx.fillText("distance from A (\xB5m)", X(L) - 150, Z(0) - 20);
+}
 
 })();
 </script>

@@ -23,7 +23,7 @@ renderer.domElement.addEventListener("pointermove", ev => {
   if (S.mode !== "pit" || ev.buttons) { tip.style.display = "none"; return; }
   pickAt(ev);
   let hits = ray.intersectObjects(pit.pick || []);
-  if (S.cut) hits = hits.filter(h => h.object.userData.block || h.point.y >= -1e-6);
+  if (S.cut) { const pl = secPlane(pitLine()); hits = hits.filter(h => pl.distanceToPoint(h.point) >= -1e-3); }   // the removed side of the section line
   const h = hits[0];
   if (!h || h.object.userData.block) { tip.style.display = "none"; return; }
   const f = h.object.userData.faces[h.object.userData.tri2poly[h.faceIndex]];
@@ -110,7 +110,7 @@ $("views").addEventListener("click", e => {
 });
 $("selOpen").addEventListener("change", e => {
   if (e.target.value.startsWith("u:")) { psLoad(e.target.value.slice(2)); return; }
-  S.open = e.target.value === "custom" ? "custom" : Number(e.target.value); S.pitSel = -1;
+  S.open = e.target.value === "custom" ? "custom" : Number(e.target.value); S.pitSel = -1; S.pitLine = null;
   if (S.open !== "custom") { S.rate = OPENINGS[S.wf][S.open].rate; $("selRate").value = S.rate; }
   renderCustomList(); prepPit(); rebuild(true);
 });
@@ -118,8 +118,7 @@ $("pitColor").addEventListener("change", e => { S.pitColor = e.target.value; bui
 $("pitRot").addEventListener("change", e => { S.rot = Number(e.target.value) || 0; prepPit(); rebuild(false); });
 // ---- whole-wafer controls (one copy in the pit panel, one in the simulator panel, same state)
 const WAFER_SRC = "100 mm wafer, 525 µm thick (Pal & Sato Table 2.1, p. 30); flat lengths 32.5 mm and 18 mm (Topline drawing A 174004 A); flat positions Lec 10 p. 10, secondary flat measured clockwise from the primary seen from the front. Lec 10 p. 10 labels the (110) flat ⟨111⟩; the (110) frames here follow Lec 4-1. The die is drawn to scale: use “Zoom to die”.";
-for (const el of document.querySelectorAll(".waferUI")) el.innerHTML = `<h3>Whole wafer</h3>
-  <div class="row"><label><input type="checkbox" data-wu="on"> show the whole 100 mm wafer around the die</label></div>
+for (const el of document.querySelectorAll(".waferUI")) el.innerHTML = `  <div class="row"><label><input type="checkbox" data-wu="on"> show the whole 100 mm wafer around the die</label></div>
   <div class="fields" data-wu="box">
     <label>doping (sets the secondary flat) <select data-wu="type"><option value="p">p-type</option><option value="n">n-type</option></select></label>
     <label>die centre on the wafer <span><input type="number" data-wu="x" step="1"> , <input type="number" data-wu="y" step="1"> mm</span></label>

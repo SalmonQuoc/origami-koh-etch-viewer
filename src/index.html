@@ -411,8 +411,10 @@ canvas.measuring { cursor: crosshair !important; }
       <canvas id="fdPlot" class="graphcv"></canvas>
       <div class="glegend" id="fdPlotLeg"></div>
     </div>
-    <div class="panel hidden enl" data-title="Etch history" id="pitBelow" style="margin-top:12px">
-      <h2 style="margin-bottom:4px">Etch history</h2>
+    <div class="panel hidden enl" data-title="Cross-section and etch history" id="pitBelow" style="margin-top:12px">
+      <h2 style="margin-bottom:4px">Cross-section</h2>
+      <canvas id="pitSecCanvas" class="seccv"></canvas>
+      <h2 style="margin:14px 0 4px">Etch history</h2>
       <canvas id="pitGraph" class="graphcv"></canvas>
       <div class="glegend" id="pitGraphLeg"></div>
     </div>
@@ -422,11 +424,6 @@ canvas.measuring { cursor: crosshair !important; }
   <aside class="panel" id="panelModel">
     <h2 id="holdTitle">How to hold it</h2>
     <ol id="holdSteps"></ol>
-    <h3>Show</h3>
-    <div class="row"><label><input type="checkbox" id="cCorners" checked> corner directions</label></div>
-    <div class="row"><label><input type="checkbox" id="cFaces"> face indices</label></div>
-    <div class="row"><label><input type="checkbox" id="cUpper" checked> upper half (above the wafer)</label></div>
-    <div class="arrUI"></div>
     <h3>Selected face</h3>
     <div id="faceInfo" class="note">Click any face. The page then draws where its plane cuts the wafer surface, the two normals and the angle between the planes. Use "Along the selected line" to see the angle at true size.</div>
   </aside>
@@ -442,7 +439,7 @@ canvas.measuring { cursor: crosshair !important; }
     <p class="note" style="margin:4px 0 6px"><b>Drag</b> a shape to move it (<b>Alt</b>-drag moves a copy), <b>click</b> to select it, <b>double-click</b> an empty spot to add the chosen shape there. With the editor focused, the <span class="kbd">←</span><span class="kbd">→</span><span class="kbd">↑</span><span class="kbd">↓</span> keys move the selected shape by one snap step (with Shift, five), <span class="kbd">Ctrl</span>+<span class="kbd">D</span> duplicates it and <span class="kbd">Delete</span> removes it. <b>Draw</b> lets you draw your own outline. The 3D view updates when you let go.</p>
     <p class="drawhelp hidden" id="pcDrawHelp"></p>
     <canvas id="pitCanvas" class="maskcv" tabindex="0" aria-label="Mask editor for the etched pit"></canvas>
-    <div class="legend" style="margin-top:4px"><span><i class="sw" style="background:var(--mask)"></i>mask</span><span><i class="sw" style="background:var(--scene-bg);border:1px solid var(--s-ink)"></i>opening</span><span><i class="sw" style="background:var(--ghost)"></i>cavity edge at the surface now</span><label><input type="checkbox" class="cCompass" checked> crystal compass (orange: {111} traces)</label></div>
+    <div class="legend" style="margin-top:4px"><span><i class="sw" style="background:var(--mask)"></i>mask</span><span><i class="sw" style="background:var(--scene-bg);border:1px solid var(--s-ink)"></i>opening</span><span><i class="sw" style="background:var(--ghost)"></i>cavity edge at the surface now</span><span><i class="sw" style="background:var(--ghost);height:2px"></i>section line A → B</span></div>
     <div class="addrow"><select id="pcType" aria-label="shape to add"></select><button class="btn primary" id="pcAdd">Add shape</button><button class="btn" id="pcDraw" title="Click to place corners or drag to draw freely">✎ Draw</button><button class="btn" id="pcDup">Duplicate</button><button class="btn" id="pcDel">Delete</button><button class="btn" id="pcClear">Clear all</button></div>
     <div id="pcList" class="cards"></div>
     <p class="warn hidden" id="pcWarn"></p>
@@ -455,21 +452,16 @@ canvas.measuring { cursor: crosshair !important; }
     <div class="row"><select id="selRate" style="flex:1;min-width:0"></select><button class="btn" data-etch-open="pit">Custom etchant…</button></div>
     <div class="fields"><label>flat error δ (crystal turned from the flat) <span><input type="number" id="pitRot" step="0.5" value="0"> °</span></label></div>
     <p class="note src">δ = 0: edges drawn along the flat lie exactly on ⟨110⟩. Lec 10 p. 18: the flat itself is only good to 2–5°; see the “Find orientation” scene.</p>
+    <div class="maskUI"></div>
     <h3><span class="stepn">3</span>Etch time</h3>
     <div class="tline"><span id="tNow">0 min</span><span id="tMax"></span></div>
     <input type="range" id="tSlider" min="0" max="1000" value="350">
     <div class="row"><button class="btn primary" id="bPlay">Play</button>
       <label><input type="checkbox" id="cFinal"> long-etch limit ({111} only)</label></div>
-    <h3>Show</h3>
-    <div class="row"><label><input type="checkbox" id="cCut"> cut open along the x axis (y = 0)</label></div>
-    <div class="row"><label><input type="checkbox" id="cBlock" checked> silicon block (off: cast of the pit)</label></div>
-    <div class="row"><label><input type="checkbox" id="cGhost" checked> final {111} shape (wire)</label></div>
-    <div class="row"><label><input type="checkbox" id="cMask" checked> mask layer</label></div>
-    <div class="arrUI"></div>
-    <div class="legend"><span><i class="sw" style="background:var(--mask)"></i>mask film (drawn at its true thickness)</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span></div>
-    <div class="maskUI"></div>
+    <h3>Section line</h3>
+    <div class="secUI" data-for="pitCanvas"></div>
+    <h3>Whole wafer</h3>
     <div class="waferUI"></div>
-    <div class="row"><span class="lbl">Colour</span><select id="pitColor" style="width:auto"><option value="plane">crystal plane family</option><option value="depth">depth below the surface</option><option value="rate">etch rate of the wall</option></select></div>
     <h3>Now</h3>
     <dl class="kv" id="readout"></dl>
     <h3>Walls now</h3>
@@ -512,7 +504,7 @@ canvas.measuring { cursor: crosshair !important; }
     <p class="note" style="margin:0 0 4px">Shapes are applied top to bottom: “open” removes the mask, “mask” puts it back (solid outline: open; dashed: mask). <b>Drag</b> a shape to move it (<b>Alt</b>-drag moves a copy), <b>double-click</b> an empty spot to add the chosen shape there; with the editor focused, the arrow keys move the selected shape by one snap step (Shift: five), <span class="kbd">Ctrl</span>+<span class="kbd">D</span> duplicates it and <span class="kbd">Delete</span> removes it. <b>Draw</b> lets you draw your own outline. Press Run to etch the new mask.</p>
     <p class="drawhelp hidden" id="simDrawHelp"></p>
     <canvas id="maskCanvas" class="maskcv"></canvas>
-    <div class="legend"><label><input type="checkbox" class="cCompass" checked> crystal compass (orange: {111} traces)</label></div>
+    <div class="legend"><span><i class="sw" style="background:var(--ghost);height:2px"></i>section line A → B</span></div>
     <div class="addrow"><select id="addType"></select><select id="addOp"><option value="open">as opening</option><option value="mask">as mask</option></select><button class="btn" id="bAddShape">Add shape</button><button class="btn" id="bDraw" title="Click to place corners or drag to draw freely">✎ Draw</button><button class="btn" id="bDupShape">Duplicate selected</button></div>
     <p class="note" style="margin:4px 0 0">Columns: w, h = size; t = arm width (L, U, cross, frame) or inner size (ring, star); n = sides or points; array = copies nx × ny at pitch px, py (µm).</p>
     <div class="tblwrap"><table class="shapes" id="shapeList"></table></div>
@@ -528,26 +520,19 @@ canvas.measuring { cursor: crosshair !important; }
       <label>domain x × y <span><input type="number" id="simHx" min="40" step="20"> × <input type="number" id="simHy" min="40" step="20"> µm</span></label>
       <label>resolution <span><select id="simQual"><option value="draft">draft (fast)</option><option value="normal">normal</option><option value="fine">fine (slow)</option><option value="ultra">very fine (slowest)</option></select></span></label>
     </div>
+    <div class="maskUI"></div>
     <div class="row"><button class="btn primary" id="bSimRun">Run</button><span class="note hidden" id="simDirty">Mask or process changed: press Run.</span></div>
     <div class="pbar"><div id="simBar"></div></div>
     <p class="note" id="simStatus" style="margin:4px 0 0"></p>
     <h3>Time</h3>
     <div class="tline"><span id="simTnow">0 min</span><span id="simTmax"></span></div>
     <input type="range" id="simT" min="0" max="1" step="any" value="0">
-    <div class="row"><button class="btn" id="bSimPlay">Play</button>
-      <label><input type="checkbox" id="cSimMask" checked> mask layer</label>
-      <label><input type="checkbox" id="cSimCut"> cut away at the section</label></div>
-    <div class="arrUI"></div>
-    <div class="legend"><span><i class="sw" style="background:var(--mask)"></i>mask film (true thickness)</span><span><i class="sw" style="background:var(--mask);filter:brightness(.55)"></i>mask with no silicon under it</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span></div>
-    <div class="maskUI"></div>
+    <div class="row"><button class="btn" id="bSimPlay">Play</button></div>
     <h3>Section line</h3>
-    <div class="row"><span class="seg" id="segCut"><button data-a="y" aria-pressed="true">along x</button><button data-a="x" aria-pressed="false">along y</button></span><label class="note" title="position of the section line; you can also drag the line in the mask editor"><span id="simCutLbl">y</span> = <input type="number" id="simCutNum" step="1" style="width:6em"> µm</label></div>
-    <input type="range" id="simCutPos" min="-100" max="100" step="1" value="0">
+    <div class="secUI" data-for="maskCanvas"></div>
     <h3>Now</h3>
     <dl class="kv" id="simReadout"></dl>
-    <h3>Colour</h3>
-    <select id="simColor"><option value="plane">crystal plane family</option><option value="depth">depth below the surface</option><option value="rate">local etch rate R(n)</option><option value="time">time the etch front reached the surface</option></select>
-    <div class="legend" id="simPlaneLegend" style="margin-top:6px"><span><i class="sw" style="background:var(--f111)"></i>{111}</span><span><i class="sw" style="background:var(--f100)"></i>{100}</span><span><i class="sw" style="background:var(--f110)"></i>{110}</span><span><i class="sw" style="background:var(--fhi)"></i>higher index ({311}, {211}, {411} …)</span><span><i class="sw" style="background:var(--s-side)"></i>no plane within 4°</span><span><i class="sw" style="background:var(--s-cut)"></i>cut face</span></div>
+    <h3>Whole wafer</h3>
     <div class="waferUI"></div>
     <details class="srcs"><summary>Model, sources and assumptions</summary>
       <ul>
@@ -585,7 +570,6 @@ canvas.measuring { cursor: crosshair !important; }
     <div class="enl" data-title="Mask on the wafer">
     <p class="note" style="margin:0 0 4px"><b>Drag</b> an item to move it (<b>Alt</b>-drag moves a copy), <b>double-click</b> an empty spot to add the chosen item there. With the map focused, the arrow keys move the selected item by 1 mm (Shift: 5 mm), <span class="kbd">Ctrl</span>+<span class="kbd">D</span> duplicates it and <span class="kbd">Delete</span> removes it. Test structures: slot fan and circle arc; everything else is a device shape (µm).</p>
     <canvas id="fdCanvas" class="maskcv" tabindex="0" aria-label="Mask map of the whole wafer"></canvas>
-    <div class="arrUI" data-only="perp"></div>
     <div class="addrow"><select id="fdType" aria-label="item to add"></select><button class="btn primary" id="fdAdd">Add</button><button class="btn" id="fdDup">Duplicate</button><button class="btn" id="fdDel">Delete</button><button class="btn" id="fdReset">Lecture layout</button></div>
     <div id="fdList" class="cards"></div>
     </div>
@@ -634,7 +618,7 @@ canvas.measuring { cursor: crosshair !important; }
     <tr><td>scroll, pinch</td><td>zoom (also <b>+</b> <b>−</b> <b>⤢</b> at the top left of the view)</td></tr>
     <tr><td>hover, click</td><td>name a plane, select a face</td></tr>
     <tr><td>axis gizmo</td><td>bottom left: the crystal axes x = [100], y = [010], z = [001] (Miller indices, Lec 4-1 p. 6; Pal &amp; Sato Fig. 2.8, p. 31) as they sit in the wafer, the primary flat F and the surface normal n; click one to look along it. Positions in the mask editors are measured along the flat, the reference for aligning masks (Pal &amp; Sato p. 29)</td></tr>
-    <tr><td>👁 Show tab</td><td>top right of the 3D view (key V): every show/hide and colour option of the scene in one list: layers (mask film, silicon block, {111} wire, cut, whole wafer), flat arrows (along the flat, ⊥ flat outward), colour mode and theme, 3D labels, axis gizmo, scale bar and the mask-editor overlays. It changes the same settings as the panel and ⚙ Settings</td></tr>
+    <tr><td>👁 Show tab</td><td>top right of the 3D view (key V): every show/hide and colour option of the scene in one list: layers (mask film, silicon block, {111} wire, cut open at the section line, whole wafer), flat arrows (along the flat, ⊥ flat outward), colour mode with its legend and theme, 3D labels, axis gizmo, scale bar and the mask-editor overlays. The panels hold no show or colour options of their own</td></tr>
     <tr><td>📏</td><td>(not on the paper model, which has no length unit) measure: click two points on a surface for the distance and Δx, Δy, Δz; <span class="kbd">Esc</span> clears. The scale bar (bottom right) holds for lengths parallel to the screen</td></tr>
     <tr><td><span class="kbd">S</span></td><td>split view on or off</td></tr>
     <tr><td><span class="kbd">V</span></td><td>Show tab (visibility and colours) open or closed</td></tr>
@@ -651,6 +635,7 @@ canvas.measuring { cursor: crosshair !important; }
     <tr><td><span class="kbd">Ctrl</span> + <span class="kbd">D</span></td><td>duplicate the selected shape</td></tr>
     <tr><td><span class="kbd">Delete</span></td><td>remove it</td></tr>
     <tr><td><span class="kbd">Ctrl</span> + scroll, <span class="kbd">+</span> <span class="kbd">−</span> <span class="kbd">0</span></td><td>zoom in, out (to 25 %) and back to 100 %; <span class="kbd">Space</span> + drag pans</td></tr>
+    <tr><td>Section line A → B, <span class="kbd">L</span></td><td>(etched pit, simulator, corner lab) drag <b>A</b> or <b>B</b> to move an end, drag the dashed line to move it, or press ✎ Draw line (or <span class="kbd">L</span> in the editor) and drag a new one; the coordinates can also be typed. The cross-section under the 3D view shows the vertical plane through A → B; “cut open at the section line” in 👁 Show removes the silicon on the right of A → B</td></tr>
     <tr><td>📏 Measure, <span class="kbd">M</span></td><td>drag to measure a distance and its angle to x; <span class="kbd">Esc</span> clears</td></tr>
     <tr><td>✎ Draw</td><td>click corners or drag a free outline; <span class="kbd">Enter</span> or double-click finishes, <span class="kbd">Backspace</span> undoes a corner, <span class="kbd">Esc</span> cancels</td></tr>
   </table>
@@ -882,6 +867,9 @@ canvas.measuring { cursor: crosshair !important; }
   </ol>
 </section>
 </div>
+
+<!-- controls of the 3D view, set from the 👁 Show tab (module 22); kept here so their handlers still run -->
+<div id="ctlStore" hidden><label><input type="checkbox" id="cCorners" checked> corner directions</label><label><input type="checkbox" id="cFaces"> face indices</label><label><input type="checkbox" id="cUpper" checked> upper half (above the wafer)</label><label><input type="checkbox" id="cCut"> cut open at the section line</label><label><input type="checkbox" id="cBlock" checked> silicon block (off: cast of the pit)</label><label><input type="checkbox" id="cGhost" checked> final {111} shape (wire)</label><label><input type="checkbox" id="cMask" checked> mask layer</label><select id="pitColor"><option value="plane">crystal plane family</option><option value="depth">depth below the surface</option><option value="rate">etch rate of the wall</option></select><label><input type="checkbox" class="cCompass" checked> crystal compass</label><div id="pitLegend"><span><i class="sw" style="background:var(--mask)"></i>mask film (true thickness)</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span><span><i class="sw" style="background:var(--s-cut)"></i>cut face</span></div><label><input type="checkbox" id="cSimMask" checked> mask layer</label><label><input type="checkbox" id="cSimCut"> cut open at the section line</label><div id="simLegend"><span><i class="sw" style="background:var(--mask)"></i>mask film (true thickness)</span><span><i class="sw" style="background:var(--mask);filter:brightness(.55)"></i>mask with no silicon under it</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span></div><select id="simColor"><option value="plane">crystal plane family</option><option value="depth">depth below the surface</option><option value="rate">local etch rate R(n)</option><option value="time">time the etch front reached the surface</option></select><div id="simPlaneLegend" style="margin-top:6px"><span><i class="sw" style="background:var(--f111)"></i>{111}</span><span><i class="sw" style="background:var(--f100)"></i>{100}</span><span><i class="sw" style="background:var(--f110)"></i>{110}</span><span><i class="sw" style="background:var(--fhi)"></i>higher index ({311}, {211}, {411} …)</span><span><i class="sw" style="background:var(--s-side)"></i>no plane within 4°</span><span><i class="sw" style="background:var(--s-cut)"></i>cut face</span></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>

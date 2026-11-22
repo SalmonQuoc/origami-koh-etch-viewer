@@ -4,7 +4,7 @@
 // The tab holds no state of its own: each entry reads the page state and, when changed, sets the
 // control it stands for in the panel or in Settings and fires its "change" event, so the panel,
 // Settings and the tab always agree. Key V opens or closes it.
-type ShowItem = { g: string, label: string, modes: string, get: () => any, set: (v: any) => void, opts?: () => string, when?: () => boolean };
+type ShowItem = { g: string, label: string, modes: string, get?: () => any, set?: (v: any) => void, opts?: () => string, legend?: () => string };
 var SHOW = { open: false, key: "" };   // var: read by stageOverlay (module 21) from the render loop
 function viaCtl(sel: string, v: any) {   // set a panel / Settings control and let its own handler do the work
   const el = document.querySelector(sel) as HTMLInputElement | HTMLSelectElement; if (!el) return;
@@ -21,8 +21,8 @@ const SHOW_ITEMS: ShowItem[] = [
   { g: "Layers", label: "mask layer", modes: "p", get: chk("#cMask"), set: v => viaCtl("#cMask", v) },
   { g: "Layers", label: "mask layer", modes: "s", get: chk("#cSimMask"), set: v => viaCtl("#cSimMask", v) },
   { g: "Layers", label: "final {111} shape (wire)", modes: "p", get: chk("#cGhost"), set: v => viaCtl("#cGhost", v) },
-  { g: "Layers", label: "cut open along x (y = 0)", modes: "p", get: chk("#cCut"), set: v => viaCtl("#cCut", v) },
-  { g: "Layers", label: "cut away at the section line", modes: "s", get: chk("#cSimCut"), set: v => viaCtl("#cSimCut", v) },
+  { g: "Layers", label: "cut open at the section line (A → B)", modes: "p", get: chk("#cCut"), set: v => viaCtl("#cCut", v) },
+  { g: "Layers", label: "cut open at the section line (A → B)", modes: "s", get: chk("#cSimCut"), set: v => viaCtl("#cSimCut", v) },
   { g: "Layers", label: "whole 100 mm wafer around the die", modes: "p", get: () => !!S.waferOn, set: v => viaCtl('#panelPit [data-wu="on"]', v) },
   { g: "Layers", label: "whole 100 mm wafer around the die", modes: "s", get: () => !!S.waferOn, set: v => viaCtl('#panelSim [data-wu="on"]', v) },
   { g: "Layers", label: "true flat error δ", modes: "f", get: chk("#fdReveal"), set: v => viaCtl("#fdReveal", v) },
@@ -30,6 +30,8 @@ const SHOW_ITEMS: ShowItem[] = [
   { g: "Flat arrows", label: "⊥ flat, outward", modes: "mpsf", get: () => SET.arrPerp !== false, set: v => viaCtl('#dlgSet [data-arr="arrPerp"]', v) },
   { g: "Colours", label: "colour by", modes: "p", get: () => ($("pitColor") as HTMLSelectElement).value, set: v => viaCtl("#pitColor", v), opts: () => $("pitColor").innerHTML },
   { g: "Colours", label: "colour by", modes: "s", get: () => ($("simColor") as HTMLSelectElement).value, set: v => viaCtl("#simColor", v), opts: () => $("simColor").innerHTML },
+  { g: "Colours", label: "", modes: "p", legend: () => $("pitLegend").innerHTML },
+  { g: "Colours", label: "", modes: "s", legend: () => $("simLegend").innerHTML + (SIM.color === "plane" ? $("simPlaneLegend").innerHTML : "") },
   { g: "Colours", label: "theme", modes: "mpsf", get: () => SET.theme, set: v => viaCtl("#stTheme", v), opts: () => $("stTheme").innerHTML },
   { g: "Labels and guides", label: "labels in the 3D view", modes: "mpsf", get: () => SET.labels, set: v => viaCtl("#stLabels", v), opts: () => $("stLabels").innerHTML },
   { g: "Labels and guides", label: "axis gizmo", modes: "mpsf", get: () => SET.gizmo !== false, set: v => { SET.gizmo = !!v; saveSet(); dirty = true; } },
@@ -44,7 +46,7 @@ function renderShowTab() {
   SHOW_ITEMS.forEach((it, i) => {
     if (!it.modes.includes(mk)) return;
     if (it.g !== g) { html += `${g ? "</div>" : ""}<div class="shG"><div class="shH">${it.g}</div>`; g = it.g; }
-    html += it.opts
+    html += it.legend ? `<div class="legend shLeg" data-shl="${i}"></div>` : it.opts
       ? `<label class="shSel"><span>${it.label}</span><select data-sh="${i}">${it.opts()}</select></label>`
       : `<label class="shChk"><input type="checkbox" data-sh="${i}"> <span>${it.label}</span></label>`;
   });
@@ -53,6 +55,7 @@ function renderShowTab() {
 }
 function syncShowTab() {
   if (!SHOW.open) return;
+  for (const el of document.querySelectorAll("#showBody [data-shl]")) el.innerHTML = SHOW_ITEMS[Number(el.getAttribute("data-shl"))].legend();
   for (const el of document.querySelectorAll("#showBody [data-sh]")) {
     const it = SHOW_ITEMS[Number(el.getAttribute("data-sh"))], v = it.get();
     if ((el as HTMLInputElement).type === "checkbox") (el as HTMLInputElement).checked = !!v; else (el as HTMLSelectElement).value = v;

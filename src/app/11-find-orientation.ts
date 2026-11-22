@@ -424,7 +424,7 @@ $("fdToSim").addEventListener("click", () => {
   if (S.wf === "111") setWafer("100");
   const R = RATES[FD.rate].r, tt = FD.final ? Math.min(600, Math.round(2*Math.max(...pts.map(p => Math.hypot(...p)))/Math.max(1e-3, R["100"]))) : FD.t;
   Object.assign(SIM, { fk: { "100": "100", "110": "110f" }[fdWf()], rate: PIT2SIM[FD.rate], rot: FD.delta, t: Math.max(5, tt), pre: 0, hx: Math.ceil((ext + 80)/10)*10, hy: Math.ceil((eyy + 80)/10)*10, dxMax: 0,
-    shapes: shapes.map(s => Object.assign(s, { nx: 1, ny: 1, px: 0, py: 0 })), sel: -1, preset: -1, cutPos: 0, cutAxis: "y", wfLoaded: S.wf, owner: "sim", probes: null, cl: null });
+    shapes: shapes.map(s => Object.assign(s, { nx: 1, ny: 1, px: 0, py: 0 })), sel: -1, preset: -1, cutPos: 0, cutAxis: "y", cutLine: null, wfLoaded: S.wf, owner: "sim", probes: null, cl: null });
   fillSimPresets(); $("simPreset").value = "-1"; $("simNote").innerHTML = `Item ${FD.sel + 1} from the “Find orientation” scene, with the flat error δ = ${FD.delta.toFixed(3)}° (the crystal is turned; the mask is as drawn).`;
   syncSimInputs(); renderShapeList(); S.mode = "sim"; pressed($("segM"), "m", "sim"); simRun(); rebuild(true);
 });

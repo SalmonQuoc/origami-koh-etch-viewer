@@ -32,7 +32,7 @@ function clBuild(run = true) {
   else if (CL.type === "beam110") sh.push(shp("rect", "mask", xR - a/2, yc - w/2, a, w));
   else if (CL.type === "beam100") sh.push(shp("rect", "mask", xR + d[0]*a/2, yc + d[1]*a/2, a, w, 135));
   Object.assign(SIM, { fk: "100", rot: 0, rate: CL.rate, t: Math.max(5, Math.round(1.3*tT)), pre: 0, hx: Math.ceil(hx/5)*5, hy: Math.ceil(hy/5)*5, dxMax: Math.max(0.5, H/16),
-    shapes: sh, sel: -1, preset: -1, cutPos: Math.round(yc - 0.15*H), cutAxis: "y", owner: "corner", wfLoaded: null });
+    shapes: sh, sel: -1, preset: -1, cutPos: Math.round(yc - 0.15*H), cutAxis: "y", cutLine: null, owner: "corner", wfLoaded: null });
   SIM.probes = [{ x: xL, y: yc, ux: SQ2, uy: SQ2, s0: -0.45*Math.min(A, 2*Ly1), s1: reach + m }, { x: xR, y: yc, ux: -SQ2, uy: SQ2, s0: -0.45*Math.min(A, 2*Ly1), s1: reach + m }];
   SIM.cl = { tT, H, xL, xR, yc, type: CL.type };
   CL.built = true; syncSimInputs(); renderShapeList();
@@ -70,7 +70,8 @@ $("clRun").addEventListener("click", () => clBuild());
 function simHover(ev) {
   if (!simScene || !simScene.pick) { tip.style.display = "none"; return; }
   pickAt(ev);
-  const h = ray.intersectObject(simScene.pick)[0];
+  const cps = simScene.pick.material.clippingPlanes;   // skip the part removed by the section cut
+  const h = ray.intersectObject(simScene.pick).find(h => !cps || cps.every(pl => pl.distanceToPoint(h.point) >= -1e-3));
   if (!h) { tip.style.display = "none"; return; }
   const inf = simScene.triInfo[h.faceIndex];
   if (!inf || inf.cap || inf.kind === 2) { tip.innerHTML = `${inf && inf.kind === 2 ? "edge of the simulated block" : "section face (cut)"}<br>z = ${(-h.point.z).toFixed(1)} µm deep`; }

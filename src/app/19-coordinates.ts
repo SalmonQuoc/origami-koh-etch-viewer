@@ -135,13 +135,6 @@ function redrawEditors() {
   let raf = 0; const pending = new Set<string>();
   const later = (id: string) => { pending.add(id); if (!raf) raf = requestAnimationFrame(() => { raf = 0; for (const p of pending) ED[p].redraw(); pending.clear(); }); };
   const world = (id: string, ev: PointerEvent) => { const ed = ED[id].ed(), r = $(id).getBoundingClientRect(); return ed ? [(ev.clientX - r.left - ed.ox)/ed.s, -(ev.clientY - r.top - ed.oy)/ed.s] : null; };
-  // the section line of the simulator: distance in px from the pointer, and dragging it
-  const cutDist = (ev: PointerEvent) => {
-    const ed = SIM.ed, r = $("maskCanvas").getBoundingClientRect(); if (!ed) return Infinity;
-    const px = ev.clientX - r.left, py = ev.clientY - r.top;
-    return SIM.cutAxis === "y" ? Math.abs(py - (ed.oy - SIM.cutPos*ed.s)) : Math.abs(px - (ed.ox + SIM.cutPos*ed.s));
-  };
-  let cutDrag = false;
   for (const id of Object.keys(ED)) {
     const cv = $(id); if (!cv) continue;
     const host = cv.parentElement, mine = (ev: Event) => ev.target === cv;
@@ -149,23 +142,11 @@ function redrawEditors() {
       if (!mine(ev)) return;
       const w = world(id, ev); if (!w) return;
       EDC[id] = w;
-      if (id === "maskCanvas") {
-        if (cutDrag) { ev.stopPropagation(); setCutPos(snapV(SIM.cutAxis === "y" ? w[1] : w[0])); return; }
-        cv.style.cursor = DRAW.on !== id && ev.buttons === 0 && cutDist(ev) <= 5 ? (SIM.cutAxis === "y" ? "ns-resize" : "ew-resize") : "";
-      }
       // the editors redraw themselves while a shape is dragged or an outline drawn
       if (ev.buttons === 0 && DRAW.on !== id) later(id);
     }, true);
-    host.addEventListener("pointerleave", (ev: PointerEvent) => { if (!mine(ev) || cutDrag) return; delete EDC[id]; later(id); }, true);
-    cv.addEventListener("pointerleave", () => { if (cutDrag) return; delete EDC[id]; later(id); });
-    if (id === "maskCanvas") {
-      host.addEventListener("pointerdown", (ev: PointerEvent) => {
-        if (!mine(ev) || DRAW.on === id || cutDist(ev) > 5) return;
-        ev.stopPropagation(); ev.preventDefault(); cutDrag = true; cv.setPointerCapture(ev.pointerId);
-      }, true);
-      const end = (ev: PointerEvent) => { if (!cutDrag) return; ev.stopPropagation(); cutDrag = false; };
-      host.addEventListener("pointerup", end, true); host.addEventListener("pointercancel", end, true);
-    }
+    host.addEventListener("pointerleave", (ev: PointerEvent) => { if (!mine(ev)) return; delete EDC[id]; later(id); }, true);
+    cv.addEventListener("pointerleave", () => { delete EDC[id]; later(id); });
   }
 })();
 
