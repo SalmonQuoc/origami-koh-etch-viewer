@@ -31,7 +31,7 @@ function clBuild(run = true) {
   if (CL.type === "square") sh.push(shp("rect", "mask", xR, yc, a, a));
   else if (CL.type === "beam110") sh.push(shp("rect", "mask", xR - a/2, yc - w/2, a, w));
   else if (CL.type === "beam100") sh.push(shp("rect", "mask", xR + d[0]*a/2, yc + d[1]*a/2, a, w, 135));
-  Object.assign(SIM, { fk: "100", rot: 0, rate: CL.rate, t: Math.max(5, Math.round(1.3*tT)), pre: 0, hx: Math.ceil(hx/5)*5, hy: Math.ceil(hy/5)*5, dxMax: Math.max(1, H/12),
+  Object.assign(SIM, { fk: "100", rot: 0, rate: CL.rate, t: Math.max(5, Math.round(1.3*tT)), pre: 0, hx: Math.ceil(hx/5)*5, hy: Math.ceil(hy/5)*5, dxMax: Math.max(0.5, H/16),
     shapes: sh, sel: -1, preset: -1, cutPos: Math.round(yc - 0.15*H), cutAxis: "y", owner: "corner", wfLoaded: null });
   SIM.probes = [{ x: xL, y: yc, ux: SQ2, uy: SQ2, s0: -0.45*Math.min(A, 2*Ly1), s1: reach + m }, { x: xR, y: yc, ux: -SQ2, uy: SQ2, s0: -0.45*Math.min(A, 2*Ly1), s1: reach + m }];
   SIM.cl = { tT, H, xL, xR, yc, type: CL.type };

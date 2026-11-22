@@ -19,17 +19,21 @@ function startWorker() {
 }
 
 // ---- configuration from the UI state
+var SIM_CELLS = { draft: 1.5e5, normal: 4e5, fine: 1e6, ultra: 2.5e6 };
+var SIM_DXF = { draft: 1.4, normal: 1, fine: 0.7, ultra: 0.5 };   // factor on the cell-size cap
 function simConfig() {
   const F = simFrame(), R = SRATES[SIM.rate].r;
   const shapes = SIM.shapes.map(engineShape);
   const X0 = -SIM.hx, X1 = SIM.hx, Y0 = -SIM.hy, Y1 = SIM.hy;
   const vert = EE.rateC(EE.makeRate(R), F.e[2][0], F.e[2][1], F.e[2][2]);   // R of the wafer normal (crystal components of e3)
-  const target = { draft: 1.2e5, normal: 3e5, fine: 8e5 }[SIM.quality];
+  // target number of grid cells per resolution; the cell size dx follows from the domain volume (at least 0.5 µm)
+  const target = SIM_CELLS[SIM.quality] || SIM_CELLS.normal;
   let dx = 1, Lz = 0;
   for (let it = 0; it < 4; it++) {
     Lz = Math.min(SIM.thick, vert*SIM.t*1.06 + (SIM.pre || 0) + 6*dx + 4);
-    dx = Math.max(1, Math.ceil(Math.cbrt((X1 - X0)*(Y1 - Y0)*Lz/target)*2)/2);
-    if (SIM.dxMax) dx = Math.min(dx, SIM.dxMax);   // preset with thin walls: keep them at least ~8 cells thick
+    dx = Math.max(0.5, Math.ceil(Math.cbrt((X1 - X0)*(Y1 - Y0)*Lz/target)*4)/4);
+    // preset with thin walls (and the corner lab): a cap on the cell size, finer with the resolution
+    if (SIM.dxMax) dx = Math.max(0.5, Math.min(dx, Math.round(SIM.dxMax*(SIM_DXF[SIM.quality] || 1)*4)/4));
   }
   Lz = Math.min(SIM.thick, Math.max(3*dx, Lz));
   return { frame: simE(), rates: R, probes: SIM.probes || null, shapes, X0, X1, Y0, Y1, depth: Lz, dx, pre: SIM.pre || 0 };

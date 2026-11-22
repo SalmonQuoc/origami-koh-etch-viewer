@@ -506,7 +506,7 @@ canvas.measuring { cursor: crosshair !important; }
       <label>pre-etch depth <span><input type="number" id="simPre" min="0" step="5"> µm</span></label>
       <label>flat error δ (crystal turned from the flat) <span><input type="number" id="simRot" step="0.5"> °</span></label>
       <label>domain x × y <span><input type="number" id="simHx" min="40" step="20"> × <input type="number" id="simHy" min="40" step="20"> µm</span></label>
-      <label>resolution <span><select id="simQual"><option value="draft">draft (fast)</option><option value="normal">normal</option><option value="fine">fine (slow)</option></select></span></label>
+      <label>resolution <span><select id="simQual"><option value="draft">draft (fast)</option><option value="normal">normal</option><option value="fine">fine (slow)</option><option value="ultra">very fine (slowest)</option></select></span></label>
     </div>
     <div class="row"><button class="btn primary" id="bSimRun">Run</button><span class="note hidden" id="simDirty">Mask or process changed: press Run.</span></div>
     <div class="pbar"><div id="simBar"></div></div>
@@ -535,7 +535,7 @@ canvas.measuring { cursor: crosshair !important; }
         <li><b>Corner rules</b> (sourced, not imposed): concave corners show the slowest plane and convex corners the fastest (Lec 4-1 p. 8). The simulator does not apply these rules; they come out of the rate map.</li>
         <li><b>Front motion</b> (method): every surface element moves along its normal at R(hkl); this is solved as a 3D level set (first-order Lax-Friedrichs scheme, fast-marching re-initialisation) on a cubic grid. Accuracy is about one cell; sharp edges are rounded over about two cells. Check: 200 µm square window on (100), 60 min in 30 wt%: depth 47.85 µm against 0.797 × 60 = 47.82 µm; {111} wall 54.2° (4 µm grid) and 54.8° (2 µm grid) against 54.74°.</li>
         <li><b>Mask edge</b> (assumption): no etchant reaches silicon through the mask, so silicon under the mask is only removed from the side. At the top row under the mask the level set has no downward slope; where the wall there is near-vertical (slope below 0.35), the vertical gradient is set to zero. Check: a 100 &micro;m square window at 45&deg; on (100), 40 min in 30 wt% KOH, gives 26.5 &micro;m sideways undercut at a 2 &micro;m grid (15.5 &micro;m at 4 &micro;m) against 0.797 &times; 40 = 31.9 &micro;m (Pal &amp; Sato Table 4.1, p. 87); a ⟨110⟩-aligned pit keeps 0 &micro;m. Use a fine grid when {100} undercut matters.</li>
-        <li><b>Known numerical limits</b>: silicon walls and beams narrower than about 8 grid cells thin slowly (numerical dissipation, not physics), most when they are oblique to the grid; windows narrower than about 5 cells etch too slowly. Use the “fine” resolution or wider features when this matters. Undercut values are good to about one to two cells.</li>
+        <li><b>Known numerical limits</b>: silicon walls and beams narrower than about 8 grid cells thin slowly (numerical dissipation, not physics), most when they are oblique to the grid; windows narrower than about 5 cells etch too slowly. Use the “fine” or “very fine” resolution or wider features when this matters. Undercut values are good to about one to two cells.</li>
         <li><b>Mask</b> (assumption): inert for the etch; etchant reaches the silicon only through openings and under released mask. The film is drawn at its true thickness (default 1 µm thermal SiO₂, a design choice inside the 1–2 µm of Pal &amp; Sato p. 348; or 0.15 µm LPCVD Si₃N₄, Pal &amp; Sato p. 54) and a SiO₂ film thins at the oxide rate below; when it is used up the readout says so, but the model still keeps the mask. Pal &amp; Sato p. 83: a 2–3 µm thermal oxide is not enough to etch through a 500 µm wafer in KOH (Si : SiO₂ selectivity about 150); Si₃N₄ is used instead. For KOH etchants with no oxide rate in the course files the rate is estimated as R(100)/150 (estimate). The SiO₂ loss shown uses 0.34 µm/h for KOH 42 wt% (thermal oxide, Lec 4-1 p. 7; Lec 10 p. 11) and the Lec 10 p. 11 values for KOH 57 wt% and EDP Type S; for the other KOH etchants it is the R(100)/150 estimate above, and for EDP F&amp;K it is not in the course files.</li>
         <li><b>Rates from Lec 10 and EDP</b>: KOH 57 wt% at 75 °C: {100} 25, {110} 39, {111} 0.5 µm/h (Lec 10 p. 11); its other orientations are the Pal &amp; Sato 50 wt% values scaled by R(100) (assumption). EDP Type S at 110 °C: {100} 51, {110} 57, {111} 1.25 µm/h (Lec 10 p. 11). EDP F&amp;K: ratio 50:30:3 (Finne and Klein 1967, Berkeley lab manual ch. 1.10) scaled to R(100) = 51 µm/h (assumption). For EDP only three orientations are given, so all other planes use the three-rate interpolation of Radjenović et al. (2010, eq. 1) (assumption). Lec 10 p. 16 orders EDP as (100) &gt; (110) &gt; (111), which the Type S values of p. 11 do not follow; F&amp;K does.</li>
         <li><b>Wafer</b>: 525 µm thick by default (100 mm wafer, Pal &amp; Sato Table 2.1, p. 30); only the depth that the etch can reach is simulated, and the back side is protected (assumption). Frames: (100) x = [1̄10] along the flat (origami tutorial, Rev. 1); (110) two conventions, see above; (111) flat along [11̄0] (assumption).</li>
@@ -676,7 +676,7 @@ canvas.measuring { cursor: crosshair !important; }
   </div>
   <h3>Etch simulator</h3>
   <div class="fields">
-    <label>resolution for new runs <select id="stQual"><option value="draft">draft (fast)</option><option value="normal">normal</option><option value="fine">fine (slow)</option></select></label>
+    <label>resolution for new runs <select id="stQual"><option value="draft">draft (fast)</option><option value="normal">normal</option><option value="fine">fine (slow)</option><option value="ultra">very fine (slowest)</option></select></label>
     <label><span><input type="checkbox" id="stAuto"> run again automatically after each edit</span></label>
     <label>etch engine <select id="stEngine"><option value="auto">Rust/WebAssembly kernel (fast)</option><option value="js">JavaScript (reference)</option></select></label>
   </div>
@@ -796,7 +796,7 @@ canvas.measuring { cursor: crosshair !important; }
     <p class="eq">∂φ/∂t + R(n) |∇φ| = 0</p>
     <p>How the page solves it <i>(method of this page)</i>:</p>
     <ul>
-      <li><b>Grid.</b> A cubic grid of cell size dx (draft, normal or fine). φ starts as the distance from each cell to the silicon exposed by the openings; the mask edge is found by an exact distance transform of the drawn mask, sampled four times finer than the grid.</li>
+      <li><b>Grid.</b> A cubic grid of cell size dx, set by the resolution: about 1.5 × 10⁵ (draft), 4 × 10⁵ (normal), 10⁶ (fine) or 2.5 × 10⁶ (very fine) cells over the simulated volume, with dx at least 0.5 µm. Run time grows faster than the number of cells, because the time step shrinks with dx. φ starts as the distance from each cell to the silicon exposed by the openings; the mask edge is found by an exact distance transform of the drawn mask, sampled four times finer than the grid.</li>
       <li><b>Time step.</b> First-order Lax-Friedrichs: H = R(n)|p| with p the central difference of φ, minus ½ Σ αᵢ (D⁺ᵢφ − D⁻ᵢφ). The αᵢ ≥ max |∂H/∂pᵢ| add the smoothing that keeps the scheme stable, and the step is dt = 0.9 dx / (α_x + α_y + α_z) (CFL condition).</li>
       <li><b>Etching cannot be undone.</b> φ is never allowed to rise, so a wall never grows back.</li>
       <li><b>Narrow band.</b> Only cells within 4 dx of the surface are updated; every 6 steps φ is reset to the true distance from the surface by fast marching, which keeps |∇φ| close to 1.</li>
@@ -810,7 +810,7 @@ canvas.measuring { cursor: crosshair !important; }
   <details class="learn"><summary>10. How far to trust the numbers</summary>
     <ul>
       <li>Depths and undercuts are good to about one or two grid cells; corners are rounded over about two cells (numerical smoothing).</li>
-      <li>Silicon walls and beams thinner than about 8 cells, and windows narrower than about 5 cells, are not resolved well. Use the fine resolution or wider features when this matters.</li>
+      <li>Silicon walls and beams thinner than about 8 cells, and windows narrower than about 5 cells, are not resolved well. Use the fine or very fine resolution, or wider features, when this matters. Example: the Corner lab default (KOH, H = 40 µm, no compensation on the left) gives a corner shift U/H of 1.47 at dx = 2.5 µm (normal) and 1.58 at dx = 1.75 µm (fine), a difference of about two cells over H; when such a number matters, compare two resolutions.</li>
       <li>Rates between measured orientations, the use of one Q for planes without data, and the concentration interpolation are assumptions (see 3, 4 and 7).</li>
       <li>Not modelled: hydrogen bubbles, stirring, surface roughness and hillocks, etch stops, mask etching except as a readout, and real KOH with additives (IPA, surfactants), which changes the anisotropy (Pal &amp; Sato pp. 82, 112–117).</li>
     </ul>
@@ -3963,17 +3963,19 @@ onmessage = e => h(e.data, f => setTimeout(f, 0));`;
     if (SIM.pendingRun) SIM.worker.post(SIM.pendingRun);
   }
 }
+var SIM_CELLS = { draft: 15e4, normal: 4e5, fine: 1e6, ultra: 25e5 };
+var SIM_DXF = { draft: 1.4, normal: 1, fine: 0.7, ultra: 0.5 };
 function simConfig() {
   const F = simFrame(), R = SRATES[SIM.rate].r;
   const shapes = SIM.shapes.map(engineShape);
   const X0 = -SIM.hx, X1 = SIM.hx, Y0 = -SIM.hy, Y1 = SIM.hy;
   const vert = EE.rateC(EE.makeRate(R), F.e[2][0], F.e[2][1], F.e[2][2]);
-  const target = { draft: 12e4, normal: 3e5, fine: 8e5 }[SIM.quality];
+  const target = SIM_CELLS[SIM.quality] || SIM_CELLS.normal;
   let dx = 1, Lz = 0;
   for (let it = 0; it < 4; it++) {
     Lz = Math.min(SIM.thick, vert * SIM.t * 1.06 + (SIM.pre || 0) + 6 * dx + 4);
-    dx = Math.max(1, Math.ceil(Math.cbrt((X1 - X0) * (Y1 - Y0) * Lz / target) * 2) / 2);
-    if (SIM.dxMax) dx = Math.min(dx, SIM.dxMax);
+    dx = Math.max(0.5, Math.ceil(Math.cbrt((X1 - X0) * (Y1 - Y0) * Lz / target) * 4) / 4);
+    if (SIM.dxMax) dx = Math.max(0.5, Math.min(dx, Math.round(SIM.dxMax * (SIM_DXF[SIM.quality] || 1) * 4) / 4));
   }
   Lz = Math.min(SIM.thick, Math.max(3 * dx, Lz));
   return { frame: simE(), rates: R, probes: SIM.probes || null, shapes, X0, X1, Y0, Y1, depth: Lz, dx, pre: SIM.pre || 0 };
@@ -4949,7 +4951,7 @@ function clBuild(run = true) {
     pre: 0,
     hx: Math.ceil(hx / 5) * 5,
     hy: Math.ceil(hy / 5) * 5,
-    dxMax: Math.max(1, H / 12),
+    dxMax: Math.max(0.5, H / 16),
     shapes: sh,
     sel: -1,
     preset: -1,
