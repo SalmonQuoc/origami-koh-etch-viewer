@@ -102,10 +102,38 @@ test("page: scenes, simulator kernel, drawing, settings, custom etchant, presets
     assert.match(await film(), /Si₃N₄ 0\.15 µm/);
     assert.equal(await p.inputValue("#panelSim [data-mf=t0]"), "0.15");
     await p.selectOption("#panelPit [data-mf=mat]", "sio2");
-    await p.click("#bExplain");
+    await p.click("#bExplain"); await p.mouse.move(0, 0); await p.waitForTimeout(400);   // past the colour transition
     const bg = await ev(() => [getComputedStyle(document.getElementById("bExplain")).backgroundColor, getComputedStyle(document.getElementById("bHelp")).backgroundColor]);
     assert.notEqual(bg[0], bg[1]);
     await p.click("#bExplain");
+    await p.click('#segM button[data-m="sim"]');
+  });
+
+  await t.test("3D tools (zoom out, gizmo, scale bar, measuring) and 2D zoom out and measuring", async () => {
+    await p.click('#segM button[data-m="pit"]'); await p.waitForTimeout(300); await ev(() => window.scrollTo(0, 0));
+    const z0 = await ev(() => window.__o3d.camera.zoom);
+    await p.click('#stageTools [data-s="out"]');
+    assert.ok(await ev(() => window.__o3d.camera.zoom) < z0);
+    await p.click('#stageTools [data-s="fit"]'); await p.waitForTimeout(700);
+    assert.match(await p.textContent("#scaleBar"), /\d (µm|mm)/);
+    assert.match(await p.textContent("#gizmo .gzLeg"), /along the flat/);
+    await p.click('#stageTools [data-s="measure"]');
+    const sb = await p.locator("#stage").boundingBox();
+    await p.mouse.click(sb.x + sb.width*0.45, sb.y + sb.height*0.55); await p.mouse.click(sb.x + sb.width*0.6, sb.y + sb.height*0.5); await p.waitForTimeout(200);
+    assert.equal(await ev(() => window.__o3d.ST3.pts.length), 2);
+    assert.match(await p.textContent("#measLab"), /Δz/);
+    await p.keyboard.press("Escape"); assert.equal(await ev(() => window.__o3d.ST3.meas), false);
+    await p.click('.zoomBar[data-for="pitCanvas"] [data-z="out"]');
+    assert.equal(await ev(() => window.__o3d.EDZ.pitCanvas.z), 0.5);
+    await p.click('.zoomBar[data-for="pitCanvas"] [data-z="fit"]');
+    await p.click('.zoomBar[data-for="pitCanvas"] [data-z="measure"]');
+    const cv = p.locator("#pitCanvas"); await cv.scrollIntoViewIfNeeded();
+    const bb = await cv.boundingBox(), ed = await ev(() => window.__o3d.S.pitEd);
+    await p.mouse.move(bb.x + ed.ox - 200*ed.s, bb.y + ed.oy + 100*ed.s); await p.mouse.down();
+    await p.mouse.move(bb.x + ed.ox + 200*ed.s, bb.y + ed.oy - 100*ed.s, { steps: 4 }); await p.mouse.up();
+    const m = await ev(() => window.__o3d.EDM.pitCanvas);
+    assert.ok(Math.abs(Math.hypot(m.b[0] - m.a[0], m.b[1] - m.a[1]) - Math.hypot(400, 200)) < 2, JSON.stringify(m));
+    await p.click('.zoomBar[data-for="pitCanvas"] [data-z="measure"]');
     await p.click('#segM button[data-m="sim"]');
   });
 

@@ -306,7 +306,7 @@ function buildPit() {
     if (S.mask) {   // mask film on top of the silicon at its true thickness; it overhangs where the silicon is undercut
       const mf = pitFilm(), tm = mf.left, opens = items.map(it => it.o);
       const mm = holePlane(x0, x1, yA, yB, opens, COL.mask, m => { m.position.z = tm; }, { opacity: mf.gone ? 0.3 : 0.88, alphaTest: 0.01, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
-      mm.renderOrder = 5; g.add(mm);
+      mm.renderOrder = 5; mm.userData.noPick = true; g.add(mm);   // its openings are transparent pixels: measure through it
       const os = opens.map(o => ({ pts: o, op: "open" })), inOpen = (x, y) => EE.isOpen(os, x, y);
       g.add(maskRim(pitLoops(), inOpen, tm, clip, [x0, x1, yA, yB]));
     }

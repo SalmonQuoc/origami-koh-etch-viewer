@@ -260,13 +260,92 @@ table.keys { border-collapse: collapse; width: 100%; font-size: 13px; align-self
 table.keys td { padding: 3px 6px 3px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
 table.keys td:first-child { white-space: nowrap; width: 1%; }
 dl.scenes dt { font-weight: 600; margin-top: 8px; } dl.scenes dd { margin: 2px 0 0; font-size: 13.5px; }
+
+/* ---- interface look (Nov 2026 revamp): app bar, segmented tabs, accordion panels, tools on the 3D view ---- */
+:root { --radius: 12px; --shadow: 0 1px 2px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.04); --ring: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent); }
+.apphead { display: grid; gap: 6px; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand .logo { width: 38px; height: 38px; flex: none; color: var(--accent); }
+.apphead h1 { font: 650 24px/1.15 "IBM Plex Sans", system-ui, sans-serif; letter-spacing: -0.015em; margin: 0; }
+.apphead .tagline { margin: 2px 0 0; font-size: 14px; color: var(--muted); }
+.apphead .intro { margin: 4px 0 0; font-size: 14px; color: var(--muted); max-width: 95ch; }
+.apphead .byline { font-size: 12.5px; margin-top: 2px; }
+.bar { position: relative; z-index: 20; background: color-mix(in srgb, var(--panel) 92%, transparent); backdrop-filter: blur(8px);
+  border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 8px 10px; margin: 14px 0 12px; gap: 8px 18px; }
+body.split .bar { border-radius: 0 0 var(--radius) var(--radius); border-top: 0; padding: 8px 10px; }
+.bar .lbl { margin-right: 6px; }
+.seg { background: var(--chip); border-color: transparent; border-radius: 9px; padding: 3px; gap: 2px; }
+.seg button { border-radius: 7px; padding: 5px 12px; color: var(--muted); transition: background .12s, color .12s; }
+.seg button + button { border-left: 0; }
+@media (max-width: 600px) { #segM button + button { border-left: 0; } }
+.seg button:hover { color: var(--ink); background: color-mix(in srgb, var(--panel) 60%, transparent); }
+.seg button[aria-pressed="true"] { background: var(--panel); color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.16); }
+.tools { flex-wrap: wrap; align-items: center; }
+.tsep { width: 1px; align-self: stretch; background: var(--line); margin: 2px 2px; }
+.btn, .views button { border-radius: 7px; padding: 5px 11px; line-height: 1.35; transition: background .12s, border-color .12s, color .12s; }
+.btn:hover, .views button:hover { background: var(--chip); border-color: var(--line); }
+.btn.primary:hover { background: var(--accent); filter: brightness(1.07); }
+.btn.on:hover, .btn[aria-pressed="true"]:hover { background: var(--accent); border-color: var(--accent); }
+.btn.primary[aria-pressed="true"]:hover { background: var(--ink); border-color: var(--ink); }
+.btn:focus-visible, .views button:focus-visible, .seg button:focus-visible, .stageTools button:focus-visible { outline: none; box-shadow: var(--ring); }
+input[type=number]:focus-visible, input[type=text]:focus-visible, select:focus-visible { outline: none; border-color: var(--accent) !important; box-shadow: var(--ring); }
+.stage { border-radius: var(--radius); box-shadow: var(--shadow); }
+.views { align-items: center; gap: 4px; }
+.views .lbl { margin-right: 4px; }
+.views button { background: transparent; border-color: transparent; color: var(--muted); padding: 4px 10px; }
+.views button:hover { color: var(--ink); }
+.views button:disabled { opacity: .45; cursor: default; }
+.panel { border-radius: var(--radius); box-shadow: var(--shadow); }
+aside.panel { padding: 12px 16px 14px; }
+.panel h2 { font: 650 16px/1.3 "IBM Plex Sans", system-ui, sans-serif; letter-spacing: -0.005em; }
+.panel > .foldH, .panel .foldH { margin: 0; padding: 11px 4px 11px 20px; border-top: 1px solid var(--line); border-radius: 0; }
+.panel .foldH::before { left: 4px; }
+.panel .foldH:hover { background: color-mix(in srgb, var(--chip) 60%, transparent); }
+.foldBody { padding: 0 0 10px; }
+.foldAll { margin: -2px 0 6px; }
+.guide { border-radius: 10px; box-shadow: var(--shadow); }
+.zoomBar { gap: 3px; }
+.zoomBar .btn { padding: 2px 8px; }
+canvas.measuring { cursor: crosshair !important; }
+/* tools on the 3D view */
+.stageTools { position: absolute; left: 10px; top: 10px; z-index: 4; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 9px; overflow: hidden;
+  background: color-mix(in srgb, var(--panel) 90%, transparent); box-shadow: var(--shadow); }
+.stageTools button { width: 34px; height: 32px; border: 0; background: none; color: var(--ink); font: 600 16px/1 "IBM Plex Sans", sans-serif; cursor: pointer; }
+.stageTools button + button { border-top: 1px solid var(--line); }
+.stageTools button:hover { background: var(--chip); }
+.stageTools button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.hint { left: 56px; top: 14px; bottom: auto; }
+.stage.measuring canvas { cursor: crosshair; }
+.gizmo { position: absolute; left: 8px; bottom: 8px; z-index: 3; display: flex; align-items: flex-end; gap: 4px; pointer-events: none; }
+.gizmo canvas { width: 84px; height: 84px; border-radius: 50%; background: color-mix(in srgb, var(--panel) 55%, transparent); cursor: pointer; pointer-events: auto; }
+.gzLeg { font: 11px/1.45 "IBM Plex Mono", monospace; color: var(--ink); background: color-mix(in srgb, var(--scene-bg) 94%, transparent); border-radius: 6px; padding: 3px 6px; margin-bottom: 4px; }
+.gzLeg b { font-family: "IBM Plex Sans", sans-serif; display: inline-block; width: 1em; }
+.gzLeg span { color: var(--muted); font-family: "IBM Plex Sans", sans-serif; }
+.gzLeg .gzNote { color: var(--muted); font-family: "IBM Plex Sans", sans-serif; }
+@media (max-width: 640px) { .gzLeg { display: none; } }
+.scaleBar { position: absolute; right: 12px; bottom: 10px; z-index: 3; display: flex; flex-direction: column; align-items: center; pointer-events: auto;
+  font: 600 11px "IBM Plex Mono", monospace; color: var(--ink); background: color-mix(in srgb, var(--scene-bg) 80%, transparent); border-radius: 5px; padding: 1px 6px 4px; }
+.scaleBar i { display: block; height: 6px; border: 2px solid var(--ink); border-top: 0; min-width: 8px; }
+.scaleBar.hidden { display: none; }
+.cbar { bottom: 46px; }
+.measOv { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; overflow: visible; }
+.measLab { position: absolute; z-index: 4; display: flex; flex-direction: column; gap: 1px; background: var(--panel); border: 1px solid var(--accent); border-radius: 7px;
+  padding: 4px 9px; font: 12px/1.35 "IBM Plex Mono", monospace; color: var(--ink); pointer-events: none; box-shadow: var(--shadow); white-space: nowrap; }
+.measLab b { color: var(--accent); font-size: 13px; }
+.measLab.hidden { display: none; }
+@media (min-width: 901px) { .bar { position: sticky; top: 0; } }   /* the bar stays in reach while the panel scrolls */
+@media (max-width: 700px) { .tsep { display: none; } }
+.byline a, .apphead a { color: var(--accent); }
 </style>
 </head>
 <body>
 <div class="wrap">
-<header>
-  <h1>Origami 3D viewer</h1>
-  <p>The HW2 {111} octahedron held over a (100), (110) or (111) wafer, the etched pit it predicts, a KOH and EDP etch simulator for any mask (cantilevers, bridges, corner attack and compensation, merging windows), a corner lab for convex-corner compensation, and an orientation finder that reads the flat error from etched alignment marks. Drag to turn, scroll or pinch to zoom.</p>
+<header class="apphead">
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3 L35 20 L20 37 L5 20 Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M5 20 L20 25 L35 20 M20 3 L20 25 L20 37" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" opacity=".7"/><path d="M5 20 L20 15 L35 20" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2 2" opacity=".55"/></svg>
+    <div><h1>Origami 3D viewer</h1><p class="tagline">Anisotropic wet etching of silicon, from the paper octahedron to the etch simulator</p></div>
+  </div>
+  <p class="intro">The HW2 {111} octahedron held over a (100), (110) or (111) wafer, the etched pit it predicts, a KOH and EDP etch simulator for any mask (cantilevers, bridges, corner attack and compensation, merging windows), a corner lab for convex-corner compensation, and an orientation finder that reads the flat error from etched alignment marks. Drag to turn, scroll or pinch to zoom.</p>
   <p class="byline"><b>Huu Quoc Anh Nguyen</b> · Student ID X1150030 · Department of Engineering and System Science (ESS), National Tsing Hua University (exchange student from USTH, Vietnam) · ESS5850 Micro System Design, fall 2026 · <a href="#about">About this page</a><br>
   AI use: written with help from an AI assistant (Claude, Anthropic). I chose the content and checked the numbers against the sources listed under References; the AI wrote most of the code.</p>
 </header>
@@ -276,7 +355,7 @@ dl.scenes dt { font-weight: 600; margin-top: 8px; } dl.scenes dd { margin: 2px 0
     <button data-w="100" aria-pressed="true" title="(100) wafer: the usual MEMS wafer; pits have {111} walls at 54.74°">(100)</button><button data-w="110" aria-pressed="false" title="(110) wafer: vertical {111} walls along ⟨112⟩">(110)</button><button data-w="111" aria-pressed="false" title="(111) wafer: the surface itself is a slow {111} plane">(111)</button></span></div>
   <div><span class="lbl">Scene</span><span class="seg" id="segM">
     <button data-m="model" aria-pressed="true" title="How to hold the HW2 paper octahedron over the wafer; click a face for its plane">Model on wafer</button><button data-m="pit" aria-pressed="false" title="Fast analytic pit: openings in a mask, {111}-bounded walls, any time">Etched pit</button><button data-m="sim" aria-pressed="false" title="Full 3D etch of any mask with 12 measured plane rates: undercut, corners, release">Etch simulator</button><button data-m="corner" aria-pressed="false" title="Convex-corner attack and compensation patterns, side by side">Corner lab</button><button data-m="find" aria-pressed="false" title="Read the flat error δ from etched alignment marks on the whole wafer">Find orientation</button></span></div>
-  <div class="tools"><button class="btn" id="bHelp" title="Quick start, mouse and keys (key ?)">? Help</button><button class="btn" id="bSettings" title="Layout, theme, editor and simulator settings">⚙ Settings</button><button class="btn" id="bExplain" aria-pressed="false" title="Show the explanations and source notes under the controls (key I)">ⓘ Explanations</button><button class="btn" id="bSplit" aria-pressed="false" title="3D view and controls side by side, each scrolling on its own; drag the divider to resize (key S)">Split view</button><button class="btn hidden" id="bSwap" title="Put the controls on the other side">Swap sides</button><button class="btn" id="bTheater" aria-pressed="false" title="Wide stage with the panel below (key T)">Theater view</button><button class="btn" id="bFull" title="Full screen 3D view (Esc to leave)">Full screen</button></div>
+  <div class="tools"><button class="btn" id="bHelp" title="Quick start, mouse and keys (key ?)">? Help</button><button class="btn" id="bSettings" title="Layout, theme, editor and simulator settings">⚙ Settings</button><button class="btn" id="bExplain" aria-pressed="false" title="Show the explanations and source notes under the controls (key I)">ⓘ Explanations</button><span class="tsep" aria-hidden="true"></span><button class="btn" id="bSplit" aria-pressed="false" title="3D view and controls side by side, each scrolling on its own; drag the divider to resize (key S)">Split view</button><button class="btn hidden" id="bSwap" title="Put the controls on the other side">Swap sides</button><button class="btn" id="bTheater" aria-pressed="false" title="Wide stage with the panel below (key T)">Theater view</button><button class="btn" id="bFull" title="Full screen 3D view (Esc to leave)">Full screen</button></div>
 </div>
 <div class="guide hidden" id="guide" role="note"><span class="gico" aria-hidden="true">i</span><div id="guideTxt"></div><button class="x" id="guideX" title="Hide this tip (Settings can show the tips again)" aria-label="hide this tip">×</button></div>
 
@@ -290,6 +369,7 @@ dl.scenes dt { font-weight: 600; margin-top: 8px; } dl.scenes dd { margin: 2px 0
       <div class="cbar hidden" id="cbar"><div id="cbarTitle"></div><canvas id="cbarCv"></canvas></div>
     </div>
     <div class="views" id="views">
+      <span class="lbl">View</span>
       <button data-v="oblique">Oblique</button>
       <button data-v="back">Other side</button>
       <button data-v="top">Top</button>
@@ -529,8 +609,10 @@ dl.scenes dt { font-weight: 600; margin-top: 8px; } dl.scenes dd { margin: 2px 0
   <table class="keys">
     <tr><td colspan="2"><b>3D view</b></td></tr>
     <tr><td>drag</td><td>turn the view</td></tr>
-    <tr><td>scroll, pinch</td><td>zoom</td></tr>
+    <tr><td>scroll, pinch</td><td>zoom (also <b>+</b> <b>−</b> <b>⤢</b> at the top left of the view)</td></tr>
     <tr><td>hover, click</td><td>name a plane, select a face</td></tr>
+    <tr><td>axis gizmo</td><td>bottom left: x along the flat, y away from it, z the wafer normal, with their crystal directions; click an axis to look along it</td></tr>
+    <tr><td>📏</td><td>measure: click two points on a surface for the distance and Δx, Δy, Δz; <span class="kbd">Esc</span> clears. The scale bar (bottom right) holds for lengths parallel to the screen</td></tr>
     <tr><td><span class="kbd">S</span></td><td>split view on or off</td></tr>
     <tr><td><span class="kbd">T</span></td><td>theater view on or off</td></tr>
     <tr><td><span class="kbd">I</span></td><td>explanations and source notes on or off</td></tr>
@@ -544,6 +626,8 @@ dl.scenes dt { font-weight: 600; margin-top: 8px; } dl.scenes dd { margin: 2px 0
     <tr><td><span class="kbd">←</span> <span class="kbd">→</span> <span class="kbd">↑</span> <span class="kbd">↓</span></td><td>nudge by one snap step (<span class="kbd">Shift</span>: five)</td></tr>
     <tr><td><span class="kbd">Ctrl</span> + <span class="kbd">D</span></td><td>duplicate the selected shape</td></tr>
     <tr><td><span class="kbd">Delete</span></td><td>remove it</td></tr>
+    <tr><td><span class="kbd">Ctrl</span> + scroll, <span class="kbd">+</span> <span class="kbd">−</span> <span class="kbd">0</span></td><td>zoom in, out (to 25 %) and back to 100 %; <span class="kbd">Space</span> + drag pans</td></tr>
+    <tr><td>📏 Measure, <span class="kbd">M</span></td><td>drag to measure a distance and its angle to x; <span class="kbd">Esc</span> clears</td></tr>
     <tr><td>✎ Draw</td><td>click corners or drag a free outline; <span class="kbd">Enter</span> or double-click finishes, <span class="kbd">Backspace</span> undoes a corner, <span class="kbd">Esc</span> cancels</td></tr>
   </table>
   </div>
@@ -1563,6 +1647,11 @@ const snapV = (v) => {
 const EDC = {};
 const edGrid = (W) => niceStep(W / 8);
 const EDZ = {};
+const EDM = {};
+const fmtLen = (v) => {
+  const a = Math.abs(v);
+  return a >= 1e3 ? `${+(v / 1e3).toPrecision(4)} mm` : a >= 10 ? `${+v.toFixed(1)} \xB5m` : `${+v.toFixed(2)} \xB5m`;
+};
 const bigBox = (cv) => !!(cv && cv.closest(".enlarged"));
 const edMaxH = (cv) => bigBox(cv) ? Math.max(260, window.innerHeight * 0.94 - 230) : Infinity;
 const graphH = (cv, h) => bigBox(cv) ? Math.max(h, Math.round(window.innerHeight * 0.33)) : h;
@@ -2684,6 +2773,7 @@ function buildPit() {
         m.position.z = tm;
       }, { opacity: mf.gone ? 0.3 : 0.88, alphaTest: 0.01, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
       mm.renderOrder = 5;
+      mm.userData.noPick = true;
       g.add(mm);
       const os = opens.map((o) => ({ pts: o, op: "open" })), inOpen = (x, y) => EE.isOpen(os, x, y);
       g.add(maskRim(pitLoops(), inOpen, tm, clip, [x0, x1, yA, yB]));
@@ -4123,6 +4213,7 @@ function buildSim(resetView) {
     pg.translate((X0 + X1) / 2, (Y0 + Y1) / 2, zMask);
     const mm = new THREE.Mesh(pg, new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: film.gone ? 0.3 : 1, side: THREE.DoubleSide, alphaTest: 0.02, clippingPlanes: clip, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }));
     mm.renderOrder = 5;
+    mm.userData.noPick = true;
     g.add(mm);
   }
   const clipRect = (P) => {
@@ -4410,6 +4501,25 @@ function drawMaskEditor() {
   ctx.fillStyle = "#" + COL["scene-bg"].getHexString();
   ctx.fillRect(10, 10, W * s, H * s);
   ctx.drawImage(tmp, 10, 10, W * s, H * s);
+  if (V.z < 1) {
+    const a0 = V.ox - SIM.hx * V.s, b0 = V.oy - SIM.hy * V.s, dw = 2 * SIM.hx * V.s, dh = 2 * SIM.hy * V.s;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(10, 10, W * s, H * s);
+    ctx.rect(a0, b0, dw, dh);
+    ctx.fillStyle = "#" + COL["scene-bg"].getHexString();
+    ctx.globalAlpha = 0.82;
+    ctx.fill("evenodd");
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = "#" + COL["s-ink"].getHexString();
+    ctx.setLineDash([5, 3]);
+    ctx.strokeRect(a0, b0, dw, dh);
+    ctx.setLineDash([]);
+    ctx.font = "10px IBM Plex Sans, sans-serif";
+    ctx.fillStyle = "#" + COL["s-ink"].getHexString();
+    ctx.fillText("simulated domain", a0 + 2, b0 - 4);
+    ctx.restore();
+  }
   ctx.strokeStyle = "#" + COL["s-ink"].getHexString();
   ctx.lineWidth = 1;
   ctx.strokeRect(10, 10, W * s, H * s);
@@ -7029,6 +7139,7 @@ function loop(now) {
   if (dirty) {
     renderer.render(scene, camera);
     placeLabels();
+    stageOverlay();
     dirty = false;
   }
   requestAnimationFrame(loop);
@@ -7050,7 +7161,13 @@ window.__o3d = {
   COL,
   EDC,
   EDZ,
+  EDM,
+  get ST3() {
+    return ST3;
+  },
   S,
+  camera,
+  controls,
   C,
   get pit() {
     return pit;
@@ -7102,7 +7219,10 @@ function coordFmt(v, step) {
   return (r === 0 ? 0 : r).toFixed(d).replace("-", "\u2212");
 }
 function drawCoords(ctx, id, o) {
-  if (SET.coords === false) return;
+  if (SET.coords !== false) drawCoordsBody(ctx, id, o);
+  drawEdRuler(ctx, id, o);
+}
+function drawCoordsBody(ctx, id, o) {
   const col = (c2) => "#" + COL[c2].getHexString(), k = o.k || 1, unit = o.unit || "\xB5m", g = o.g;
   const [L, T] = o.toC([o.X0, o.Y1]), [R, B] = o.toC([o.X1, o.Y0]);
   const ink = col("s-ink"), bg = col("scene-bg");
@@ -7219,6 +7339,85 @@ function drawCoords(ctx, id, o) {
   }
   ctx.restore();
 }
+function drawEdRuler(ctx, id, o) {
+  const col = (c) => "#" + COL[c].getHexString(), ink = col("s-ink"), bg = col("scene-bg"), acc = col("accent");
+  const [L, T] = o.toC([o.X0, o.Y1]), [R, B] = o.toC([o.X1, o.Y0]), px = (R - L) / (o.X1 - o.X0);
+  if (!(px > 0)) return;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(L, T, R - L, B - T);
+  ctx.clip();
+  ctx.setLineDash([]);
+  {
+    const len = niceStep(90 / px), w = len * px, x1 = R - 12, x0 = x1 - w, y = B - 24, lab = fmtLen(len);
+    ctx.font = "600 10px IBM Plex Mono, monospace";
+    const tw = ctx.measureText(lab).width, bx0 = Math.min(x0, (x0 + x1 - tw) / 2) - 6;
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = bg;
+    ctx.fillRect(bx0, y - 16, x1 + 6 - bx0, 22);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x0, y);
+    ctx.lineTo(x1, y);
+    ctx.stroke();
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x0, y - 4);
+    ctx.lineTo(x0, y + 4);
+    ctx.moveTo(x1, y - 4);
+    ctx.lineTo(x1, y + 4);
+    ctx.stroke();
+    ctx.fillStyle = ink;
+    ctx.textAlign = "center";
+    ctx.fillText(lab, (x0 + x1) / 2, y - 5);
+    ctx.textAlign = "left";
+  }
+  const m = EDM[id];
+  if (m && m.a && m.b) {
+    const A = o.toC(m.a), Bq = o.toC(m.b), dx = m.b[0] - m.a[0], dy = m.b[1] - m.a[1], len = Math.hypot(dx, dy);
+    ctx.strokeStyle = ctx.fillStyle = acc;
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(A[0], A[1]);
+    ctx.lineTo(Bq[0], Bq[1]);
+    ctx.stroke();
+    const ux = Bq[0] - A[0], uy = Bq[1] - A[1], ul = Math.hypot(ux, uy) || 1, nx = -uy / ul * 6, ny = ux / ul * 6;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    for (const P of [A, Bq]) {
+      ctx.moveTo(P[0] - nx, P[1] - ny);
+      ctx.lineTo(P[0] + nx, P[1] + ny);
+    }
+    ctx.stroke();
+    if (len > 0) {
+      const ang = Math.atan2(dy, dx) * 180 / Math.PI;
+      const l1 = fmtLen(len), l2 = `\u0394x ${fmtLen(dx)}  \u0394y ${fmtLen(dy)}  ${ang.toFixed(1)}\xB0 from x`;
+      ctx.font = "600 11px IBM Plex Mono, monospace";
+      const w1 = ctx.measureText(l1).width;
+      ctx.font = "10px IBM Plex Mono, monospace";
+      const w2 = ctx.measureText(l2).width, bw = Math.max(w1, w2) + 12;
+      let bx = (A[0] + Bq[0]) / 2 + 10, by = (A[1] + Bq[1]) / 2 - 34;
+      bx = Math.max(L + 4, Math.min(R - bw - 4, bx));
+      by = Math.max(T + 24, Math.min(B - 60, by));
+      ctx.globalAlpha = 0.92;
+      ctx.fillStyle = bg;
+      ctx.fillRect(bx, by, bw, 30);
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = acc;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(bx, by, bw, 30);
+      ctx.fillStyle = acc;
+      ctx.font = "600 11px IBM Plex Mono, monospace";
+      ctx.fillText(l1, bx + 6, by + 12);
+      ctx.fillStyle = ink;
+      ctx.font = "10px IBM Plex Mono, monospace";
+      ctx.fillText(l2, bx + 6, by + 25);
+    }
+  }
+  ctx.restore();
+}
 function redrawEditors() {
   if (S.mode === "pit") drawPitEditor();
   if (simLike()) {
@@ -7304,16 +7503,19 @@ function redrawEditors() {
     }
   }
 })();
+const ED_ZMIN = 0.25;
 function edView(id, s0, L, T, Wp, Hp, cx0, cy0, zmax) {
   const v = EDZ[id] || (EDZ[id] = { z: 1, cx: cx0, cy: cy0 });
-  v.z = Math.max(1, Math.min(zmax, v.z || 1));
-  if (v.z === 1) {
+  v.z = Math.max(ED_ZMIN, Math.min(zmax, v.z || 1));
+  if (v.z <= 1) {
     v.cx = cx0;
     v.cy = cy0;
   }
   const sz = s0 * v.z, hw = Wp / 2 / sz, hh = Hp / 2 / sz, HW = Wp / 2 / s0, HH = Hp / 2 / s0;
-  v.cx = Math.max(cx0 - HW + hw, Math.min(cx0 + HW - hw, v.cx));
-  v.cy = Math.max(cy0 - HH + hh, Math.min(cy0 + HH - hh, v.cy));
+  if (v.z > 1) {
+    v.cx = Math.max(cx0 - HW + hw, Math.min(cx0 + HW - hw, v.cx));
+    v.cy = Math.max(cy0 - HH + hh, Math.min(cy0 + HH - hh, v.cy));
+  }
   const view = { s: sz, ox: L + Wp / 2 - v.cx * sz, oy: T + Hp / 2 + v.cy * sz, z: v.z, zmax, s0, L, T, Wp, Hp, X0: v.cx - hw, X1: v.cx + hw, Y0: v.cy - hh, Y1: v.cy + hh };
   const lab = document.querySelector(`.zoomBar[data-for="${id}"] .zv`);
   if (lab) lab.textContent = `${Math.round(v.z * 100)} %`;
@@ -7335,11 +7537,22 @@ function edView(id, s0, L, T, Wp, Hp, cx0, cy0, zmax) {
       pend.clear();
     });
   };
+  function setMeasure(id, on) {
+    const m = EDM[id] || (EDM[id] = { on: false, a: null, b: null });
+    m.on = on;
+    if (!on) {
+      m.a = m.b = null;
+    }
+    const b = document.querySelector(`.zoomBar[data-for="${id}"] [data-z="measure"]`);
+    if (b) b.setAttribute("aria-pressed", String(on));
+    $(id).classList.toggle("measuring", on);
+    ED[id].redraw();
+  }
   function zoomAt(id, f, px, py) {
     const ed = ED[id].ed(), V = ed && ed.view;
     if (!V) return;
-    const v = EDZ[id], z1 = Math.max(1, Math.min(V.zmax, v.z * f));
-    if (z1 === v.z) return;
+    const v = EDZ[id], z1 = Math.max(ED_ZMIN, Math.min(V.zmax, v.z * f));
+    if (Math.abs(z1 - v.z) < 1e-9) return;
     if (px == null) {
       px = V.L + V.Wp / 2;
       py = V.T + V.Hp / 2;
@@ -7366,11 +7579,15 @@ function edView(id, s0, L, T, Wp, Hp, cx0, cy0, zmax) {
     const bar = document.createElement("div");
     bar.className = "zoomBar";
     bar.dataset.for = id;
-    bar.innerHTML = `<button class="btn" data-z="out" title="Zoom out (key \u2212)" aria-label="zoom out">\u2212</button><span class="zv" aria-live="polite">100 %</span><button class="btn" data-z="in" title="Zoom in (key +)" aria-label="zoom in">+</button><button class="btn" data-z="fit" title="Show everything (key 0)">Fit</button><span class="note">Ctrl + scroll or pinch to zoom at the cursor; Space + drag or middle-drag to pan</span>`;
+    bar.innerHTML = `<button class="btn" data-z="out" title="Zoom out (key \u2212)" aria-label="zoom out">\u2212</button><span class="zv" aria-live="polite">100 %</span><button class="btn" data-z="in" title="Zoom in (key +)" aria-label="zoom in">+</button><button class="btn" data-z="fit" title="Back to 100 % (key 0)">Fit</button><button class="btn" data-z="measure" aria-pressed="false" title="Measure: drag across the editor to measure a distance and its angle to x (key M); Esc clears">\u{1F4CF} Measure</button><span class="note">Ctrl + scroll: zoom at the cursor \xB7 Space + drag: pan</span>`;
     cv.parentElement.insertBefore(bar, cv);
     bar.addEventListener("click", (e) => {
       const b = e.target.closest("button");
       if (!b) return;
+      if (b.dataset.z === "measure") {
+        setMeasure(id, !(EDM[id] && EDM[id].on));
+        return;
+      }
       if (b.dataset.z === "in") zoomAt(id, 2);
       else if (b.dataset.z === "out") zoomAt(id, 0.5);
       else {
@@ -7396,8 +7613,43 @@ function edView(id, s0, L, T, Wp, Hp, cx0, cy0, zmax) {
         e.preventDefault();
         EDZ[id] = { z: 1, cx: 0, cy: 0 };
         ED[id].redraw();
+      } else if (e.key === "m" || e.key === "M") {
+        e.preventDefault();
+        setMeasure(id, !(EDM[id] && EDM[id].on));
+      } else if (e.key === "Escape" && EDM[id] && EDM[id].on && DRAW.on !== id) {
+        e.preventDefault();
+        setMeasure(id, false);
       }
     });
+    let meas = false;
+    const wpt = (e) => {
+      const ed = ED[id].ed(), r = cv.getBoundingClientRect();
+      return [snapV((e.clientX - r.left - ed.ox) / ed.s), snapV(-(e.clientY - r.top - ed.oy) / ed.s)];
+    };
+    cv.parentElement.addEventListener("pointerdown", (e) => {
+      const m = EDM[id];
+      if (e.target !== cv || !m || !m.on || e.button !== 0 || space || DRAW.on === id) return;
+      e.stopPropagation();
+      e.preventDefault();
+      cv.setPointerCapture(e.pointerId);
+      meas = true;
+      m.a = wpt(e);
+      m.b = m.a.slice();
+      redraw(id);
+    }, true);
+    cv.parentElement.addEventListener("pointermove", (e) => {
+      if (!meas || e.target !== cv) return;
+      e.stopPropagation();
+      EDM[id].b = wpt(e);
+      redraw(id);
+    }, true);
+    const mEnd = (e) => {
+      if (!meas) return;
+      e.stopPropagation();
+      meas = false;
+    };
+    cv.parentElement.addEventListener("pointerup", mEnd, true);
+    cv.parentElement.addEventListener("pointercancel", mEnd, true);
     let pan = null;
     const host = cv.parentElement;
     host.addEventListener("pointerdown", (e) => {
@@ -7503,6 +7755,209 @@ function foldAllIn(box, open) {
     foldSet(h, h.classList.contains("closed"));
   });
 })();
+
+// ---- src/app/21-stage-tools.ts
+const ST3 = { meas: false, pts: [], mode: "" };
+const GZ_COL = { x: "#d1453b", y: "#2f9a4b", z: "#3b6fd1" };
+function stageUnits() {
+  return S.mode !== "model";
+}
+function gizmoIdx() {
+  return simLike() ? SFR[SIM.fk].idx : C.FRAME_IDX[S.wf];
+}
+function zoom3D(f) {
+  camera.zoom = Math.max(controls.minZoom, Math.min(controls.maxZoom, camera.zoom * f));
+  camera.updateProjectionMatrix();
+  controls.update();
+  dirty = true;
+}
+function fit3D() {
+  anim0Zoom = 1;
+  setView(camera.position.clone().sub(controls.target), S.mode === "model" ? new V3(0, 0, 0) : scene.userData.center);
+}
+function setMeasure3D(on) {
+  ST3.meas = on && stageUnits();
+  ST3.pts = [];
+  const b = document.querySelector('#stageTools [data-s="measure"]');
+  if (b) b.setAttribute("aria-pressed", String(ST3.meas));
+  stage.classList.toggle("measuring", ST3.meas);
+  dirty = true;
+}
+function pickSurface(ev) {
+  pickAt(ev);
+  const meshes = [];
+  scene.traverse((o) => {
+    if (o.isMesh && o.visible && !o.userData.noPick && o.material && !(o.material.transparent && o.material.opacity < 0.2)) meshes.push(o);
+  });
+  for (const h of ray.intersectObjects(meshes, false)) {
+    const cps = h.object.material.clippingPlanes;
+    if (cps && cps.some((pl) => pl.distanceToPoint(h.point) < -1e-6)) continue;
+    return h.point.clone();
+  }
+  return null;
+}
+(() => {
+  controls.minZoom = 0.05;
+  controls.maxZoom = 5e3;
+  const box = document.createElement("div");
+  box.className = "stageTools";
+  box.id = "stageTools";
+  box.innerHTML = `<button type="button" data-s="in" title="Zoom in (or scroll)" aria-label="zoom in">+</button><button type="button" data-s="out" title="Zoom out (or scroll)" aria-label="zoom out">\u2212</button><button type="button" data-s="fit" title="Fit the view" aria-label="fit the view">\u2922</button><button type="button" data-s="measure" aria-pressed="false" title="Measure: click two points on a surface (Esc clears)" aria-label="measure">\u{1F4CF}</button>`;
+  const giz = document.createElement("div");
+  giz.className = "gizmo";
+  giz.id = "gizmo";
+  giz.innerHTML = `<canvas width="168" height="168" title="Wafer axes: click an axis to look along it"></canvas><div class="gzLeg"></div>`;
+  const sb = document.createElement("div");
+  sb.className = "scaleBar";
+  sb.id = "scaleBar";
+  sb.title = "Scale for lengths parallel to the screen (orthographic view)";
+  sb.innerHTML = `<span class="sbLab"></span><i></i>`;
+  const ov = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  ov.setAttribute("class", "measOv");
+  ov.id = "measOv";
+  const lab = document.createElement("div");
+  lab.className = "measLab hidden";
+  lab.id = "measLab";
+  stage.append(box, giz, sb, ov, lab);
+  box.addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    const k = b.dataset.s;
+    if (k === "in") zoom3D(1.5);
+    else if (k === "out") zoom3D(1 / 1.5);
+    else if (k === "fit") fit3D();
+    else setMeasure3D(!ST3.meas);
+  });
+  const gc = giz.querySelector("canvas");
+  gc.addEventListener("click", (e) => {
+    const r = gc.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    let best = null, bd = 14;
+    for (const a of gizmoAxes()) for (const sg of [1, -1]) {
+      const d = Math.hypot(x - (r.width / 2 + sg * a.sx * a.len), y - (r.height / 2 + sg * a.sy * a.len));
+      if (d < bd) {
+        bd = d;
+        best = { a, sg };
+      }
+    }
+    if (!best) return;
+    const v = best.a.v.clone().multiplyScalar(best.sg);
+    if (Math.abs(v.z) > 0.9) v.set(0, -87e-4, Math.sign(v.z));
+    setView(v, S.mode === "model" ? new V3(0, 0, 0) : scene.userData.center);
+  });
+  let down = null;
+  renderer.domElement.addEventListener("pointerdown", (ev) => {
+    down = [ev.clientX, ev.clientY];
+  });
+  renderer.domElement.addEventListener("pointerup", (ev) => {
+    if (!ST3.meas || !down || Math.hypot(ev.clientX - down[0], ev.clientY - down[1]) > 5) return;
+    const p = pickSurface(ev);
+    if (!p) return;
+    if (ST3.pts.length >= 2) ST3.pts = [];
+    ST3.pts.push(p);
+    dirty = true;
+  });
+  document.addEventListener("keydown", (e) => {
+    const tg = e.target.tagName;
+    if (tg === "INPUT" || tg === "SELECT" || tg === "TEXTAREA" || tg === "CANVAS" && e.target !== renderer.domElement) return;
+    if (e.key === "Escape" && ST3.meas && !document.querySelector("dialog[open]")) setMeasure3D(false);
+  });
+})();
+function gizmoAxes() {
+  const q = camera.quaternion.clone().invert(), len = 30;
+  return ["x", "y", "z"].map((n, i) => {
+    const v = new V3(i === 0 ? 1 : 0, i === 1 ? 1 : 0, i === 2 ? 1 : 0), c = v.clone().applyQuaternion(q);
+    return { n, v, sx: c.x, sy: -c.y, depth: c.z, len, col: GZ_COL[n] };
+  });
+}
+function drawGizmo() {
+  const gc = document.querySelector("#gizmo canvas");
+  if (!gc) return;
+  const ctx = gc.getContext("2d"), W = gc.clientWidth || 84, dpr = gc.width / W;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, W);
+  const c = W / 2, ax = gizmoAxes(), ends = [];
+  for (const a of ax) for (const sg of [1, -1]) ends.push({ a, sg, d: sg * a.depth });
+  ends.sort((p, q) => p.d - q.d);
+  ctx.font = "600 10px IBM Plex Sans, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (const e of ends) {
+    const x = c + e.sg * e.a.sx * e.a.len, y = c + e.sg * e.a.sy * e.a.len;
+    ctx.globalAlpha = e.sg > 0 ? 1 : 0.55;
+    ctx.strokeStyle = e.a.col;
+    ctx.lineWidth = e.sg > 0 ? 2.2 : 1.2;
+    ctx.beginPath();
+    ctx.moveTo(c, c);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(x, y, e.sg > 0 ? 8 : 5, 0, 2 * Math.PI);
+    if (e.sg > 0) {
+      ctx.fillStyle = e.a.col;
+      ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.fillText(e.a.n, x, y + 0.5);
+    } else {
+      ctx.fillStyle = "#" + COL["scene-bg"].getHexString();
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
+  const leg = document.querySelector("#gizmo .gzLeg");
+  const key = `${S.mode}|${S.wf}|${SIM.fk}`;
+  if (leg && leg.getAttribute("data-k") !== key) {
+    const e = gizmoIdx(), nm = ["along the flat", "away from the flat", "wafer normal"];
+    leg.innerHTML = ["x", "y", "z"].map((n, i) => `<div><b style="color:${GZ_COL[n]}">${n}</b> ${idxHTML(e[i], "[", "]")} <span>${nm[i]}</span></div>`).join("") + (S.mode === "find" ? `<div class="gzNote">crystal as drawn (\u03B4 = 0)</div>` : "");
+    leg.setAttribute("data-k", key);
+  }
+}
+function drawScaleBar() {
+  const sb = $("scaleBar");
+  if (!sb) return;
+  sb.classList.toggle("hidden", !stageUnits());
+  if (!stageUnits()) return;
+  const W = stage.clientWidth || 1, perPx = (camera.right - camera.left) / camera.zoom / W;
+  const len = niceStep(110 * perPx), px = len / perPx;
+  sb.querySelector("i").style.width = `${px.toFixed(1)}px`;
+  sb.querySelector(".sbLab").textContent = fmtLen(len);
+}
+function drawMeasure3D() {
+  const ov = $("measOv"), lab = $("measLab");
+  if (!ov) return;
+  if (ST3.mode !== S.mode) {
+    ST3.mode = S.mode;
+    if (ST3.meas || ST3.pts.length) setMeasure3D(false);
+  }
+  const W = stage.clientWidth, H = stage.clientHeight;
+  const sc = (p) => {
+    const q = p.clone().project(camera);
+    return [(q.x + 1) / 2 * W, (1 - q.y) / 2 * H];
+  };
+  const P = ST3.pts.map(sc), acc = "#" + COL.accent.getHexString();
+  let html = "";
+  if (P.length === 2) html += `<line x1="${P[0][0]}" y1="${P[0][1]}" x2="${P[1][0]}" y2="${P[1][1]}" stroke="${acc}" stroke-width="2"/>`;
+  for (const p of P) html += `<circle cx="${p[0]}" cy="${p[1]}" r="4.5" fill="${acc}" stroke="#fff" stroke-width="1.5"/>`;
+  ov.innerHTML = html;
+  if (P.length === 2) {
+    const [a, b] = ST3.pts, d = b.clone().sub(a);
+    lab.innerHTML = `<b>${fmtLen(d.length())}</b><span>\u0394x ${fmtLen(d.x)} \xB7 \u0394y ${fmtLen(d.y)} \xB7 \u0394z ${fmtLen(d.z)}</span>`;
+    lab.classList.remove("hidden");
+    const mx = (P[0][0] + P[1][0]) / 2, my = (P[0][1] + P[1][1]) / 2;
+    lab.style.left = `${Math.max(8, Math.min(W - 230, mx + 12))}px`;
+    lab.style.top = `${Math.max(8, Math.min(H - 60, my - 44))}px`;
+  } else if (ST3.meas) {
+    lab.innerHTML = `<span>${P.length ? "Click the second point" : "Click a first point on a surface"}</span>`;
+    lab.classList.remove("hidden");
+    lab.style.left = "56px";
+    lab.style.top = "10px";
+  } else lab.classList.add("hidden");
+}
+function stageOverlay() {
+  drawGizmo();
+  drawScaleBar();
+  drawMeasure3D();
+}
 
 })();
 </script>

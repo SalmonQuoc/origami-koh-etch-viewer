@@ -192,7 +192,7 @@ function buildSim(resetView) {
     const tex = maskTexture(r);
     const pg = new THREE.PlaneGeometry(X1 - X0, Y1 - Y0); pg.translate((X0 + X1)/2, (Y0 + Y1)/2, zMask);
     const mm = new THREE.Mesh(pg, new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: film.gone ? 0.3 : 1, side: THREE.DoubleSide, alphaTest: 0.02, clippingPlanes: clip, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }));
-    mm.renderOrder = 5; g.add(mm);
+    mm.renderOrder = 5; mm.userData.noPick = true; g.add(mm);
   }
   // mask outlines
   const clipRect = P => {   // Sutherland-Hodgman clip of a mask loop to the simulated domain
@@ -374,6 +374,14 @@ function drawMaskEditor() {
   paintMask(tmp.getContext("2d"), V.s*dpr, V.X0, V.Y0, V.Y1 - V.Y0, "#" + COL.mask.getHexString(), 0.55);
   ctx.fillStyle = "#" + COL["scene-bg"].getHexString(); ctx.fillRect(10, 10, W*s, H*s);
   ctx.drawImage(tmp, 10, 10, W*s, H*s);
+  if (V.z < 1) {   // zoomed out: grey out what lies outside the simulated domain
+    const a0 = V.ox - SIM.hx*V.s, b0 = V.oy - SIM.hy*V.s, dw = 2*SIM.hx*V.s, dh = 2*SIM.hy*V.s;
+    ctx.save(); ctx.beginPath(); ctx.rect(10, 10, W*s, H*s); ctx.rect(a0, b0, dw, dh);
+    ctx.fillStyle = "#" + COL["scene-bg"].getHexString(); ctx.globalAlpha = 0.82; ctx.fill("evenodd"); ctx.globalAlpha = 1;
+    ctx.strokeStyle = "#" + COL["s-ink"].getHexString(); ctx.setLineDash([5, 3]); ctx.strokeRect(a0, b0, dw, dh); ctx.setLineDash([]);
+    ctx.font = "10px IBM Plex Sans, sans-serif"; ctx.fillStyle = "#" + COL["s-ink"].getHexString(); ctx.fillText("simulated domain", a0 + 2, b0 - 4);
+    ctx.restore();
+  }
   ctx.strokeStyle = "#" + COL["s-ink"].getHexString(); ctx.lineWidth = 1; ctx.strokeRect(10, 10, W*s, H*s);
   const zs = V.s, toC = p => [SIM.ed.ox + p[0]*zs, SIM.ed.oy - p[1]*zs];
   ctx.save(); ctx.beginPath(); ctx.rect(10, 10, W*s, H*s); ctx.clip();   // zoomed content stays in the plot
