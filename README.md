@@ -38,6 +38,7 @@ Other functions:
 - **Your own presets**: ☆ Save as my preset keeps a pit or simulator mask with its process (and its custom etchant); export and import as JSON.
 - **Guidance**: numbered steps in each panel, a tip per scene, a Quick start with all mouse and key controls (? key), and a Run button on the 3D view when the mask or process has changed.
 - **Flat arrows**: the die view has one arrow along the flat and one perpendicular to it pointing outward, away from the centre (the outward flat normal), each labelled with its crystal direction. Every scene that shows a wafer (Model on wafer, the whole-wafer views and the finder map) has the outward arrow from the middle of the primary flat. Either arrow can be hidden with the "Flat arrows" check boxes in each scene's Show section or in ⚙ Settings (the choice is kept in the browser).
+- **👁 Show tab** (top right of the 3D view, key V): all visibility and colour options of the current scene in one list (layers incl. mask film and whole wafer, flat arrows, colour mode, theme, 3D labels, axis gizmo, scale bar, mask-editor compass and coordinates). Each entry drives the same control as the panel or Settings, so all three stay in step.
 
 ## Run it
 

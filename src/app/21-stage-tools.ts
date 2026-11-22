@@ -165,7 +165,8 @@ function drawGizmo() {
 }
 function drawScaleBar() {
   const sb = $("scaleBar"); if (!sb) return;
-  sb.classList.toggle("hidden", !stageUnits()); if (!stageUnits()) return;
+  const on = stageUnits() && SET.scaleBar !== false;
+  sb.classList.toggle("hidden", !on); if (!on) return;
   const W = stage.clientWidth || 1, perPx = (camera.right - camera.left)/camera.zoom/W;   // world µm per CSS px
   const len = niceStep(110*perPx), px = len/perPx;
   (sb.querySelector("i") as HTMLElement).style.width = `${px.toFixed(1)}px`;
@@ -195,5 +196,8 @@ function drawMeasure3D() {
 function stageOverlay() {
   // the ruler (📏) and the scale bar only where lengths have a unit: not on the paper model
   const mb = document.querySelector('#stageTools [data-s="measure"]'); if (mb) mb.classList.toggle("hidden", !stageUnits());
-  drawGizmo(); drawScaleBar(); drawMeasure3D();
+  const gz = $("gizmo"); if (gz) gz.classList.toggle("hidden", SET.gizmo === false);
+  if (SET.gizmo !== false) drawGizmo();
+  drawScaleBar(); drawMeasure3D();
+  if (SHOW.open && SHOW.key !== showModeKey()) renderShowTab();   // scene changed while the Show tab is open
 }

@@ -153,6 +153,20 @@ test("page: scenes, simulator kernel, drawing, settings, custom etchant, presets
     assert.match(await txt(), /along flat/);
   });
 
+  await t.test("Show tab lists the scene's visibility options and drives the panel controls", async () => {
+    await p.click('#segM button[data-m="sim"]'); await p.waitForTimeout(400);
+    await p.click("#showTab"); assert.equal(await ev(() => document.getElementById("showPanel").classList.contains("hidden")), false);
+    const box = p.locator('#showBody label:has-text("mask layer") input');
+    await box.uncheck(); await p.waitForTimeout(200);
+    assert.equal(await ev(() => document.getElementById("cSimMask").checked), false);
+    await box.check(); await p.locator('#showBody label:has-text("axis gizmo") input').uncheck(); await p.waitForTimeout(200);
+    assert.equal(await ev(() => document.getElementById("gizmo").classList.contains("hidden")), true);
+    await p.locator('#showBody label:has-text("axis gizmo") input').check();
+    await p.click('#segM button[data-m="pit"]'); await p.waitForTimeout(300);
+    assert.match(await p.textContent("#showBody"), /final \{111\} shape/);
+    await p.click("#showTab"); await p.click('#segM button[data-m="sim"]');
+  });
+
   await t.test("custom etchant at 80 °C is faster than the 70 °C table (Arrhenius)", async () => {
     await p.click('[data-etch-open="sim"]'); await p.selectOption("#ceBase", "PAL40");
     await p.fill("#ceT", "80"); await p.dispatchEvent("#ceT", "input"); await p.click("#ceSave");
