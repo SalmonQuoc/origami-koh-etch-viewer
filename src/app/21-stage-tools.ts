@@ -1,6 +1,6 @@
 // =====================================================================================================
-// Tools on the 3D view: zoom buttons, an axis gizmo (wafer axes x, y, z with their crystal directions;
-// click an axis to look along it), a scale bar, and a measuring tool (click two points on a surface).
+// Tools on the 3D view: zoom buttons, an axis gizmo (crystal axes [100], [010], [001], the flat and the
+// surface normal; click one to look along it), a scale bar, and a measuring tool (click two points on a surface).
 // The camera is orthographic, so one screen pixel is the same length everywhere in the view: the scale bar
 // is exact for lengths parallel to the screen. The page draws the overlays after each render (stageOverlay).
 const ST3 = { meas: false, pts: [] as any[], mode: "" };
@@ -33,7 +33,7 @@ function pickSurface(ev: PointerEvent) {
   const box = document.createElement("div"); box.className = "stageTools"; box.id = "stageTools";
   box.innerHTML = `<button type="button" data-s="in" title="Zoom in (or scroll)" aria-label="zoom in">+</button><button type="button" data-s="out" title="Zoom out (or scroll)" aria-label="zoom out">−</button><button type="button" data-s="fit" title="Fit the view" aria-label="fit the view">⤢</button><button type="button" data-s="measure" aria-pressed="false" title="Measure: click two points on a surface (Esc clears)" aria-label="measure">📏</button>`;
   const giz = document.createElement("div"); giz.className = "gizmo"; giz.id = "gizmo";
-  giz.innerHTML = `<canvas width="168" height="168" title="Wafer axes: click an axis to look along it"></canvas><div class="gzLeg"></div>`;
+  giz.innerHTML = `<canvas width="168" height="168" title="Crystal axes x = [100], y = [010], z = [001]; F: primary flat; n: surface normal. Click an axis to look along it."></canvas><div class="gzLeg"></div>`;
   const sb = document.createElement("div"); sb.className = "scaleBar"; sb.id = "scaleBar"; sb.title = "Scale for lengths parallel to the screen (orthographic view)";
   sb.innerHTML = `<span class="sbLab"></span><i></i>`;
   const ov = document.createElementNS("http://www.w3.org/2000/svg", "svg"); ov.setAttribute("class", "measOv"); ov.id = "measOv";
@@ -49,7 +49,7 @@ function pickSurface(ev: PointerEvent) {
   gc.addEventListener("click", e => {
     const r = gc.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
     let best = null, bd = 14;
-    for (const a of gizmoAxes()) for (const sg of [1, -1]) {
+    for (const a of gizmoAxes()) for (const sg of (a.kind === "axis" ? [1, -1] : [1])) {
       const d = Math.hypot(x - (r.width/2 + sg*a.sx*a.len), y - (r.height/2 + sg*a.sy*a.len)); if (d < bd) { bd = d; best = { a, sg }; }
     }
     if (!best) return;
@@ -71,36 +71,52 @@ function pickSurface(ev: PointerEvent) {
     if (e.key === "Escape" && ST3.meas && !document.querySelector("dialog[open]")) setMeasure3D(false);
   });
 })();
+// gizmo: the crystal axes x = [100], y = [010], z = [001] (Miller indices; Lec 4-1 p. 6, Pal & Sato Fig. 2.8 p. 31)
+// placed as they sit in the wafer, plus the primary flat direction F and the surface normal n of the wafer.
+// Scene coordinates are wafer axes (x along the flat), so crystal axis i has the wafer components E[k][i].
+function gizmoFrame() {
+  const E: number[][] = simLike() ? SFR[SIM.fk].e : C.FRAMES[S.wf];
+  const idx: number[][] = gizmoIdx();
+  let d = 0; if (S.mode === "find" && FD.reveal) d = (FD.delta || 0)/C.DEG;   // the crystal is turned by δ (only when δ is shown)
+  const rz = (v: any) => new V3(v.x*Math.cos(d) - v.y*Math.sin(d), v.x*Math.sin(d) + v.y*Math.cos(d), v.z);
+  return { E, idx, rz };
+}
 function gizmoAxes() {
-  const q = camera.quaternion.clone().invert(), len = 30;
-  return (["x", "y", "z"] as const).map((n, i) => {
-    const v = new V3(i === 0 ? 1 : 0, i === 1 ? 1 : 0, i === 2 ? 1 : 0), c = v.clone().applyQuaternion(q);
-    return { n, v, sx: c.x, sy: -c.y, depth: c.z, len, col: GZ_COL[n] };
-  });
+  const q = camera.quaternion.clone().invert(), { E, idx, rz } = gizmoFrame(), out: any[] = [];
+  const add = (n: string, v: any, col: string, len: number, kind: string) => { const c = v.clone().applyQuaternion(q); out.push({ n, v, sx: c.x, sy: -c.y, depth: c.z, len, col, kind }); };
+  (["x", "y", "z"] as const).forEach((n, i) => add(n, rz(new V3(E[0][i], E[1][i], E[2][i])), GZ_COL[n], 30, "axis"));
+  add("F", new V3(1, 0, 0), "#" + COL.accent.getHexString(), 36, "flat");
+  const nrm = new V3(0, 0, 1);
+  if (!out.slice(0, 3).some(a => Math.abs(a.v.dot(nrm)) > 0.999)) add("n", nrm, "#" + COL["s-ink"].getHexString(), 36, "normal");
+  return out;
 }
 function drawGizmo() {
   const gc = document.querySelector("#gizmo canvas") as HTMLCanvasElement; if (!gc) return;
   const ctx = gc.getContext("2d"), W = gc.clientWidth || 84, dpr = gc.width/W;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, W);
   const c = W/2, ax = gizmoAxes(), ends: any[] = [];
-  for (const a of ax) for (const sg of [1, -1]) ends.push({ a, sg, d: sg*a.depth });
+  for (const a of ax) for (const sg of (a.kind === "axis" ? [1, -1] : [1])) ends.push({ a, sg, d: sg*a.depth });
   ends.sort((p, q) => p.d - q.d);   // far ends first
-  ctx.font = "600 10px IBM Plex Sans, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
   for (const e of ends) {
-    const x = c + e.sg*e.a.sx*e.a.len, y = c + e.sg*e.a.sy*e.a.len;
-    ctx.globalAlpha = e.sg > 0 ? 1 : 0.55;
-    ctx.strokeStyle = e.a.col; ctx.lineWidth = e.sg > 0 ? 2.2 : 1.2; ctx.beginPath(); ctx.moveTo(c, c); ctx.lineTo(x, y); ctx.stroke();
-    ctx.beginPath(); ctx.arc(x, y, e.sg > 0 ? 8 : 5, 0, 2*Math.PI);
-    if (e.sg > 0) { ctx.fillStyle = e.a.col; ctx.fill(); ctx.fillStyle = "#fff"; ctx.fillText(e.a.n, x, y + 0.5); }
-    else { ctx.fillStyle = "#" + COL["scene-bg"].getHexString(); ctx.fill(); ctx.stroke(); }
+    const x = c + e.sg*e.a.sx*e.a.len, y = c + e.sg*e.a.sy*e.a.len, ax_ = e.a.kind === "axis";
+    ctx.globalAlpha = e.sg > 0 ? 1 : 0.55; ctx.strokeStyle = e.a.col; ctx.lineWidth = ax_ ? (e.sg > 0 ? 2.2 : 1.2) : 1.4;
+    ctx.setLineDash(ax_ ? [] : [3, 2]); ctx.beginPath(); ctx.moveTo(c, c); ctx.lineTo(x, y); ctx.stroke(); ctx.setLineDash([]);
+    if (ax_) {
+      ctx.beginPath(); ctx.arc(x, y, e.sg > 0 ? 8 : 5, 0, 2*Math.PI);
+      if (e.sg > 0) { ctx.fillStyle = e.a.col; ctx.fill(); ctx.fillStyle = "#fff"; ctx.font = "600 10px IBM Plex Sans, sans-serif"; ctx.fillText(e.a.n, x, y + 0.5); }
+      else { ctx.fillStyle = "#" + COL["scene-bg"].getHexString(); ctx.fill(); ctx.stroke(); }
+    } else { ctx.fillStyle = e.a.col; ctx.font = "italic 700 10px IBM Plex Sans, sans-serif"; ctx.fillText(e.a.n, x + Math.sign(e.a.sx || 1)*5, y + Math.sign(e.a.sy || 1)*5); }
   }
   ctx.globalAlpha = 1;
   const leg = document.querySelector("#gizmo .gzLeg");
-  const key = `${S.mode}|${S.wf}|${SIM.fk}`;
+  const key = `${S.mode}|${S.wf}|${SIM.fk}|${S.mode === "find" && FD.reveal ? FD.delta : ""}`;
   if (leg && leg.getAttribute("data-k") !== key) {
-    const e = gizmoIdx(), nm = ["along the flat", "away from the flat", "wafer normal"];
-    leg.innerHTML = (["x", "y", "z"] as const).map((n, i) => `<div><b style="color:${GZ_COL[n]}">${n}</b> ${idxHTML(e[i], "[", "]")} <span>${nm[i]}</span></div>`).join("")
-      + (S.mode === "find" ? `<div class="gzNote">crystal as drawn (δ = 0)</div>` : "");
+    const { idx } = gizmoFrame(), acc = "#" + COL.accent.getHexString();
+    leg.innerHTML = `<div><b style="color:${GZ_COL.x}">x</b> [100] <b style="color:${GZ_COL.y}">y</b> [010] <b style="color:${GZ_COL.z}">z</b> [001]</div>`
+      + `<div><b style="color:${acc}">F</b> flat along ${idxHTML(idx[0], "[", "]")}</div>`
+      + `<div><b>n</b> surface normal ${idxHTML(idx[2], "[", "]")}</div>`
+      + (S.mode === "find" ? `<div class="gzNote">${FD.reveal ? `crystal turned by δ = ${FD.delta}°` : "crystal as drawn (δ hidden)"}</div>` : "");
     leg.setAttribute("data-k", key);
   }
 }
@@ -133,4 +149,8 @@ function drawMeasure3D() {
     lab.style.left = "56px"; lab.style.top = "10px";
   } else lab.classList.add("hidden");
 }
-function stageOverlay() { drawGizmo(); drawScaleBar(); drawMeasure3D(); }
+function stageOverlay() {
+  // the ruler (📏) and the scale bar only where lengths have a unit: not on the paper model
+  const mb = document.querySelector('#stageTools [data-s="measure"]'); if (mb) mb.classList.toggle("hidden", !stageUnits());
+  drawGizmo(); drawScaleBar(); drawMeasure3D();
+}

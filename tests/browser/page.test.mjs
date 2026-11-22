@@ -110,13 +110,16 @@ test("page: scenes, simulator kernel, drawing, settings, custom etchant, presets
   });
 
   await t.test("3D tools (zoom out, gizmo, scale bar, measuring) and 2D zoom out and measuring", async () => {
+    await p.click('#segM button[data-m="model"]'); await p.waitForTimeout(200);
+    assert.equal(await ev(() => document.querySelector('#stageTools [data-s="measure"]').offsetParent === null && document.getElementById("scaleBar").classList.contains("hidden")), true);   // no ruler on the paper model
     await p.click('#segM button[data-m="pit"]'); await p.waitForTimeout(300); await ev(() => window.scrollTo(0, 0));
     const z0 = await ev(() => window.__o3d.camera.zoom);
     await p.click('#stageTools [data-s="out"]');
     assert.ok(await ev(() => window.__o3d.camera.zoom) < z0);
     await p.click('#stageTools [data-s="fit"]'); await p.waitForTimeout(700);
     assert.match(await p.textContent("#scaleBar"), /\d (µm|mm)/);
-    assert.match(await p.textContent("#gizmo .gzLeg"), /along the flat/);
+    assert.match(await p.textContent("#gizmo .gzLeg"), /x \[100\] y \[010\] z \[001\]/);
+    assert.match(await p.textContent("#gizmo .gzLeg"), /flat along/);
     await p.click('#stageTools [data-s="measure"]');
     const sb = await p.locator("#stage").boundingBox();
     await p.mouse.click(sb.x + sb.width*0.45, sb.y + sb.height*0.55); await p.mouse.click(sb.x + sb.width*0.6, sb.y + sb.height*0.5); await p.waitForTimeout(200);

@@ -611,8 +611,8 @@ canvas.measuring { cursor: crosshair !important; }
     <tr><td>drag</td><td>turn the view</td></tr>
     <tr><td>scroll, pinch</td><td>zoom (also <b>+</b> <b>−</b> <b>⤢</b> at the top left of the view)</td></tr>
     <tr><td>hover, click</td><td>name a plane, select a face</td></tr>
-    <tr><td>axis gizmo</td><td>bottom left: x along the flat, y away from it, z the wafer normal, with their crystal directions; click an axis to look along it</td></tr>
-    <tr><td>📏</td><td>measure: click two points on a surface for the distance and Δx, Δy, Δz; <span class="kbd">Esc</span> clears. The scale bar (bottom right) holds for lengths parallel to the screen</td></tr>
+    <tr><td>axis gizmo</td><td>bottom left: the crystal axes x = [100], y = [010], z = [001] (Miller indices, Lec 4-1 p. 6; Pal &amp; Sato Fig. 2.8, p. 31) as they sit in the wafer, the primary flat F and the surface normal n; click one to look along it. Positions in the mask editors are measured along the flat, the reference for aligning masks (Pal &amp; Sato p. 29)</td></tr>
+    <tr><td>📏</td><td>(not on the paper model, which has no length unit) measure: click two points on a surface for the distance and Δx, Δy, Δz; <span class="kbd">Esc</span> clears. The scale bar (bottom right) holds for lengths parallel to the screen</td></tr>
     <tr><td><span class="kbd">S</span></td><td>split view on or off</td></tr>
     <tr><td><span class="kbd">T</span></td><td>theater view on or off</td></tr>
     <tr><td><span class="kbd">I</span></td><td>explanations and source notes on or off</td></tr>
@@ -7806,7 +7806,7 @@ function pickSurface(ev) {
   const giz = document.createElement("div");
   giz.className = "gizmo";
   giz.id = "gizmo";
-  giz.innerHTML = `<canvas width="168" height="168" title="Wafer axes: click an axis to look along it"></canvas><div class="gzLeg"></div>`;
+  giz.innerHTML = `<canvas width="168" height="168" title="Crystal axes x = [100], y = [010], z = [001]; F: primary flat; n: surface normal. Click an axis to look along it."></canvas><div class="gzLeg"></div>`;
   const sb = document.createElement("div");
   sb.className = "scaleBar";
   sb.id = "scaleBar";
@@ -7832,7 +7832,7 @@ function pickSurface(ev) {
   gc.addEventListener("click", (e) => {
     const r = gc.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
     let best = null, bd = 14;
-    for (const a of gizmoAxes()) for (const sg of [1, -1]) {
+    for (const a of gizmoAxes()) for (const sg of a.kind === "axis" ? [1, -1] : [1]) {
       const d = Math.hypot(x - (r.width / 2 + sg * a.sx * a.len), y - (r.height / 2 + sg * a.sy * a.len));
       if (d < bd) {
         bd = d;
@@ -7862,12 +7862,25 @@ function pickSurface(ev) {
     if (e.key === "Escape" && ST3.meas && !document.querySelector("dialog[open]")) setMeasure3D(false);
   });
 })();
+function gizmoFrame() {
+  const E = simLike() ? SFR[SIM.fk].e : C.FRAMES[S.wf];
+  const idx = gizmoIdx();
+  let d = 0;
+  if (S.mode === "find" && FD.reveal) d = (FD.delta || 0) / C.DEG;
+  const rz = (v) => new V3(v.x * Math.cos(d) - v.y * Math.sin(d), v.x * Math.sin(d) + v.y * Math.cos(d), v.z);
+  return { E, idx, rz };
+}
 function gizmoAxes() {
-  const q = camera.quaternion.clone().invert(), len = 30;
-  return ["x", "y", "z"].map((n, i) => {
-    const v = new V3(i === 0 ? 1 : 0, i === 1 ? 1 : 0, i === 2 ? 1 : 0), c = v.clone().applyQuaternion(q);
-    return { n, v, sx: c.x, sy: -c.y, depth: c.z, len, col: GZ_COL[n] };
-  });
+  const q = camera.quaternion.clone().invert(), { E, idx, rz } = gizmoFrame(), out = [];
+  const add = (n, v, col, len, kind) => {
+    const c = v.clone().applyQuaternion(q);
+    out.push({ n, v, sx: c.x, sy: -c.y, depth: c.z, len, col, kind });
+  };
+  ["x", "y", "z"].forEach((n, i) => add(n, rz(new V3(E[0][i], E[1][i], E[2][i])), GZ_COL[n], 30, "axis"));
+  add("F", new V3(1, 0, 0), "#" + COL.accent.getHexString(), 36, "flat");
+  const nrm = new V3(0, 0, 1);
+  if (!out.slice(0, 3).some((a) => Math.abs(a.v.dot(nrm)) > 0.999)) add("n", nrm, "#" + COL["s-ink"].getHexString(), 36, "normal");
+  return out;
 }
 function drawGizmo() {
   const gc = document.querySelector("#gizmo canvas");
@@ -7876,39 +7889,47 @@ function drawGizmo() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, W, W);
   const c = W / 2, ax = gizmoAxes(), ends = [];
-  for (const a of ax) for (const sg of [1, -1]) ends.push({ a, sg, d: sg * a.depth });
+  for (const a of ax) for (const sg of a.kind === "axis" ? [1, -1] : [1]) ends.push({ a, sg, d: sg * a.depth });
   ends.sort((p, q) => p.d - q.d);
-  ctx.font = "600 10px IBM Plex Sans, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   for (const e of ends) {
-    const x = c + e.sg * e.a.sx * e.a.len, y = c + e.sg * e.a.sy * e.a.len;
+    const x = c + e.sg * e.a.sx * e.a.len, y = c + e.sg * e.a.sy * e.a.len, ax_ = e.a.kind === "axis";
     ctx.globalAlpha = e.sg > 0 ? 1 : 0.55;
     ctx.strokeStyle = e.a.col;
-    ctx.lineWidth = e.sg > 0 ? 2.2 : 1.2;
+    ctx.lineWidth = ax_ ? e.sg > 0 ? 2.2 : 1.2 : 1.4;
+    ctx.setLineDash(ax_ ? [] : [3, 2]);
     ctx.beginPath();
     ctx.moveTo(c, c);
     ctx.lineTo(x, y);
     ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(x, y, e.sg > 0 ? 8 : 5, 0, 2 * Math.PI);
-    if (e.sg > 0) {
-      ctx.fillStyle = e.a.col;
-      ctx.fill();
-      ctx.fillStyle = "#fff";
-      ctx.fillText(e.a.n, x, y + 0.5);
+    ctx.setLineDash([]);
+    if (ax_) {
+      ctx.beginPath();
+      ctx.arc(x, y, e.sg > 0 ? 8 : 5, 0, 2 * Math.PI);
+      if (e.sg > 0) {
+        ctx.fillStyle = e.a.col;
+        ctx.fill();
+        ctx.fillStyle = "#fff";
+        ctx.font = "600 10px IBM Plex Sans, sans-serif";
+        ctx.fillText(e.a.n, x, y + 0.5);
+      } else {
+        ctx.fillStyle = "#" + COL["scene-bg"].getHexString();
+        ctx.fill();
+        ctx.stroke();
+      }
     } else {
-      ctx.fillStyle = "#" + COL["scene-bg"].getHexString();
-      ctx.fill();
-      ctx.stroke();
+      ctx.fillStyle = e.a.col;
+      ctx.font = "italic 700 10px IBM Plex Sans, sans-serif";
+      ctx.fillText(e.a.n, x + Math.sign(e.a.sx || 1) * 5, y + Math.sign(e.a.sy || 1) * 5);
     }
   }
   ctx.globalAlpha = 1;
   const leg = document.querySelector("#gizmo .gzLeg");
-  const key = `${S.mode}|${S.wf}|${SIM.fk}`;
+  const key = `${S.mode}|${S.wf}|${SIM.fk}|${S.mode === "find" && FD.reveal ? FD.delta : ""}`;
   if (leg && leg.getAttribute("data-k") !== key) {
-    const e = gizmoIdx(), nm = ["along the flat", "away from the flat", "wafer normal"];
-    leg.innerHTML = ["x", "y", "z"].map((n, i) => `<div><b style="color:${GZ_COL[n]}">${n}</b> ${idxHTML(e[i], "[", "]")} <span>${nm[i]}</span></div>`).join("") + (S.mode === "find" ? `<div class="gzNote">crystal as drawn (\u03B4 = 0)</div>` : "");
+    const { idx } = gizmoFrame(), acc = "#" + COL.accent.getHexString();
+    leg.innerHTML = `<div><b style="color:${GZ_COL.x}">x</b> [100] <b style="color:${GZ_COL.y}">y</b> [010] <b style="color:${GZ_COL.z}">z</b> [001]</div><div><b style="color:${acc}">F</b> flat along ${idxHTML(idx[0], "[", "]")}</div><div><b>n</b> surface normal ${idxHTML(idx[2], "[", "]")}</div>` + (S.mode === "find" ? `<div class="gzNote">${FD.reveal ? `crystal turned by \u03B4 = ${FD.delta}\xB0` : "crystal as drawn (\u03B4 hidden)"}</div>` : "");
     leg.setAttribute("data-k", key);
   }
 }
@@ -7954,6 +7975,8 @@ function drawMeasure3D() {
   } else lab.classList.add("hidden");
 }
 function stageOverlay() {
+  const mb = document.querySelector('#stageTools [data-s="measure"]');
+  if (mb) mb.classList.toggle("hidden", !stageUnits());
   drawGizmo();
   drawScaleBar();
   drawMeasure3D();
