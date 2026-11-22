@@ -34,6 +34,10 @@ pub struct Sim {
     pub timers: [f64; 3],
     gen: u32,
     tmp: Vec<f32>,
+    /// stage-0 values of the band during the second Runge-Kutta stage
+    old: Vec<f32>,
+    /// 2: second-order differences + Heun stepping (default); 1: first order, forward Euler
+    pub order: u32,
     re: Reinit,
 }
 
@@ -59,6 +63,8 @@ impl Sim {
             timers: [0.0; 3],
             gen: 1,
             tmp: Vec::new(),
+            old: Vec::new(),
+            order: 2,
             re: Reinit::new(nn),
         }
     }
@@ -109,96 +115,56 @@ impl Sim {
 
     pub fn step(&mut self, t_end: f64, max_steps: u32) -> f64 {
         let (nx, ny, nz, nxy) = (self.nx, self.ny, self.nz, self.nxy);
-        let n = self.n_rate;
-        let wt = n + 1;
-        const WALL2: f64 = 0.35 * 0.35;
-        let (ax, ay, az) = (self.al[0], self.al[1], self.al[2]);
-        let idx = 1.0 / self.dx;
         let b = self.b;
-        let e = [self.e[0], self.e[1], self.e[2], self.e[3], self.e[4], self.e[5], self.e[6], self.e[7], self.e[8]];
+        let o2 = self.order == 2;
         let mut ns: u32 = 0;
+        const M: u64 = (1 << 21) - 1;
         while self.t < t_end - 1e-9 && ns < max_steps {
             let dt = self.dt0.min(t_end - self.t);
             let tk = Clock::now();
             let nact = self.act.len();
             if self.tmp.len() < nact { self.tmp.resize(nact, 0.0); }
+            if o2 && self.old.len() < nact { self.old.resize(nact, 0.0); }
             {
-                let phi = &self.phi;
-                let tab = &self.tab;
-                let gopen = &self.gopen;
-                let open = &self.open;
+                let kx = Kern {
+                    nx, ny, nz, nxy, idx: 1.0 / self.dx, al: self.al,
+                    e: [self.e[0], self.e[1], self.e[2], self.e[3], self.e[4], self.e[5], self.e[6], self.e[7], self.e[8]],
+                    tab: &self.tab, n: self.n_rate, gopen: &self.gopen, open: &self.open,
+                };
+                let act = &self.act;
+                let ijk = &self.act_ijk;
+                let phi = &mut self.phi;
                 let hr = &mut self.hr;
                 let tmp = &mut self.tmp;
-                const M: u64 = (1 << 21) - 1;
+                // stage 1 (forward Euler)
                 for m in 0..nact {
-                    let q = self.act[m] as usize;
-                    let cc3 = self.act_ijk[m];
-                    let (i, j, k) = ((cc3 & M) as usize, ((cc3 >> 21) & M) as usize, (cc3 >> 42) as usize);
-                    let r = q - k * nxy;
+                    let q = act[m] as usize;
+                    let c3 = ijk[m];
+                    let hn = kx.ham(phi, q, (c3 & M) as usize, ((c3 >> 21) & M) as usize, (c3 >> 42) as usize, o2);
                     let c = phi[q] as f64;
-                    let xm = if i > 0 { phi[q - 1] as f64 } else { c };
-                    let xp = if i < nx - 1 { phi[q + 1] as f64 } else { c };
-                    let ym = if j > 0 { phi[q - nx] as f64 } else { c };
-                    let yp = if j < ny - 1 { phi[q + nx] as f64 } else { c };
-                    let zp = if k < nz - 1 { phi[q + nxy] as f64 } else { c };
-                    let dxm = (c - xm) * idx;
-                    let dxp = (xp - c) * idx;
-                    let dym = (c - ym) * idx;
-                    let dyp = (yp - c) * idx;
-                    let dzp = (zp - c) * idx;
-                    let px = 0.5 * (dxm + dxp);
-                    let py = 0.5 * (dym + dyp);
-                    let mut zm;
-                    let mut wall = false;
-                    if k > 0 {
-                        zm = phi[q - nxy] as f64;
-                    } else {
-                        zm = 2.0 * c - zp;
-                        if open[r] != 0 {
-                            let g = gopen[r] as f64;
-                            if zm > g { zm = g; }
-                        } else if dzp * dzp < WALL2 * (px * px + py * py) {
-                            wall = true; // near-vertical wall under the mask: no flux through the mask
-                        } else if zm < c {
-                            zm = c;
-                        }
-                    }
-                    let dzm = (c - zm) * idx;
-                    let pz = if wall { 0.0 } else { -0.5 * (dzm + dzp) };
-                    let pn = (px * px + py * py + pz * pz).sqrt();
-                    let mut hn = 0.0f64;
-                    if pn > 1e-12 {
-                        // crystal components of the gradient; the table needs only their ratios, so no normalisation
-                        let mut a = (e[0] * px + e[3] * py + e[6] * pz).abs();
-                        let mut bb = (e[1] * px + e[4] * py + e[7] * pz).abs();
-                        let mut cc = (e[2] * px + e[5] * py + e[8] * pz).abs();
-                        let mut t;
-                        if bb > a { t = a; a = bb; bb = t; }
-                        if cc > a { t = a; a = cc; cc = t; }
-                        if cc > bb { t = bb; bb = cc; cc = t; }
-                        let _ = t;
-                        let ia = n as f64 / a;
-                        let fu = bb * ia;
-                        let fv = cc * ia;
-                        let mut iu = fu as usize;
-                        let mut iv = fv as usize;
-                        if iu >= n { iu = n - 1; }
-                        if iv >= n { iv = n - 1; }
-                        let du = fu - iu as f64;
-                        let dv = fv - iv as f64;
-                        let o = iu * wt + iv;
-                        let t00 = tab[o] as f64;
-                        let t01 = tab[o + 1] as f64;
-                        let t10 = tab[o + wt] as f64;
-                        let t11 = tab[o + wt + 1] as f64;
-                        hn = ((t00 * (1.0 - dv) + t01 * dv) * (1.0 - du) + (t10 * (1.0 - dv) + t11 * dv) * du) * pn;
-                    }
-                    hn -= 0.5 * (ax * (dxp - dxm) + ay * (dyp - dym) + az * (dzp - dzm));
                     let mut v = c - dt * hn;
                     if v > c { v = c; } // etching is irreversible: phi never rises
                     if v < -b { v = -b; } else if v > b { v = b; }
                     tmp[m] = v as f32;
                     hr[q] = hn as f32;
+                }
+                if o2 {
+                    // stage 2 on the stage-1 field, then the average (Heun / TVD Runge-Kutta 2)
+                    let old = &mut self.old;
+                    for m in 0..nact { let q = act[m] as usize; old[m] = phi[q]; phi[q] = tmp[m]; }
+                    for m in 0..nact {
+                        let q = act[m] as usize;
+                        let c3 = ijk[m];
+                        let hn = kx.ham(phi, q, (c3 & M) as usize, ((c3 >> 21) & M) as usize, (c3 >> 42) as usize, true);
+                        let c1 = phi[q] as f64;
+                        let c = old[m] as f64;
+                        let mut v = 0.5 * (c + c1 - dt * hn);
+                        if v > c { v = c; }
+                        if v < -b { v = -b; } else if v > b { v = b; }
+                        tmp[m] = v as f32;
+                        hr[q] = (0.5 * (hr[q] as f64 + hn)) as f32;
+                    }
+                    for m in 0..nact { phi[act[m] as usize] = old[m]; }
                 }
             }
             for m in 0..nact {
@@ -218,7 +184,7 @@ impl Sim {
             self.timers[1] += tb.secs();
             if self.steps % 6 == 0 {
                 let tr = Clock::now();
-                self.re.run(&mut self.phi, &self.act, nx, ny, nz, self.dx, b);
+                self.re.run(&mut self.phi, &self.act, nx, ny, nz, self.dx, b, &self.gopen, &self.open);
                 self.timers[2] += tr.secs();
                 let tb = Clock::now();
                 self.rebuild(false);
@@ -226,6 +192,120 @@ impl Sim {
             }
         }
         self.t
+    }
+}
+
+/// Unchecked read (the band holds only interior indices; the stencil is guarded by the i, j, k bounds).
+#[inline(always)]
+fn g(f: &[f32], i: usize) -> f64 {
+    debug_assert!(i < f.len());
+    unsafe { *f.get_unchecked(i) as f64 }
+}
+
+#[inline(always)]
+fn mm(a: f64, b: f64) -> f64 {
+    if a * b <= 0.0 { 0.0 } else if a > 0.0 { if a < b { a } else { b } } else if a > b { a } else { b }
+}
+
+/// Read-only data of the time step (grid, dissipation, rate table, top-row boundary).
+struct Kern<'a> {
+    nx: usize, ny: usize, nz: usize, nxy: usize,
+    idx: f64,
+    al: [f64; 3],
+    e: [f64; 9],
+    tab: &'a [f32],
+    n: usize,
+    gopen: &'a [f32],
+    open: &'a [u8],
+}
+
+impl<'a> Kern<'a> {
+    /// Hamiltonian with Lax-Friedrichs dissipation at node q of field f (same as `ham` in etch-engine.js).
+    /// One-sided differences are second order (ENO, minmod limiter) where the stencil fits in the grid;
+    /// in z next to the surface (k < 2) they stay first order, with the top-row ghost value.
+    #[inline(always)]
+    fn ham(&self, f: &[f32], q: usize, i: usize, j: usize, k: usize, o2: bool) -> f64 {
+        let (nx, ny, nz, nxy, idx) = (self.nx, self.ny, self.nz, self.nxy, self.idx);
+        let r = q - k * nxy;
+        let c = g(f, q);
+        let xm = if i > 0 { g(f, q - 1) } else { c };
+        let xp = if i < nx - 1 { g(f, q + 1) } else { c };
+        let ym = if j > 0 { g(f, q - nx) } else { c };
+        let yp = if j < ny - 1 { g(f, q + nx) } else { c };
+        let zp = if k < nz - 1 { g(f, q + nxy) } else { c };
+        let mut dxm = (c - xm) * idx;
+        let mut dxp = (xp - c) * idx;
+        let mut dym = (c - ym) * idx;
+        let mut dyp = (yp - c) * idx;
+        let mut dzp = (zp - c) * idx;
+        if o2 {
+            let xmm = if i > 1 { g(f, q - 2) } else { xm };
+            let xpp = if i + 2 < nx { g(f, q + 2) } else { xp };
+            let ymm = if j > 1 { g(f, q - 2 * nx) } else { ym };
+            let ypp = if j + 2 < ny { g(f, q + 2 * nx) } else { yp };
+            let cx = xp - 2.0 * c + xm;
+            let cy = yp - 2.0 * c + ym;
+            dxm += 0.5 * mm(c - 2.0 * xm + xmm, cx) * idx;
+            dxp -= 0.5 * mm(cx, xpp - 2.0 * xp + c) * idx;
+            dym += 0.5 * mm(c - 2.0 * ym + ymm, cy) * idx;
+            dyp -= 0.5 * mm(cy, ypp - 2.0 * yp + c) * idx;
+        }
+        let px = 0.5 * (dxm + dxp);
+        let py = 0.5 * (dym + dyp);
+        let mut zm;
+        let mut wall = false;
+        if k > 0 {
+            zm = g(f, q - nxy);
+        } else {
+            zm = 2.0 * c - zp;
+            if unsafe { *self.open.get_unchecked(r) } != 0 {
+                let g = unsafe { *self.gopen.get_unchecked(r) } as f64;
+                if zm > g { zm = g; }
+            } else if dzp * dzp < 0.1225 * (px * px + py * py) {
+                wall = true; // near-vertical wall under the mask: no flux through the mask, no z dissipation
+            } else if zm < c {
+                zm = c;
+            }
+        }
+        let mut dzm = (c - zm) * idx;
+        if o2 && k > 1 {
+            let zmm = g(f, q - 2 * nxy);
+            let zpp = if k + 2 < nz { g(f, q + 2 * nxy) } else { zp };
+            let cz = zp - 2.0 * c + zm;
+            dzm += 0.5 * mm(c - 2.0 * zm + zmm, cz) * idx;
+            dzp -= 0.5 * mm(cz, zpp - 2.0 * zp + c) * idx;
+        }
+        let pz = if wall { 0.0 } else { -0.5 * (dzm + dzp) }; // grid k runs downward
+        let pn = (px * px + py * py + pz * pz).sqrt();
+        let mut hn = 0.0f64;
+        if pn > 1e-12 {
+            // crystal components of the gradient; the table needs only their ratios, so no normalisation
+            let e = &self.e;
+            let mut a = (e[0] * px + e[3] * py + e[6] * pz).abs();
+            let mut bb = (e[1] * px + e[4] * py + e[7] * pz).abs();
+            let mut cc = (e[2] * px + e[5] * py + e[8] * pz).abs();
+            let mut t;
+            if bb > a { t = a; a = bb; bb = t; }
+            if cc > a { t = a; a = cc; cc = t; }
+            if cc > bb { t = bb; bb = cc; cc = t; }
+            let _ = t;
+            let n = self.n;
+            let wt = n + 1;
+            let ia = n as f64 / a;
+            let fu = bb * ia;
+            let fv = cc * ia;
+            let mut iu = fu as usize;
+            let mut iv = fv as usize;
+            if iu >= n { iu = n - 1; }
+            if iv >= n { iv = n - 1; }
+            let du = fu - iu as f64;
+            let dv = fv - iv as f64;
+            let o = iu * wt + iv;
+            let tab = self.tab;
+            let (t00, t01, t10, t11) = (g(tab, o), g(tab, o + 1), g(tab, o + wt), g(tab, o + wt + 1));
+            hn = ((t00 * (1.0 - dv) + t01 * dv) * (1.0 - du) + (t10 * (1.0 - dv) + t11 * dv) * du) * pn;
+        }
+        hn - 0.5 * (self.al[0] * (dxp - dxm) + self.al[1] * (dyp - dym) + self.al[2] * (dzp - dzm))
     }
 }
 
@@ -332,7 +412,8 @@ impl Reinit {
         d
     }
 
-    fn run(&mut self, phi: &mut [f32], list: &[i32], nx: usize, ny: usize, nz: usize, dx: f64, b: f64) {
+    #[allow(clippy::too_many_arguments)]
+    fn run(&mut self, phi: &mut [f32], list: &[i32], nx: usize, ny: usize, nz: usize, dx: f64, b: f64, gopen: &[f32], open: &[u8]) {
         self.hv.clear();
         self.hi.clear();
         self.touched.clear();
@@ -346,12 +427,11 @@ impl Reinit {
                 let mut best = f64::INFINITY;
                 for s in 0..2 {
                     let r = nbr[2 * ax + s];
-                    if r >= 0 {
-                        let o = phi[r as usize] as f64;
-                        if (c > 0.0) != (o > 0.0) {
-                            let f = c / (c - o);
-                            if f < best { best = f; }
-                        }
+                    // top row: the etchant above an opening (ghost value)
+                    let o = if r >= 0 { phi[r as usize] as f64 } else if ax == 2 && s == 0 && open[q] != 0 { gopen[q] as f64 } else { continue };
+                    if (c > 0.0) != (o > 0.0) {
+                        let f = c / (c - o);
+                        if f < best { best = f; }
                     }
                 }
                 if best < f64::INFINITY {
@@ -361,7 +441,8 @@ impl Reinit {
                 }
             }
             if any {
-                self.dist[q] = (1.0 / inv.sqrt()) as f32;
+                // silicon seeds: distance from the linear crossings; etched seeds keep their value (the front stays put)
+                self.dist[q] = if c > 0.0 { (1.0 / inv.sqrt()) as f32 } else { (-c) as f32 };
                 self.st[q] = 2;
                 self.touched.push(q);
             }
@@ -398,6 +479,12 @@ impl Reinit {
                 }
             }
         }
+        // band nodes the marching did not reach are farther than B from the front: back to +-B, so values that
+        // drifted just below B under the dissipation cannot grow the band into the whole grid
+        for &qq in list.iter() {
+            let q = qq as usize;
+            if self.st[q] != 2 { phi[q] = if phi[q] > 0.0 { b as f32 } else { -b as f32 }; }
+        }
         for m in 0..self.touched.len() {
             let q = self.touched[m];
             let sg = if phi[q] > 0.0 { 1.0f64 } else { -1.0 };
@@ -425,7 +512,7 @@ impl Clock {
 mod tests {
     use super::Sim;
 
-    /// A flat (100) front etched at a constant rate R moves down by R·t (first-order scheme: within one cell).
+    /// A flat (100) front etched at a constant rate R moves down by R·t (within one cell).
     #[test]
     fn flat_front_moves_at_the_rate() {
         let (nx, ny, nz, n) = (4, 4, 40, 8);

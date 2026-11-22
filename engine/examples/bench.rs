@@ -17,6 +17,7 @@ fn main() {
     s.gopen = f32s(o, s.nxy); o += 4 * s.nxy;
     s.tab = f32s(o, (n + 1) * (n + 1)); o += 4 * (n + 1) * (n + 1);
     s.open = b[o..o + s.nxy].to_vec();
+    if let Ok(o) = std::env::var("ORDER") { s.order = o.parse().unwrap(); }
     s.rebuild(true);
     let t0 = Instant::now();
     s.step(h[10], u32::MAX);

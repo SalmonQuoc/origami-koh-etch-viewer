@@ -1,6 +1,6 @@
 // ===================================================================================== etch engine
 // KOH rate map over all orientations (piecewise-linear interpolation of measured rates in the standard
-// triangle) + 3D level-set etch front (first-order Lax-Friedrichs, fast-marching redistancing),
+// triangle) + 3D level-set etch front (Lax-Friedrichs with second-order ENO differences and Heun steps, fast-marching redistancing),
 // arrival-time field T(x) for instant time scrubbing, surface-nets mesh extraction and 2D sections.
 // No DOM access: runs in a Web Worker or in the page.
 function etchEngineFactory() {
@@ -129,12 +129,13 @@ function etchEngineFactory() {
       for (let i = 0; i < 3; i++) { const q = p.slice(); q[i] += h; const nq = Math.hypot(q[0], q[1], q[2]); const g = (Rg(q[0]/nq, q[1]/nq, q[2]/nq)*nq - H0)/h; if (Math.abs(g) > al[i]) al[i] = Math.abs(g); }
     }
     const as = cfg.alphaScale || 1; for (let i = 0; i < 3; i++) al[i] *= as;
-    const S = { cfg, Nx, Ny, Nz, NXY, NN, dx, B, phi, T, Hr, gOpen, open, sd, RT, Rg, al, rmax, t: 0, steps: 0, e: [e1, e2, e3] };
+    const S = { cfg, Nx, Ny, Nz, NXY, NN, dx, B, phi, T, Hr, gOpen, open, sd, RT, Rg, al, rmax, t: 0, steps: 0, e: [e1, e2, e3], order: cfg.order === 1 ? 1 : 2 };
     S.dt0 = (cfg.cfl || 0.9)*dx/(al[0] + al[1] + al[2]);
     // band bookkeeping
     if (WX && !cfg.noWasm && wasmSim(S)) return S;   // Rust/WebAssembly kernel: same scheme, faster
     S.act = new Int32Array(Math.min(NN, 1 << 20)); S.nact = 0; S.stamp = new Uint32Array(NN); S.gen = 1; S.tmp = new Float32Array(S.act.length);
-    S.reinit = makeReinit(Nx, Ny, Nz, dx, B);
+    S.old = new Float32Array(S.act.length); S.ijk = new Int32Array(3*S.act.length);
+    S.reinit = makeReinit(Nx, Ny, Nz, dx, B, gOpen, open);
     rebuild(S, true);
     return S;
   }
@@ -161,42 +162,74 @@ function etchEngineFactory() {
     S.act = act; S.nact = n;
   }
 
+  // Hamiltonian with Lax-Friedrichs dissipation at band node q of field F (phi or the first Runge-Kutta stage).
+  // One-sided differences are second order (ENO with the minmod limiter) where the stencil fits in the grid;
+  // in z next to the surface (k < 2) they stay first order, with the boundary ghost value of the top row.
+  const mm = (a, b) => (a*b <= 0 ? 0 : (a > 0 ? (a < b ? a : b) : (a > b ? a : b)));
+  function ham(S, F, q, i, j, k, o2) {
+    const { Nx, Ny, Nz, NXY, gOpen, open, RT, al } = S, idx = 1/S.dx, e = S.e, tab = RT.tab, N = RT.N, WT = N + 1;
+    const c = F[q], r = q - k*NXY;
+    const xm = i > 0 ? F[q-1] : c, xp = i < Nx-1 ? F[q+1] : c;
+    const ym = j > 0 ? F[q-Nx] : c, yp = j < Ny-1 ? F[q+Nx] : c;
+    const zp = k < Nz-1 ? F[q+NXY] : c;
+    let dxm = (c - xm)*idx, dxp = (xp - c)*idx, dym = (c - ym)*idx, dyp = (yp - c)*idx, dzp = (zp - c)*idx;
+    if (o2) {
+      const xmm = i > 1 ? F[q-2] : xm, xpp = i < Nx-2 ? F[q+2] : xp, ymm = j > 1 ? F[q-2*Nx] : ym, ypp = j < Ny-2 ? F[q+2*Nx] : yp;
+      const cx = xp - 2*c + xm, cy = yp - 2*c + ym;
+      dxm += 0.5*mm(c - 2*xm + xmm, cx)*idx; dxp -= 0.5*mm(cx, xpp - 2*xp + c)*idx;
+      dym += 0.5*mm(c - 2*ym + ymm, cy)*idx; dyp -= 0.5*mm(cy, ypp - 2*yp + c)*idx;
+    }
+    const px = 0.5*(dxm + dxp), py = 0.5*(dym + dyp);
+    let zm, wall = false;
+    if (k > 0) zm = F[q-NXY]; else { zm = 2*c - zp; if (open[r]) { if (zm > gOpen[r]) zm = gOpen[r]; }
+      else if (dzp*dzp < 0.1225*(px*px + py*py)) wall = true;   // near-vertical wall under the mask: no flux through the mask, no z dissipation
+      else if (zm < c) zm = c; }
+    let dzm = (c - zm)*idx;
+    if (o2 && k > 1) {
+      const zmm = F[q-2*NXY], zpp = k < Nz-2 ? F[q+2*NXY] : zp, cz = zp - 2*c + zm;
+      dzm += 0.5*mm(c - 2*zm + zmm, cz)*idx; dzp -= 0.5*mm(cz, zpp - 2*zp + c)*idx;
+    }
+    const pz = wall ? 0 : -0.5*(dzm + dzp);   // grid k runs downward
+    const pn = Math.sqrt(px*px + py*py + pz*pz);
+    let Hn = 0;
+    if (pn > 1e-12) {
+      // crystal components of the gradient; the table needs only their ratios, so no normalisation
+      let a = e[0][0]*px + e[1][0]*py + e[2][0]*pz, b = e[0][1]*px + e[1][1]*py + e[2][1]*pz, cc = e[0][2]*px + e[1][2]*py + e[2][2]*pz, t;
+      if (a < 0) a = -a; if (b < 0) b = -b; if (cc < 0) cc = -cc;
+      if (b > a) { t = a; a = b; b = t; } if (cc > a) { t = a; a = cc; cc = t; } if (cc > b) { t = b; b = cc; cc = t; }
+      const ia = N/a, fu = b*ia, fv = cc*ia; let iu = fu | 0, iv = fv | 0; if (iu >= N) iu = N - 1; if (iv >= N) iv = N - 1;
+      const du = fu - iu, dv = fv - iv, o = iu*WT + iv;
+      Hn = ((tab[o]*(1-dv) + tab[o+1]*dv)*(1-du) + (tab[o+WT]*(1-dv) + tab[o+WT+1]*dv)*du)*pn;
+    }
+    return Hn - 0.5*(al[0]*(dxp - dxm) + al[1]*(dyp - dym) + al[2]*(dzp - dzm));
+  }
+
+  // one time step = two forward-Euler stages averaged (Heun / TVD Runge-Kutta 2) when cfg.order is 2 (default),
+  // a single forward-Euler stage with first-order differences when cfg.order is 1 (kept for comparison)
   function step(S, tEnd, maxSteps) {
     if (S.wasm) { S.t = WX.sim_step(S.wasm, tEnd, maxSteps); S.steps = WX.sim_steps(S.wasm); wasmBind(S); return S.t; }
-    const { Nx, Ny, Nz, NXY, dx, B, phi, T, Hr, gOpen, open, RT, al } = S;
-    const [e1, e2, e3] = S.e, tab = RT.tab, N = RT.N, WT = N + 1;
-    const WALL2 = 0.35*0.35;
-    const ax = al[0], ay = al[1], az = al[2], idx = 1/dx;
+    const { Nx, NXY, B, phi, T, Hr } = S, o2 = S.order === 2;
     let ns = 0;
     while (S.t < tEnd - 1e-9 && ns < maxSteps) {
-      const dt = Math.min(S.dt0, tEnd - S.t), act = S.act, nact = S.nact, tmp = S.tmp;
+      const dt = Math.min(S.dt0, tEnd - S.t), act = S.act, nact = S.nact, tmp = S.tmp, ijk = S.ijk;
+      if (ijk.length < 3*nact) S.ijk = new Int32Array(3*act.length);
+      const IJK = S.ijk;
+      for (let m = 0; m < nact; m++) { const q = act[m], k = (q / NXY) | 0, r = q - k*NXY, j = (r / Nx) | 0; IJK[3*m] = r - j*Nx; IJK[3*m+1] = j; IJK[3*m+2] = k; }
+      // stage 1
       for (let m = 0; m < nact; m++) {
-        const q = act[m], c = phi[q];
-        const k = (q / NXY) | 0, r = q - k*NXY, j = (r / Nx) | 0, i = r - j*Nx;
-        const xm = i > 0 ? phi[q-1] : c, xp = i < Nx-1 ? phi[q+1] : c;
-        const ym = j > 0 ? phi[q-Nx] : c, yp = j < Ny-1 ? phi[q+Nx] : c;
-        const zp = k < Nz-1 ? phi[q+NXY] : c;
-        const dxm = (c - xm)*idx, dxp = (xp - c)*idx, dym = (c - ym)*idx, dyp = (yp - c)*idx, dzp = (zp - c)*idx;
-        const px = 0.5*(dxm + dxp), py = 0.5*(dym + dyp);
-        let zm, wall = false;
-        if (k > 0) zm = phi[q-NXY]; else { zm = 2*c - zp; if (open[r]) { if (zm > gOpen[r]) zm = gOpen[r]; }
-          else if (dzp*dzp < WALL2*(px*px + py*py)) wall = true;   // near-vertical wall under the mask: no flux through the mask, no z dissipation
-          else if (zm < c) zm = c; }
-        const dzm = (c - zm)*idx, pz = wall ? 0 : -0.5*(dzm + dzp);   // grid k runs downward
-        const pn = Math.sqrt(px*px + py*py + pz*pz);
-        let Hn = 0;
-        if (pn > 1e-12) {
-          // crystal components of the gradient; the table needs only their ratios, so no normalisation
-          let a = e1[0]*px + e2[0]*py + e3[0]*pz, b = e1[1]*px + e2[1]*py + e3[1]*pz, cc = e1[2]*px + e2[2]*py + e3[2]*pz, t;
-          if (a < 0) a = -a; if (b < 0) b = -b; if (cc < 0) cc = -cc;
-          if (b > a) { t = a; a = b; b = t; } if (cc > a) { t = a; a = cc; cc = t; } if (cc > b) { t = b; b = cc; cc = t; }
-          const ia = N/a, fu = b*ia, fv = cc*ia; let iu = fu | 0, iv = fv | 0; if (iu >= N) iu = N - 1; if (iv >= N) iv = N - 1;
-          const du = fu - iu, dv = fv - iv, o = iu*WT + iv;
-          Hn = ((tab[o]*(1-dv) + tab[o+1]*dv)*(1-du) + (tab[o+WT]*(1-dv) + tab[o+WT+1]*dv)*du)*pn;
-        }
-        Hn -= 0.5*(ax*(dxp - dxm) + ay*(dyp - dym) + az*(dzp - dzm));
+        const q = act[m], c = phi[q], Hn = ham(S, phi, q, IJK[3*m], IJK[3*m+1], IJK[3*m+2], o2);
         let v = c - dt*Hn; if (v > c) v = c; if (v < -B) v = -B; else if (v > B) v = B;   // etching is irreversible: phi never rises
         tmp[m] = v; Hr[q] = Hn;
+      }
+      if (o2) {   // stage 2 on the stage-1 field, then the average
+        const old = S.old.length >= nact ? S.old : (S.old = new Float32Array(act.length));
+        for (let m = 0; m < nact; m++) { const q = act[m]; old[m] = phi[q]; phi[q] = tmp[m]; }
+        for (let m = 0; m < nact; m++) {
+          const q = act[m], c1 = phi[q], Hn = ham(S, phi, q, IJK[3*m], IJK[3*m+1], IJK[3*m+2], true);
+          const c = old[m]; let v = 0.5*(c + c1 - dt*Hn); if (v > c) v = c; if (v < -B) v = -B; else if (v > B) v = B;
+          tmp[m] = v; Hr[q] = 0.5*(Hr[q] + Hn);
+        }
+        for (let m = 0; m < nact; m++) phi[act[m]] = old[m];
       }
       for (let m = 0; m < nact; m++) {
         const q = act[m], c = phi[q], v = tmp[m];
@@ -210,7 +243,7 @@ function etchEngineFactory() {
     return S.t;
   }
 
-  function makeReinit(Nx, Ny, Nz, dx, B) {
+  function makeReinit(Nx, Ny, Nz, dx, B, gOpen, open) {   // gOpen, open: ghost value above the top row over the openings
     const NXY = Nx*Ny, NN = NXY*Nz, st = new Uint8Array(NN), dist = new Float32Array(NN);
     let hv = new Float32Array(1 << 16), hi = new Int32Array(1 << 16), hn = 0;
     const push = (v, q) => {
@@ -257,10 +290,16 @@ function etchEngineFactory() {
         let inv = 0, any = false;
         for (let ax = 0; ax < 3; ax++) {
           let best = Infinity;
-          for (let s = 0; s < 2; s++) { const r = NB[2*ax+s]; if (r >= 0) { const o = phi[r]; if ((c > 0) !== (o > 0)) { const f = c/(c - o); if (f < best) best = f; } } }
+          for (let s = 0; s < 2; s++) {
+            const r = NB[2*ax+s], o = r >= 0 ? phi[r] : (ax === 2 && s === 0 && open[q] ? gOpen[q] : NaN);   // top row: the etchant above an opening
+            if (o === o && (c > 0) !== (o > 0)) { const f = c/(c - o); if (f < best) best = f; }
+          }
           if (best < Infinity) { const dd = Math.max(best*dx, 1e-3*dx); inv += 1/(dd*dd); any = true; }
         }
-        if (any) { dist[q] = 1/Math.sqrt(inv); st[q] = 2; touched.push(q); }
+        // seeds next to the front: silicon nodes get the distance from the linear crossings; etched nodes keep their
+        // value, so the re-initialisation does not move the front (moving it every few steps thinned {111} walls by
+        // several µm in 30 min whatever the grid; tools/accuracy.mjs)
+        if (any) { dist[q] = c > 0 ? 1/Math.sqrt(inv) : -c; st[q] = 2; touched.push(q); }
       }
       const nInit = touched.length;
       for (let m = 0; m < nInit; m++) { nb(touched[m]); NBq.set(NB); for (let s = 0; s < 6; s++) { const r = NBq[s]; if (r >= 0 && st[r] === 0) { st[r] = 1; push(solve(r), r); } } }
@@ -270,6 +309,9 @@ function etchEngineFactory() {
         if (d >= B) continue;
         nb(q); NBq.set(NB); for (let s = 0; s < 6; s++) { const r = NBq[s]; if (r >= 0 && st[r] !== 2) { st[r] = 1; push(solve(r), r); } }
       }
+      // band nodes the marching did not reach are farther than B from the front: back to ±B, so values that
+      // drifted just below B under the dissipation cannot grow the band into the whole grid
+      for (let m = 0; m < n; m++) { const q = list[m]; if (st[q] !== 2) phi[q] = phi[q] > 0 ? B : -B; }
       for (let m = 0; m < touched.length; m++) { const q = touched[m]; const s = phi[q] > 0 ? 1 : -1; phi[q] = s*Math.min(B, dist[q]); st[q] = 0; }
     };
   }
@@ -430,6 +472,7 @@ function etchEngineFactory() {
     try {
       const h = WX.sim_new(S.Nx, S.Ny, S.Nz, S.RT.N); if (!h) return false;
       WX.sim_set_params(h, S.dx, S.B, S.dt0, S.al[0], S.al[1], S.al[2], 0);
+      if (WX.sim_set_order) WX.sim_set_order(h, S.order); else if (S.order !== 1) { WX.sim_free(h); return false; }
       const buf = () => WX.memory.buffer;
       new Float32Array(buf(), WX.sim_phi_ptr(h), S.NN).set(S.phi); new Float32Array(buf(), WX.sim_t_ptr(h), S.NN).set(S.T);
       new Float32Array(buf(), WX.sim_gopen_ptr(h), S.NXY).set(S.gOpen); new Uint8Array(buf(), WX.sim_open_ptr(h), S.NXY).set(S.open);

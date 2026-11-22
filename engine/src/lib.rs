@@ -59,6 +59,14 @@ ptr_fn!(sim_open_ptr, open, u8);
 ptr_fn!(sim_tab_ptr, tab, f32);
 ptr_fn!(sim_e_ptr, e, f64);
 
+/// Scheme order: 2 (second-order differences, Heun stepping; default) or 1 (first order, forward Euler).
+/// # Safety
+/// `s` must be a live simulation.
+#[no_mangle]
+pub unsafe extern "C" fn sim_set_order(s: *mut Sim, order: u32) {
+    (*s).order = if order == 1 { 1 } else { 2 };
+}
+
 /// Builds the first narrow band (call after the arrays are filled).
 /// # Safety
 /// `s` must be a live simulation.
