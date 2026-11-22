@@ -318,11 +318,15 @@ function buildPit() {
   // axes labels on the top surface
   const e = C.FRAME_IDX[S.wf];
   const zArr = (S.mask && S.block ? pitFilm().left : 0) + 0.004*zb;
-  g.add(topArrow(new V3(1, 0, 0), new V3(x0, yA, zArr), (x1 - x0)*0.25, radius*0.06, radius*0.035));
-  addLabel(new V3(x0 + (x1 - x0)*0.3, yA - radius*0.04, 0), idxHTML(e[0], "[", "]") + " along flat", "acc");
+  if (SET.arrAlong !== false) {   // the two flat arrows can be hidden (Show > flat arrows)
+    g.add(topArrow(new V3(1, 0, 0), new V3(x0, yA, zArr), (x1 - x0)*0.25, radius*0.06, radius*0.035));
+    addLabel(new V3(x0 + (x1 - x0)*0.3, yA - radius*0.04, 0), idxHTML(e[0], "[", "]") + " along flat", "acc");
+  }
   // perpendicular to the flat, pointing outward (wafer -y, away from the centre), from the flat-side edge
-  g.add(topArrow(new V3(0, -1, 0), new V3(x0 + (x1 - x0)*0.5, yA, zArr), radius*0.35, radius*0.06, radius*0.035));
-  addLabel(new V3(x0 + (x1 - x0)*0.5 + radius*0.04, yA - radius*0.42, 0), idxHTML(negIdx(e[1]), "[", "]") + " ⊥ flat, outward", "acc");
+  if (SET.arrPerp !== false) {
+    g.add(topArrow(new V3(0, -1, 0), new V3(x0 + (x1 - x0)*0.5, yA, zArr), radius*0.35, radius*0.06, radius*0.035));
+    addLabel(new V3(x0 + (x1 - x0)*0.5 + radius*0.04, yA - radius*0.42, 0), idxHTML(negIdx(e[1]), "[", "]") + " ⊥ flat, outward", "acc");
+  }
   scene.userData.center = new V3(cx, cy, -zb/2); scene.userData.die = scene.userData.center.clone();
   frameR = S.waferOn ? 0.53*WAFER.D : 0;
   if (S.waferOn) { g.add(waferGroup(S.wf, S.wtype, -S.dieX*1000, -S.dieY*1000, { hole: [x0, x1, y0, y1b], clip, flatLabel: idxHTML(e[0], "[", "]"), normalLabel: idxHTML(negIdx(e[1]), "[", "]") })); scene.userData.center = new V3(-S.dieX*1000, -S.dieY*1000, 0); }

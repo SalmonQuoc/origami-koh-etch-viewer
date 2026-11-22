@@ -51,12 +51,16 @@ function buildModel() {
   if (O.length >= 3) g.add(linesFromLoops([O.map(p => [p[0], p[1], 0.002])], COL.accent));
   // axis arrows: e1 along the flat, e3 up
   const e = C.FRAME_IDX[wf];
-  g.add(new THREE.ArrowHelper(new V3(1, 0, 0), new V3(0.1, YF + 0.16, 0), 0.6, COL["s-ink"].getHex(), 0.1, 0.06));
-  addLabel(new V3(0.92, YF + 0.16, 0), idxHTML(e[0], "[", "]"), "", camDir => Math.abs(camDir.x) < 0.9);
+  if (SET.arrAlong !== false) {   // arrow along the flat (can be hidden: Show > flat arrows)
+    g.add(new THREE.ArrowHelper(new V3(1, 0, 0), new V3(0.1, YF + 0.16, 0), 0.6, COL["s-ink"].getHex(), 0.1, 0.06));
+    addLabel(new V3(0.92, YF + 0.16, 0), idxHTML(e[0], "[", "]"), "", camDir => Math.abs(camDir.x) < 0.9);
+  }
   addLabel(new V3(-xf*0.45, YF - 0.14, 0), "primary flat", "acc");
   // perpendicular to the flat, pointing outward (away from the centre)
-  g.add(topArrow(new V3(0, -1, 0), new V3(0, YF, 0), 0.4, 0.1, 0.06));
-  addLabel(new V3(0.05, YF - 0.5, 0), idxHTML(negIdx(e[1]), "[", "]") + " ⊥ flat, outward", "acc");
+  if (SET.arrPerp !== false) {
+    g.add(topArrow(new V3(0, -1, 0), new V3(0, YF, 0), 0.4, 0.1, 0.06));
+    addLabel(new V3(0.05, YF - 0.5, 0), idxHTML(negIdx(e[1]), "[", "]") + " ⊥ flat, outward", "acc");
+  }
   g.add(new THREE.ArrowHelper(new V3(0, 0, 1), new V3(0, 0, 1.03), 0.4, COL["s-ink"].getHex(), 0.1, 0.06));
   addLabel(new V3(0, 0, 1.6), idxHTML(e[2], "[", "]") + " up");
   // corner labels (crystal directions of the six corners)

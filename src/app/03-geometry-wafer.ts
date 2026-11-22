@@ -91,9 +91,9 @@ function waferGroup(wf, type, ox, oy, opts: Record<string, any> = {}) {
   const Rw = WAFER.D/2, yF = -Math.sqrt(Rw*Rw - WAFER.Lp*WAFER.Lp/4), aL = 0.22*Rw;
   const arw = new THREE.ArrowHelper(new V3(0, -1, 0), new V3(ox, oy + yF, 3), aL, COL.accent.getHex(), 0.07*Rw, 0.04*Rw);
   if (clip) { arw.line.material.clippingPlanes = clip; arw.cone.material.clippingPlanes = clip; }
-  grp.add(arw);
+  const showPerp = SET.arrPerp !== false; if (showPerp) grp.add(arw);
   labelTag = "wafer";
-  if (opts.labels !== false && opts.normalLabel) addLabel(new V3(ox + 0.04*Rw, oy + yF - aL - 0.06*Rw, 0), `${opts.normalLabel} ⊥ flat, outward`, "acc");
+  if (showPerp && opts.labels !== false && opts.normalLabel) addLabel(new V3(ox + 0.04*Rw, oy + yF - aL - 0.06*Rw, 0), `${opts.normalLabel} ⊥ flat, outward`, "acc");
   if (opts.labels !== false) {
     const R = WAFER.D/2, yp = -Math.sqrt(R*R - WAFER.Lp*WAFER.Lp/4);
     addLabel(new V3(ox - 0.33*R, oy + yp - 0.05*R, 0), `primary flat ${opts.flatLabel || ""}`, "acc");

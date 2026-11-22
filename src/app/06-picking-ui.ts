@@ -145,6 +145,17 @@ document.addEventListener("change", e => {
   if (S.mode === "pit") rebuild(false); else if (simLike()) { buildSim(false); updateSimReadout(); }
 });
 syncMaskUI();
+// ---- flat arrows: the arrow along the primary flat and the outward arrow perpendicular to it can be hidden
+// (one copy in each Show section and in Settings, same state, kept in SET)
+for (const el of document.querySelectorAll(".arrUI")) el.innerHTML = `<div class="row arrRow"><span class="lbl">Flat arrows</span>`
+  + (el.getAttribute("data-only") === "perp" ? "" : `<label title="Arrow and label along the primary flat"><input type="checkbox" data-arr="arrAlong"> along the flat</label>`)
+  + `<label title="Arrow and label perpendicular to the primary flat, pointing outward"><input type="checkbox" data-arr="arrPerp"> ⊥ flat, outward</label></div>`;
+function syncArrUI() { for (const c of document.querySelectorAll("[data-arr]")) (c as HTMLInputElement).checked = SET[c.getAttribute("data-arr")] !== false; }
+document.addEventListener("change", e => {
+  const t = e.target as HTMLInputElement, k = t && t.getAttribute && t.getAttribute("data-arr"); if (!k) return;
+  SET[k] = t.checked; saveSet(); syncArrUI(); rebuild(false); if (S.mode === "find") drawFindMap();
+});
+syncArrUI();
 function syncWaferUI() {
   const wf = simLike() ? SFR[SIM.fk].wf : S.wf;
   for (const el of document.querySelectorAll(".waferUI")) {

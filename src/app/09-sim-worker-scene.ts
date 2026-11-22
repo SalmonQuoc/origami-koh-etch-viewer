@@ -217,11 +217,15 @@ function buildSim(resetView) {
   else if (loops.length) g.add(linesFromLoops(loops, COL.mask, { clip, opacity: 0.8 }));
   // flat and frame labels
   const F = simFrame();
-  g.add(topArrow(new V3(1, 0, 0), new V3(X0, Y0, zMask + 0.004*zb), (X1 - X0)*0.25, radius*0.06, radius*0.035));
-  addLabel(new V3(X0 + (X1 - X0)*0.13, Y0 - radius*0.06, 0), idxHTML(F.idx[0], "[", "]") + " along flat", "acc");
+  if (SET.arrAlong !== false) {   // the two flat arrows can be hidden (Show > flat arrows)
+    g.add(topArrow(new V3(1, 0, 0), new V3(X0, Y0, zMask + 0.004*zb), (X1 - X0)*0.25, radius*0.06, radius*0.035));
+    addLabel(new V3(X0 + (X1 - X0)*0.13, Y0 - radius*0.06, 0), idxHTML(F.idx[0], "[", "]") + " along flat", "acc");
+  }
   // perpendicular to the flat, pointing outward (wafer -y, away from the centre); for the (110) arrow convention this is the ⟨111⟩ arrow
-  g.add(topArrow(new V3(0, -1, 0), new V3((X0 + X1)/2, Y0, zMask + 0.004*zb), radius*0.35, radius*0.06, radius*0.035));
-  addLabel(new V3((X0 + X1)/2 + radius*0.04, Y0 - radius*0.42, 0), (F.arrow ? "⟨111⟩ " : "") + idxHTML(negIdx(F.idx[1]), "[", "]") + " ⊥ flat, outward", "acc");
+  if (SET.arrPerp !== false) {
+    g.add(topArrow(new V3(0, -1, 0), new V3((X0 + X1)/2, Y0, zMask + 0.004*zb), radius*0.35, radius*0.06, radius*0.035));
+    addLabel(new V3((X0 + X1)/2 + radius*0.04, Y0 - radius*0.42, 0), (F.arrow ? "⟨111⟩ " : "") + idxHTML(negIdx(F.idx[1]), "[", "]") + " ⊥ flat, outward", "acc");
+  }
   addLabel(new V3(X1, Y1, 0), idxHTML(F.idx[2], "(", ")") + " surface", "", camDir => camDir.z > 0.1);
   scene.userData.center = new V3((X0 + X1)/2, (Y0 + Y1)/2, -zb/2); scene.userData.die = scene.userData.center.clone();
   frameR = S.waferOn ? 0.53*WAFER.D : 0;

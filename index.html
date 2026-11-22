@@ -317,8 +317,9 @@ canvas.measuring { cursor: crosshair !important; }
 .hint { left: 56px; top: 14px; bottom: auto; }
 .stage.measuring canvas { cursor: crosshair; }
 .gizmo { position: absolute; left: 8px; bottom: 8px; z-index: 3; display: flex; align-items: flex-end; gap: 4px; pointer-events: none; }
-.gizmo canvas { width: 84px; height: 84px; border-radius: 50%; background: color-mix(in srgb, var(--panel) 55%, transparent); cursor: pointer; pointer-events: auto; }
-.gzLeg { font: 11px/1.45 "IBM Plex Mono", monospace; color: var(--ink); background: color-mix(in srgb, var(--scene-bg) 94%, transparent); border-radius: 6px; padding: 3px 6px; margin-bottom: 4px; }
+.gizmo canvas { width: 144px; height: 144px; border-radius: 50%; background: color-mix(in srgb, var(--panel) 78%, transparent); border: 1px solid color-mix(in srgb, var(--line) 70%, transparent); box-shadow: var(--shadow); cursor: pointer; pointer-events: auto; }
+@media (max-width: 640px) { .gizmo canvas { width: 112px; height: 112px; } }
+.gzLeg { font: 11.5px/1.5 "IBM Plex Mono", monospace; color: var(--ink); background: color-mix(in srgb, var(--scene-bg) 94%, transparent); border-radius: 6px; padding: 3px 6px; margin-bottom: 4px; }
 .gzLeg b { font-family: "IBM Plex Sans", sans-serif; display: inline-block; width: 1em; }
 .gzLeg span { color: var(--muted); font-family: "IBM Plex Sans", sans-serif; }
 .gzLeg .gzNote { color: var(--muted); font-family: "IBM Plex Sans", sans-serif; }
@@ -408,6 +409,7 @@ canvas.measuring { cursor: crosshair !important; }
     <div class="row"><label><input type="checkbox" id="cCorners" checked> corner directions</label></div>
     <div class="row"><label><input type="checkbox" id="cFaces"> face indices</label></div>
     <div class="row"><label><input type="checkbox" id="cUpper" checked> upper half (above the wafer)</label></div>
+    <div class="arrUI"></div>
     <h3>Selected face</h3>
     <div id="faceInfo" class="note">Click any face. The page then draws where its plane cuts the wafer surface, the two normals and the angle between the planes. Use "Along the selected line" to see the angle at true size.</div>
   </aside>
@@ -446,6 +448,7 @@ canvas.measuring { cursor: crosshair !important; }
     <div class="row"><label><input type="checkbox" id="cBlock" checked> silicon block (off: cast of the pit)</label></div>
     <div class="row"><label><input type="checkbox" id="cGhost" checked> final {111} shape (wire)</label></div>
     <div class="row"><label><input type="checkbox" id="cMask" checked> mask layer</label></div>
+    <div class="arrUI"></div>
     <div class="legend"><span><i class="sw" style="background:var(--mask)"></i>mask film (drawn at its true thickness)</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span></div>
     <div class="maskUI"></div>
     <div class="waferUI"></div>
@@ -517,6 +520,7 @@ canvas.measuring { cursor: crosshair !important; }
     <div class="row"><button class="btn" id="bSimPlay">Play</button>
       <label><input type="checkbox" id="cSimMask" checked> mask layer</label>
       <label><input type="checkbox" id="cSimCut"> cut away at the section</label></div>
+    <div class="arrUI"></div>
     <div class="legend"><span><i class="sw" style="background:var(--mask)"></i>mask film (true thickness)</span><span><i class="sw" style="background:var(--mask);filter:brightness(.55)"></i>mask with no silicon under it</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span></div>
     <div class="maskUI"></div>
     <h3>Section line</h3>
@@ -564,6 +568,7 @@ canvas.measuring { cursor: crosshair !important; }
     <div class="enl" data-title="Mask on the wafer">
     <p class="note" style="margin:0 0 4px"><b>Drag</b> an item to move it (<b>Alt</b>-drag moves a copy), <b>double-click</b> an empty spot to add the chosen item there. With the map focused, the arrow keys move the selected item by 1 mm (Shift: 5 mm), <span class="kbd">Ctrl</span>+<span class="kbd">D</span> duplicates it and <span class="kbd">Delete</span> removes it. Test structures: slot fan and circle arc; everything else is a device shape (µm).</p>
     <canvas id="fdCanvas" class="maskcv" tabindex="0" aria-label="Mask map of the whole wafer"></canvas>
+    <div class="arrUI" data-only="perp"></div>
     <div class="addrow"><select id="fdType" aria-label="item to add"></select><button class="btn primary" id="fdAdd">Add</button><button class="btn" id="fdDup">Duplicate</button><button class="btn" id="fdDel">Delete</button><button class="btn" id="fdReset">Lecture layout</button></div>
     <div id="fdList" class="cards"></div>
     </div>
@@ -612,6 +617,7 @@ canvas.measuring { cursor: crosshair !important; }
     <tr><td>scroll, pinch</td><td>zoom (also <b>+</b> <b>−</b> <b>⤢</b> at the top left of the view)</td></tr>
     <tr><td>hover, click</td><td>name a plane, select a face</td></tr>
     <tr><td>axis gizmo</td><td>bottom left: the crystal axes x = [100], y = [010], z = [001] (Miller indices, Lec 4-1 p. 6; Pal &amp; Sato Fig. 2.8, p. 31) as they sit in the wafer, the primary flat F and the surface normal n; click one to look along it. Positions in the mask editors are measured along the flat, the reference for aligning masks (Pal &amp; Sato p. 29)</td></tr>
+    <tr><td>flat arrows</td><td>the arrow along the primary flat and the outward arrow perpendicular to it can be hidden with the "Flat arrows" check boxes (Show section of each scene, or ⚙ Settings)</td></tr>
     <tr><td>📏</td><td>(not on the paper model, which has no length unit) measure: click two points on a surface for the distance and Δx, Δy, Δz; <span class="kbd">Esc</span> clears. The scale bar (bottom right) holds for lengths parallel to the screen</td></tr>
     <tr><td><span class="kbd">S</span></td><td>split view on or off</td></tr>
     <tr><td><span class="kbd">T</span></td><td>theater view on or off</td></tr>
@@ -663,6 +669,7 @@ canvas.measuring { cursor: crosshair !important; }
     <label>theme <select id="stTheme"><option value="auto">follow the system</option><option value="light">light</option><option value="dark">dark</option></select></label>
     <label>labels in the 3D view <select id="stLabels"><option value="small">small</option><option value="normal">normal</option><option value="large">large</option><option value="off">hidden</option></select></label>
     <label>camera moves <select id="stAnim"><option value="1">animated</option><option value="0">instant</option></select></label>
+    <div class="arrUI"></div>
     <label>3D render quality <select id="stPixel"><option value="auto">sharp (screen resolution)</option><option value="fast">fast (lower resolution)</option></select></label>
   </div>
   <h3>Explanations</h3>
@@ -1627,7 +1634,7 @@ function loadPitExamples(db, trench) {
 // ---- src/app/01-settings-helpers.ts
 const C = Core, V3 = THREE.Vector3;
 const T_WAFER = 525;
-const SET_DEF = { layout: "standard", panelW: 340, stageH: 68, theme: "auto", labels: "normal", anim: true, pixel: "auto", snap: 5, quality: "normal", autoRun: false, engine: "auto", coords: true, explain: false };
+const SET_DEF = { layout: "standard", panelW: 340, stageH: 68, theme: "auto", labels: "normal", anim: true, pixel: "auto", snap: 5, quality: "normal", autoRun: false, engine: "auto", coords: true, explain: false, arrAlong: true, arrPerp: true };
 const SET = Object.assign({}, SET_DEF);
 try {
   Object.assign(SET, JSON.parse(localStorage.getItem("o3d-settings") || "{}"));
@@ -2061,9 +2068,10 @@ function waferGroup(wf, type, ox, oy, opts = {}) {
     arw.line.material.clippingPlanes = clip;
     arw.cone.material.clippingPlanes = clip;
   }
-  grp.add(arw);
+  const showPerp = SET.arrPerp !== false;
+  if (showPerp) grp.add(arw);
   labelTag = "wafer";
-  if (opts.labels !== false && opts.normalLabel) addLabel(new V3(ox + 0.04 * Rw, oy + yF - aL - 0.06 * Rw, 0), `${opts.normalLabel} \u22A5 flat, outward`, "acc");
+  if (showPerp && opts.labels !== false && opts.normalLabel) addLabel(new V3(ox + 0.04 * Rw, oy + yF - aL - 0.06 * Rw, 0), `${opts.normalLabel} \u22A5 flat, outward`, "acc");
   if (opts.labels !== false) {
     const R = WAFER.D / 2, yp = -Math.sqrt(R * R - WAFER.Lp * WAFER.Lp / 4);
     addLabel(new V3(ox - 0.33 * R, oy + yp - 0.05 * R, 0), `primary flat ${opts.flatLabel || ""}`, "acc");
@@ -2220,11 +2228,15 @@ function buildModel() {
   const O = C.outline(H, 0);
   if (O.length >= 3) g.add(linesFromLoops([O.map((p) => [p[0], p[1], 2e-3])], COL.accent));
   const e = C.FRAME_IDX[wf];
-  g.add(new THREE.ArrowHelper(new V3(1, 0, 0), new V3(0.1, YF + 0.16, 0), 0.6, COL["s-ink"].getHex(), 0.1, 0.06));
-  addLabel(new V3(0.92, YF + 0.16, 0), idxHTML(e[0], "[", "]"), "", (camDir) => Math.abs(camDir.x) < 0.9);
+  if (SET.arrAlong !== false) {
+    g.add(new THREE.ArrowHelper(new V3(1, 0, 0), new V3(0.1, YF + 0.16, 0), 0.6, COL["s-ink"].getHex(), 0.1, 0.06));
+    addLabel(new V3(0.92, YF + 0.16, 0), idxHTML(e[0], "[", "]"), "", (camDir) => Math.abs(camDir.x) < 0.9);
+  }
   addLabel(new V3(-xf * 0.45, YF - 0.14, 0), "primary flat", "acc");
-  g.add(topArrow(new V3(0, -1, 0), new V3(0, YF, 0), 0.4, 0.1, 0.06));
-  addLabel(new V3(0.05, YF - 0.5, 0), idxHTML(negIdx(e[1]), "[", "]") + " \u22A5 flat, outward", "acc");
+  if (SET.arrPerp !== false) {
+    g.add(topArrow(new V3(0, -1, 0), new V3(0, YF, 0), 0.4, 0.1, 0.06));
+    addLabel(new V3(0.05, YF - 0.5, 0), idxHTML(negIdx(e[1]), "[", "]") + " \u22A5 flat, outward", "acc");
+  }
   g.add(new THREE.ArrowHelper(new V3(0, 0, 1), new V3(0, 0, 1.03), 0.4, COL["s-ink"].getHex(), 0.1, 0.06));
   addLabel(new V3(0, 0, 1.6), idxHTML(e[2], "[", "]") + " up");
   const cornerEls = [];
@@ -2788,10 +2800,14 @@ function buildPit() {
   }
   const e = C.FRAME_IDX[S.wf];
   const zArr = (S.mask && S.block ? pitFilm().left : 0) + 4e-3 * zb;
-  g.add(topArrow(new V3(1, 0, 0), new V3(x0, yA, zArr), (x1 - x0) * 0.25, radius * 0.06, radius * 0.035));
-  addLabel(new V3(x0 + (x1 - x0) * 0.3, yA - radius * 0.04, 0), idxHTML(e[0], "[", "]") + " along flat", "acc");
-  g.add(topArrow(new V3(0, -1, 0), new V3(x0 + (x1 - x0) * 0.5, yA, zArr), radius * 0.35, radius * 0.06, radius * 0.035));
-  addLabel(new V3(x0 + (x1 - x0) * 0.5 + radius * 0.04, yA - radius * 0.42, 0), idxHTML(negIdx(e[1]), "[", "]") + " \u22A5 flat, outward", "acc");
+  if (SET.arrAlong !== false) {
+    g.add(topArrow(new V3(1, 0, 0), new V3(x0, yA, zArr), (x1 - x0) * 0.25, radius * 0.06, radius * 0.035));
+    addLabel(new V3(x0 + (x1 - x0) * 0.3, yA - radius * 0.04, 0), idxHTML(e[0], "[", "]") + " along flat", "acc");
+  }
+  if (SET.arrPerp !== false) {
+    g.add(topArrow(new V3(0, -1, 0), new V3(x0 + (x1 - x0) * 0.5, yA, zArr), radius * 0.35, radius * 0.06, radius * 0.035));
+    addLabel(new V3(x0 + (x1 - x0) * 0.5 + radius * 0.04, yA - radius * 0.42, 0), idxHTML(negIdx(e[1]), "[", "]") + " \u22A5 flat, outward", "acc");
+  }
   scene.userData.center = new V3(cx, cy, -zb / 2);
   scene.userData.die = scene.userData.center.clone();
   frameR = S.waferOn ? 0.53 * WAFER.D : 0;
@@ -3126,6 +3142,20 @@ document.addEventListener("change", (e) => {
   }
 });
 syncMaskUI();
+for (const el of document.querySelectorAll(".arrUI")) el.innerHTML = `<div class="row arrRow"><span class="lbl">Flat arrows</span>` + (el.getAttribute("data-only") === "perp" ? "" : `<label title="Arrow and label along the primary flat"><input type="checkbox" data-arr="arrAlong"> along the flat</label>`) + `<label title="Arrow and label perpendicular to the primary flat, pointing outward"><input type="checkbox" data-arr="arrPerp"> \u22A5 flat, outward</label></div>`;
+function syncArrUI() {
+  for (const c of document.querySelectorAll("[data-arr]")) c.checked = SET[c.getAttribute("data-arr")] !== false;
+}
+document.addEventListener("change", (e) => {
+  const t = e.target, k = t && t.getAttribute && t.getAttribute("data-arr");
+  if (!k) return;
+  SET[k] = t.checked;
+  saveSet();
+  syncArrUI();
+  rebuild(false);
+  if (S.mode === "find") drawFindMap();
+});
+syncArrUI();
 function syncWaferUI() {
   const wf = simLike() ? SFR[SIM.fk].wf : S.wf;
   for (const el of document.querySelectorAll(".waferUI")) {
@@ -4241,10 +4271,14 @@ function buildSim(resetView) {
     g.add(maskRim(SIM.shapes.flatMap(shapePolys), (x, y) => EE.isOpen(es, x, y), zMask, clip, [X0, X1, Y0, Y1]));
   } else if (loops.length) g.add(linesFromLoops(loops, COL.mask, { clip, opacity: 0.8 }));
   const F = simFrame();
-  g.add(topArrow(new V3(1, 0, 0), new V3(X0, Y0, zMask + 4e-3 * zb), (X1 - X0) * 0.25, radius * 0.06, radius * 0.035));
-  addLabel(new V3(X0 + (X1 - X0) * 0.13, Y0 - radius * 0.06, 0), idxHTML(F.idx[0], "[", "]") + " along flat", "acc");
-  g.add(topArrow(new V3(0, -1, 0), new V3((X0 + X1) / 2, Y0, zMask + 4e-3 * zb), radius * 0.35, radius * 0.06, radius * 0.035));
-  addLabel(new V3((X0 + X1) / 2 + radius * 0.04, Y0 - radius * 0.42, 0), (F.arrow ? "\u27E8111\u27E9 " : "") + idxHTML(negIdx(F.idx[1]), "[", "]") + " \u22A5 flat, outward", "acc");
+  if (SET.arrAlong !== false) {
+    g.add(topArrow(new V3(1, 0, 0), new V3(X0, Y0, zMask + 4e-3 * zb), (X1 - X0) * 0.25, radius * 0.06, radius * 0.035));
+    addLabel(new V3(X0 + (X1 - X0) * 0.13, Y0 - radius * 0.06, 0), idxHTML(F.idx[0], "[", "]") + " along flat", "acc");
+  }
+  if (SET.arrPerp !== false) {
+    g.add(topArrow(new V3(0, -1, 0), new V3((X0 + X1) / 2, Y0, zMask + 4e-3 * zb), radius * 0.35, radius * 0.06, radius * 0.035));
+    addLabel(new V3((X0 + X1) / 2 + radius * 0.04, Y0 - radius * 0.42, 0), (F.arrow ? "\u27E8111\u27E9 " : "") + idxHTML(negIdx(F.idx[1]), "[", "]") + " \u22A5 flat, outward", "acc");
+  }
   addLabel(new V3(X1, Y1, 0), idxHTML(F.idx[2], "(", ")") + " surface", "", (camDir) => camDir.z > 0.1);
   scene.userData.center = new V3((X0 + X1) / 2, (Y0 + Y1) / 2, -zb / 2);
   scene.userData.die = scene.userData.center.clone();
@@ -5400,7 +5434,7 @@ function drawFindMap() {
     }
   }
   ctx.stroke();
-  {
+  if (SET.arrPerp !== false) {
     const yF = -Math.sqrt(R * R - WAFER.Lp * WAFER.Lp / 4), A = toC([0, yF]), B = toC([0, yF - 0.2 * R]), h = 7;
     ctx.strokeStyle = ctx.fillStyle = col("accent");
     ctx.lineWidth = 2;
@@ -5495,7 +5529,7 @@ function drawFindMap() {
   }
   ctx.font = "11px IBM Plex Sans, sans-serif";
   ctx.fillStyle = col("s-ink");
-  ctx.fillText(`(${wf}) ${S.wtype}-type, \xD8 100 mm. Arrow: \u22A5 flat, outward.`, 12, 10 + 2 * R * s + PB + 16);
+  ctx.fillText(`(${wf}) ${S.wtype}-type, \xD8 100 mm.${SET.arrPerp !== false ? " Arrow: \u22A5 flat, outward." : ""}`, 12, 10 + 2 * R * s + PB + 16);
   ctx.fillText(`Dashed: flat direction${FD.reveal ? "; orange: true \u27E8110\u27E9" : ""}.`, 12, 10 + 2 * R * s + PB + 30);
   ctx.fillText("Violet: mask; blue: etched outline.", 12, 10 + 2 * R * s + PB + 44);
   if (S.compass) drawCompass(ctx, 10 + 2 * R * s - 40, 50, 28, inPlaneDirs(fdFrameE()), FD.reveal ? FD.delta : 0);
@@ -7808,7 +7842,7 @@ function pickSurface(ev) {
   const giz = document.createElement("div");
   giz.className = "gizmo";
   giz.id = "gizmo";
-  giz.innerHTML = `<canvas width="168" height="168" title="Crystal axes x = [100], y = [010], z = [001]; F: primary flat; n: surface normal. Click an axis to look along it."></canvas><div class="gzLeg"></div>`;
+  giz.innerHTML = `<canvas width="288" height="288" title="Crystal axes x = [100], y = [010], z = [001]; F: primary flat; n: surface normal. Click an axis to look along it."></canvas><div class="gzLeg"></div>`;
   const sb = document.createElement("div");
   sb.className = "scaleBar";
   sb.id = "scaleBar";
@@ -7874,57 +7908,118 @@ function gizmoFrame() {
 }
 function gizmoAxes() {
   const q = camera.quaternion.clone().invert(), { E, idx, rz } = gizmoFrame(), out = [];
-  const add = (n, v, col, len, kind) => {
+  const W = document.querySelector("#gizmo canvas")?.clientWidth || 120, La = 0.27 * W, Lf = 0.31 * W;
+  const add = (n, v, col, len, kind, lab) => {
     const c = v.clone().applyQuaternion(q);
-    out.push({ n, v, sx: c.x, sy: -c.y, depth: c.z, len, col, kind });
+    out.push({ n, v, sx: c.x, sy: -c.y, depth: c.z, len, col, kind, lab });
   };
-  ["x", "y", "z"].forEach((n, i) => add(n, rz(new V3(E[0][i], E[1][i], E[2][i])), GZ_COL[n], 30, "axis"));
-  add("F", new V3(1, 0, 0), "#" + COL.accent.getHexString(), 36, "flat");
+  ["x", "y", "z"].forEach((n, i) => add(n, rz(new V3(E[0][i], E[1][i], E[2][i])), GZ_COL[n], La, "axis", ["[100]", "[010]", "[001]"][i]));
+  add("F", new V3(1, 0, 0), "#" + COL.accent.getHexString(), Lf, "flat", "F");
   const nrm = new V3(0, 0, 1);
-  if (!out.slice(0, 3).some((a) => Math.abs(a.v.dot(nrm)) > 0.999)) add("n", nrm, "#" + COL["s-ink"].getHexString(), 36, "normal");
+  if (!out.slice(0, 3).some((a) => Math.abs(a.v.dot(nrm)) > 0.999)) add("n", nrm, "#" + COL["s-ink"].getHexString(), Lf, "normal", "n");
   return out;
 }
 function drawGizmo() {
   const gc = document.querySelector("#gizmo canvas");
   if (!gc) return;
-  const ctx = gc.getContext("2d"), W = gc.clientWidth || 84, dpr = gc.width / W;
+  const ctx = gc.getContext("2d"), W = gc.clientWidth || 120, dpr = gc.width / W;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, W, W);
-  const c = W / 2, ax = gizmoAxes(), ends = [];
+  const c = W / 2, ax = gizmoAxes(), ends = [], ink = "#" + COL["s-ink"].getHexString(), bg = "#" + COL["scene-bg"].getHexString();
   for (const a of ax) for (const sg of a.kind === "axis" ? [1, -1] : [1]) ends.push({ a, sg, d: sg * a.depth });
   ends.sort((p, q) => p.d - q.d);
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
+  const labs = [];
+  ctx.fillStyle = ink;
+  ctx.globalAlpha = 0.6;
+  ctx.beginPath();
+  ctx.arc(c, c, 2.2, 0, 2 * Math.PI);
+  ctx.fill();
   for (const e of ends) {
-    const x = c + e.sg * e.a.sx * e.a.len, y = c + e.sg * e.a.sy * e.a.len, ax_ = e.a.kind === "axis";
-    ctx.globalAlpha = e.sg > 0 ? 1 : 0.55;
+    const x = c + e.sg * e.a.sx * e.a.len, y = c + e.sg * e.a.sy * e.a.len, isAx = e.a.kind === "axis", pos = e.sg > 0;
+    const front = e.d >= 0;
+    ctx.globalAlpha = pos ? front ? 1 : 0.8 : 0.45;
     ctx.strokeStyle = e.a.col;
-    ctx.lineWidth = ax_ ? e.sg > 0 ? 2.2 : 1.2 : 1.4;
-    ctx.setLineDash(ax_ ? [] : [3, 2]);
+    ctx.lineWidth = isAx ? pos ? 3.2 : 1.6 : 1.8;
+    ctx.lineCap = "round";
+    ctx.setLineDash(isAx ? [] : [4, 3]);
     ctx.beginPath();
     ctx.moveTo(c, c);
     ctx.lineTo(x, y);
     ctx.stroke();
     ctx.setLineDash([]);
-    if (ax_) {
+    if (isAx) {
       ctx.beginPath();
-      ctx.arc(x, y, e.sg > 0 ? 8 : 5, 0, 2 * Math.PI);
-      if (e.sg > 0) {
+      ctx.arc(x, y, pos ? 10.5 : 6, 0, 2 * Math.PI);
+      if (pos) {
         ctx.fillStyle = e.a.col;
         ctx.fill();
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = bg;
+        ctx.stroke();
         ctx.fillStyle = "#fff";
-        ctx.font = "600 10px IBM Plex Sans, sans-serif";
+        ctx.font = "700 12px IBM Plex Sans, sans-serif";
         ctx.fillText(e.a.n, x, y + 0.5);
       } else {
-        ctx.fillStyle = "#" + COL["scene-bg"].getHexString();
+        ctx.fillStyle = bg;
         ctx.fill();
+        ctx.lineWidth = 1.4;
+        ctx.strokeStyle = e.a.col;
         ctx.stroke();
       }
     } else {
+      const ux = e.a.sx, uy = e.a.sy, ul = Math.hypot(ux, uy) || 1, hx = ux / ul, hy = uy / ul;
       ctx.fillStyle = e.a.col;
-      ctx.font = "italic 700 10px IBM Plex Sans, sans-serif";
-      ctx.fillText(e.a.n, x + Math.sign(e.a.sx || 1) * 5, y + Math.sign(e.a.sy || 1) * 5);
+      ctx.beginPath();
+      ctx.moveTo(x + hx * 6, y + hy * 6);
+      ctx.lineTo(x - hy * 4, y + hx * 4);
+      ctx.lineTo(x + hy * 4, y - hx * 4);
+      ctx.closePath();
+      ctx.fill();
     }
+    if (pos) labs.push({ e, x, y, isAx, front });
+  }
+  const balls = ends.filter((e) => e.a.kind === "axis").map((e) => ({ x: c + e.sg * e.a.sx * e.a.len, y: c + e.sg * e.a.sy * e.a.len, r: (e.sg > 0 ? 10.5 : 6) + 1.5 }));
+  const placed = [];
+  const hit = (b) => {
+    let o = 0;
+    for (const p of placed) o += Math.max(0, Math.min(b[2], p[2]) - Math.max(b[0], p[0]) + 2) * Math.max(0, Math.min(b[3], p[3]) - Math.max(b[1], p[1]) + 2);
+    for (const k of balls) {
+      const qx = Math.max(b[0], Math.min(k.x, b[2])), qy = Math.max(b[1], Math.min(k.y, b[3])), d = Math.hypot(qx - k.x, qy - k.y);
+      if (d < k.r) o += (k.r - d) * k.r;
+    }
+    return o;
+  };
+  labs.sort((p, q) => (q.isAx ? 1 : 0) - (p.isAx ? 1 : 0) || q.e.d - p.e.d);
+  for (const L of labs) {
+    const { e, x, y, isAx, front } = L, ux = e.a.sx, uy = e.a.sy, ul = Math.hypot(ux, uy);
+    ctx.font = isAx ? "600 11px IBM Plex Mono, monospace" : "italic 700 12px IBM Plex Sans, sans-serif";
+    const tw = ctx.measureText(e.a.lab).width, h0 = ul > 0.15 ? Math.atan2(uy / ul, ux / ul) : -Math.PI / 4;
+    let best = null, bo = Infinity;
+    search: for (const sc of [1, 1.7, 2.4]) for (const da of [0, 0.45, -0.45, 0.9, -0.9, 1.35, -1.35, 1.9, -1.9, Math.PI]) {
+      const hx = Math.cos(h0 + da), hy = Math.sin(h0 + da);
+      const off = (isAx ? 13 : 8) * sc + Math.abs(hx) * (tw / 2 + 2) + Math.abs(hy) * 7.5;
+      let lx = x + hx * off - c, ly = y + hy * off - c;
+      const rmax = W / 2 - Math.hypot(tw / 2 + 3, 7.5) - 1, rl = Math.hypot(lx, ly);
+      if (rl > rmax) {
+        lx *= rmax / rl;
+        ly *= rmax / rl;
+      }
+      const b = [c + lx - tw / 2 - 2, c + ly - 7, c + lx + tw / 2 + 2, c + ly + 7], o = hit(b);
+      if (o < bo - 0.5) {
+        bo = o;
+        best = b;
+      }
+      if (o === 0) break search;
+    }
+    placed.push(best);
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = bg;
+    ctx.fillRect(best[0], best[1], best[2] - best[0], 14);
+    ctx.globalAlpha = front || !isAx ? 1 : 0.75;
+    ctx.fillStyle = e.a.col;
+    ctx.fillText(e.a.lab, (best[0] + best[2]) / 2, best[1] + 7.5);
   }
   ctx.globalAlpha = 1;
   const leg = document.querySelector("#gizmo .gzLeg");

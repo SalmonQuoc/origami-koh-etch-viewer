@@ -33,7 +33,7 @@ function pickSurface(ev: PointerEvent) {
   const box = document.createElement("div"); box.className = "stageTools"; box.id = "stageTools";
   box.innerHTML = `<button type="button" data-s="in" title="Zoom in (or scroll)" aria-label="zoom in">+</button><button type="button" data-s="out" title="Zoom out (or scroll)" aria-label="zoom out">−</button><button type="button" data-s="fit" title="Fit the view" aria-label="fit the view">⤢</button><button type="button" data-s="measure" aria-pressed="false" title="Measure: click two points on a surface (Esc clears)" aria-label="measure">📏</button>`;
   const giz = document.createElement("div"); giz.className = "gizmo"; giz.id = "gizmo";
-  giz.innerHTML = `<canvas width="168" height="168" title="Crystal axes x = [100], y = [010], z = [001]; F: primary flat; n: surface normal. Click an axis to look along it."></canvas><div class="gzLeg"></div>`;
+  giz.innerHTML = `<canvas width="288" height="288" title="Crystal axes x = [100], y = [010], z = [001]; F: primary flat; n: surface normal. Click an axis to look along it."></canvas><div class="gzLeg"></div>`;
   const sb = document.createElement("div"); sb.className = "scaleBar"; sb.id = "scaleBar"; sb.title = "Scale for lengths parallel to the screen (orthographic view)";
   sb.innerHTML = `<span class="sbLab"></span><i></i>`;
   const ov = document.createElementNS("http://www.w3.org/2000/svg", "svg"); ov.setAttribute("class", "measOv"); ov.id = "measOv";
@@ -83,30 +83,73 @@ function gizmoFrame() {
 }
 function gizmoAxes() {
   const q = camera.quaternion.clone().invert(), { E, idx, rz } = gizmoFrame(), out: any[] = [];
-  const add = (n: string, v: any, col: string, len: number, kind: string) => { const c = v.clone().applyQuaternion(q); out.push({ n, v, sx: c.x, sy: -c.y, depth: c.z, len, col, kind }); };
-  (["x", "y", "z"] as const).forEach((n, i) => add(n, rz(new V3(E[0][i], E[1][i], E[2][i])), GZ_COL[n], 30, "axis"));
-  add("F", new V3(1, 0, 0), "#" + COL.accent.getHexString(), 36, "flat");
+  const W = (document.querySelector("#gizmo canvas") as HTMLElement)?.clientWidth || 120, La = 0.27*W, Lf = 0.31*W;
+  const add = (n: string, v: any, col: string, len: number, kind: string, lab: string) => { const c = v.clone().applyQuaternion(q); out.push({ n, v, sx: c.x, sy: -c.y, depth: c.z, len, col, kind, lab }); };
+  (["x", "y", "z"] as const).forEach((n, i) => add(n, rz(new V3(E[0][i], E[1][i], E[2][i])), GZ_COL[n], La, "axis", ["[100]", "[010]", "[001]"][i]));
+  add("F", new V3(1, 0, 0), "#" + COL.accent.getHexString(), Lf, "flat", "F");
   const nrm = new V3(0, 0, 1);
-  if (!out.slice(0, 3).some(a => Math.abs(a.v.dot(nrm)) > 0.999)) add("n", nrm, "#" + COL["s-ink"].getHexString(), 36, "normal");
+  if (!out.slice(0, 3).some(a => Math.abs(a.v.dot(nrm)) > 0.999)) add("n", nrm, "#" + COL["s-ink"].getHexString(), Lf, "normal", "n");
   return out;
 }
 function drawGizmo() {
   const gc = document.querySelector("#gizmo canvas") as HTMLCanvasElement; if (!gc) return;
-  const ctx = gc.getContext("2d"), W = gc.clientWidth || 84, dpr = gc.width/W;
+  const ctx = gc.getContext("2d"), W = gc.clientWidth || 120, dpr = gc.width/W;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, W);
-  const c = W/2, ax = gizmoAxes(), ends: any[] = [];
+  const c = W/2, ax = gizmoAxes(), ends: any[] = [], ink = "#" + COL["s-ink"].getHexString(), bg = "#" + COL["scene-bg"].getHexString();
   for (const a of ax) for (const sg of (a.kind === "axis" ? [1, -1] : [1])) ends.push({ a, sg, d: sg*a.depth });
-  ends.sort((p, q) => p.d - q.d);   // far ends first
+  ends.sort((p, q) => p.d - q.d);   // far ends first, so the near axes are drawn on top
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  // centre dot
+  const labs: any[] = [];
+  ctx.fillStyle = ink; ctx.globalAlpha = 0.6; ctx.beginPath(); ctx.arc(c, c, 2.2, 0, 2*Math.PI); ctx.fill();
   for (const e of ends) {
-    const x = c + e.sg*e.a.sx*e.a.len, y = c + e.sg*e.a.sy*e.a.len, ax_ = e.a.kind === "axis";
-    ctx.globalAlpha = e.sg > 0 ? 1 : 0.55; ctx.strokeStyle = e.a.col; ctx.lineWidth = ax_ ? (e.sg > 0 ? 2.2 : 1.2) : 1.4;
-    ctx.setLineDash(ax_ ? [] : [3, 2]); ctx.beginPath(); ctx.moveTo(c, c); ctx.lineTo(x, y); ctx.stroke(); ctx.setLineDash([]);
-    if (ax_) {
-      ctx.beginPath(); ctx.arc(x, y, e.sg > 0 ? 8 : 5, 0, 2*Math.PI);
-      if (e.sg > 0) { ctx.fillStyle = e.a.col; ctx.fill(); ctx.fillStyle = "#fff"; ctx.font = "600 10px IBM Plex Sans, sans-serif"; ctx.fillText(e.a.n, x, y + 0.5); }
-      else { ctx.fillStyle = "#" + COL["scene-bg"].getHexString(); ctx.fill(); ctx.stroke(); }
-    } else { ctx.fillStyle = e.a.col; ctx.font = "italic 700 10px IBM Plex Sans, sans-serif"; ctx.fillText(e.a.n, x + Math.sign(e.a.sx || 1)*5, y + Math.sign(e.a.sy || 1)*5); }
+    const x = c + e.sg*e.a.sx*e.a.len, y = c + e.sg*e.a.sy*e.a.len, isAx = e.a.kind === "axis", pos = e.sg > 0;
+    const front = e.d >= 0;   // pointing toward the viewer
+    ctx.globalAlpha = pos ? (front ? 1 : 0.8) : 0.45;
+    ctx.strokeStyle = e.a.col; ctx.lineWidth = isAx ? (pos ? 3.2 : 1.6) : 1.8; ctx.lineCap = "round";
+    ctx.setLineDash(isAx ? [] : [4, 3]); ctx.beginPath(); ctx.moveTo(c, c); ctx.lineTo(x, y); ctx.stroke(); ctx.setLineDash([]);
+    if (isAx) {
+      ctx.beginPath(); ctx.arc(x, y, pos ? 10.5 : 6, 0, 2*Math.PI);
+      if (pos) {
+        ctx.fillStyle = e.a.col; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = bg; ctx.stroke();
+        ctx.fillStyle = "#fff"; ctx.font = "700 12px IBM Plex Sans, sans-serif"; ctx.fillText(e.a.n, x, y + 0.5);
+      } else { ctx.fillStyle = bg; ctx.fill(); ctx.lineWidth = 1.4; ctx.strokeStyle = e.a.col; ctx.stroke(); }
+    } else {
+      // arrow head for the flat and the normal
+      const ux = e.a.sx, uy = e.a.sy, ul = Math.hypot(ux, uy) || 1, hx = ux/ul, hy = uy/ul;
+      ctx.fillStyle = e.a.col; ctx.beginPath(); ctx.moveTo(x + hx*6, y + hy*6); ctx.lineTo(x - hy*4, y + hx*4); ctx.lineTo(x + hy*4, y - hx*4); ctx.closePath(); ctx.fill();
+    }
+    if (pos) labs.push({ e, x, y, isAx, front });
+  }
+  // labels last, so no axis covers them: the Miller index (or the name) just beyond the tip. Each label tries
+  // the outward spot first, then spots turned to either side, and keeps the first one that covers no ball and
+  // no label already placed (or the one with the least overlap); near axes are placed first.
+  const balls = ends.filter(e => e.a.kind === "axis").map(e => ({ x: c + e.sg*e.a.sx*e.a.len, y: c + e.sg*e.a.sy*e.a.len, r: (e.sg > 0 ? 10.5 : 6) + 1.5 }));
+  const placed: number[][] = [];
+  const hit = (b: number[]) => {
+    let o = 0;
+    for (const p of placed) o += Math.max(0, Math.min(b[2], p[2]) - Math.max(b[0], p[0]) + 2)*Math.max(0, Math.min(b[3], p[3]) - Math.max(b[1], p[1]) + 2);
+    for (const k of balls) { const qx = Math.max(b[0], Math.min(k.x, b[2])), qy = Math.max(b[1], Math.min(k.y, b[3])), d = Math.hypot(qx - k.x, qy - k.y); if (d < k.r) o += (k.r - d)*k.r; }
+    return o;
+  };
+  labs.sort((p, q) => (q.isAx ? 1 : 0) - (p.isAx ? 1 : 0) || q.e.d - p.e.d);
+  for (const L of labs) {
+    const { e, x, y, isAx, front } = L, ux = e.a.sx, uy = e.a.sy, ul = Math.hypot(ux, uy);
+    ctx.font = isAx ? "600 11px IBM Plex Mono, monospace" : "italic 700 12px IBM Plex Sans, sans-serif";
+    const tw = ctx.measureText(e.a.lab).width, h0 = ul > 0.15 ? Math.atan2(uy/ul, ux/ul) : -Math.PI/4;
+    let best: number[] | null = null, bo = Infinity;
+    search: for (const sc of [1, 1.7, 2.4]) for (const da of [0, 0.45, -0.45, 0.9, -0.9, 1.35, -1.35, 1.9, -1.9, Math.PI]) {
+      const hx = Math.cos(h0 + da), hy = Math.sin(h0 + da);
+      const off = (isAx ? 13 : 8)*sc + Math.abs(hx)*(tw/2 + 2) + Math.abs(hy)*7.5;
+      let lx = x + hx*off - c, ly = y + hy*off - c; const rmax = W/2 - Math.hypot(tw/2 + 3, 7.5) - 1, rl = Math.hypot(lx, ly);
+      if (rl > rmax) { lx *= rmax/rl; ly *= rmax/rl; }
+      const b = [c + lx - tw/2 - 2, c + ly - 7, c + lx + tw/2 + 2, c + ly + 7], o = hit(b);
+      if (o < bo - 0.5) { bo = o; best = b; }
+      if (o === 0) break search;
+    }
+    placed.push(best);
+    ctx.globalAlpha = 0.9; ctx.fillStyle = bg; ctx.fillRect(best[0], best[1], best[2] - best[0], 14);
+    ctx.globalAlpha = front || !isAx ? 1 : 0.75; ctx.fillStyle = e.a.col; ctx.fillText(e.a.lab, (best[0] + best[2])/2, best[1] + 7.5);
   }
   ctx.globalAlpha = 1;
   const leg = document.querySelector("#gizmo .gzLeg");

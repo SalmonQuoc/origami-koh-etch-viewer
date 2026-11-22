@@ -317,8 +317,9 @@ canvas.measuring { cursor: crosshair !important; }
 .hint { left: 56px; top: 14px; bottom: auto; }
 .stage.measuring canvas { cursor: crosshair; }
 .gizmo { position: absolute; left: 8px; bottom: 8px; z-index: 3; display: flex; align-items: flex-end; gap: 4px; pointer-events: none; }
-.gizmo canvas { width: 84px; height: 84px; border-radius: 50%; background: color-mix(in srgb, var(--panel) 55%, transparent); cursor: pointer; pointer-events: auto; }
-.gzLeg { font: 11px/1.45 "IBM Plex Mono", monospace; color: var(--ink); background: color-mix(in srgb, var(--scene-bg) 94%, transparent); border-radius: 6px; padding: 3px 6px; margin-bottom: 4px; }
+.gizmo canvas { width: 144px; height: 144px; border-radius: 50%; background: color-mix(in srgb, var(--panel) 78%, transparent); border: 1px solid color-mix(in srgb, var(--line) 70%, transparent); box-shadow: var(--shadow); cursor: pointer; pointer-events: auto; }
+@media (max-width: 640px) { .gizmo canvas { width: 112px; height: 112px; } }
+.gzLeg { font: 11.5px/1.5 "IBM Plex Mono", monospace; color: var(--ink); background: color-mix(in srgb, var(--scene-bg) 94%, transparent); border-radius: 6px; padding: 3px 6px; margin-bottom: 4px; }
 .gzLeg b { font-family: "IBM Plex Sans", sans-serif; display: inline-block; width: 1em; }
 .gzLeg span { color: var(--muted); font-family: "IBM Plex Sans", sans-serif; }
 .gzLeg .gzNote { color: var(--muted); font-family: "IBM Plex Sans", sans-serif; }
@@ -408,6 +409,7 @@ canvas.measuring { cursor: crosshair !important; }
     <div class="row"><label><input type="checkbox" id="cCorners" checked> corner directions</label></div>
     <div class="row"><label><input type="checkbox" id="cFaces"> face indices</label></div>
     <div class="row"><label><input type="checkbox" id="cUpper" checked> upper half (above the wafer)</label></div>
+    <div class="arrUI"></div>
     <h3>Selected face</h3>
     <div id="faceInfo" class="note">Click any face. The page then draws where its plane cuts the wafer surface, the two normals and the angle between the planes. Use "Along the selected line" to see the angle at true size.</div>
   </aside>
@@ -446,6 +448,7 @@ canvas.measuring { cursor: crosshair !important; }
     <div class="row"><label><input type="checkbox" id="cBlock" checked> silicon block (off: cast of the pit)</label></div>
     <div class="row"><label><input type="checkbox" id="cGhost" checked> final {111} shape (wire)</label></div>
     <div class="row"><label><input type="checkbox" id="cMask" checked> mask layer</label></div>
+    <div class="arrUI"></div>
     <div class="legend"><span><i class="sw" style="background:var(--mask)"></i>mask film (drawn at its true thickness)</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span></div>
     <div class="maskUI"></div>
     <div class="waferUI"></div>
@@ -517,6 +520,7 @@ canvas.measuring { cursor: crosshair !important; }
     <div class="row"><button class="btn" id="bSimPlay">Play</button>
       <label><input type="checkbox" id="cSimMask" checked> mask layer</label>
       <label><input type="checkbox" id="cSimCut"> cut away at the section</label></div>
+    <div class="arrUI"></div>
     <div class="legend"><span><i class="sw" style="background:var(--mask)"></i>mask film (true thickness)</span><span><i class="sw" style="background:var(--mask);filter:brightness(.55)"></i>mask with no silicon under it</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span></div>
     <div class="maskUI"></div>
     <h3>Section line</h3>
@@ -564,6 +568,7 @@ canvas.measuring { cursor: crosshair !important; }
     <div class="enl" data-title="Mask on the wafer">
     <p class="note" style="margin:0 0 4px"><b>Drag</b> an item to move it (<b>Alt</b>-drag moves a copy), <b>double-click</b> an empty spot to add the chosen item there. With the map focused, the arrow keys move the selected item by 1 mm (Shift: 5 mm), <span class="kbd">Ctrl</span>+<span class="kbd">D</span> duplicates it and <span class="kbd">Delete</span> removes it. Test structures: slot fan and circle arc; everything else is a device shape (µm).</p>
     <canvas id="fdCanvas" class="maskcv" tabindex="0" aria-label="Mask map of the whole wafer"></canvas>
+    <div class="arrUI" data-only="perp"></div>
     <div class="addrow"><select id="fdType" aria-label="item to add"></select><button class="btn primary" id="fdAdd">Add</button><button class="btn" id="fdDup">Duplicate</button><button class="btn" id="fdDel">Delete</button><button class="btn" id="fdReset">Lecture layout</button></div>
     <div id="fdList" class="cards"></div>
     </div>
@@ -612,6 +617,7 @@ canvas.measuring { cursor: crosshair !important; }
     <tr><td>scroll, pinch</td><td>zoom (also <b>+</b> <b>−</b> <b>⤢</b> at the top left of the view)</td></tr>
     <tr><td>hover, click</td><td>name a plane, select a face</td></tr>
     <tr><td>axis gizmo</td><td>bottom left: the crystal axes x = [100], y = [010], z = [001] (Miller indices, Lec 4-1 p. 6; Pal &amp; Sato Fig. 2.8, p. 31) as they sit in the wafer, the primary flat F and the surface normal n; click one to look along it. Positions in the mask editors are measured along the flat, the reference for aligning masks (Pal &amp; Sato p. 29)</td></tr>
+    <tr><td>flat arrows</td><td>the arrow along the primary flat and the outward arrow perpendicular to it can be hidden with the "Flat arrows" check boxes (Show section of each scene, or ⚙ Settings)</td></tr>
     <tr><td>📏</td><td>(not on the paper model, which has no length unit) measure: click two points on a surface for the distance and Δx, Δy, Δz; <span class="kbd">Esc</span> clears. The scale bar (bottom right) holds for lengths parallel to the screen</td></tr>
     <tr><td><span class="kbd">S</span></td><td>split view on or off</td></tr>
     <tr><td><span class="kbd">T</span></td><td>theater view on or off</td></tr>
@@ -663,6 +669,7 @@ canvas.measuring { cursor: crosshair !important; }
     <label>theme <select id="stTheme"><option value="auto">follow the system</option><option value="light">light</option><option value="dark">dark</option></select></label>
     <label>labels in the 3D view <select id="stLabels"><option value="small">small</option><option value="normal">normal</option><option value="large">large</option><option value="off">hidden</option></select></label>
     <label>camera moves <select id="stAnim"><option value="1">animated</option><option value="0">instant</option></select></label>
+    <div class="arrUI"></div>
     <label>3D render quality <select id="stPixel"><option value="auto">sharp (screen resolution)</option><option value="fast">fast (lower resolution)</option></select></label>
   </div>
   <h3>Explanations</h3>

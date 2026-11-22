@@ -140,6 +140,19 @@ test("page: scenes, simulator kernel, drawing, settings, custom etchant, presets
     await p.click('#segM button[data-m="sim"]');
   });
 
+  await t.test("flat arrows can be hidden (setting kept)", async () => {
+    await p.click('#segM button[data-m="sim"]'); await p.waitForTimeout(600);
+    const txt = () => ev(() => document.getElementById("labels").textContent);
+    assert.match(await txt(), /along flat/); assert.match(await txt(), /⊥ flat, outward/);
+    const set = (k, on) => p.evaluate(([k, on]) => { const c = document.querySelector(`#dlgSet [data-arr="${k}"]`); c.checked = on; c.dispatchEvent(new Event("change", { bubbles: true })); }, [k, on]);
+    await set("arrAlong", false); await set("arrPerp", false); await p.waitForTimeout(300);
+    assert.doesNotMatch(await txt(), /along flat|⊥ flat/);
+    assert.equal(await ev(() => document.querySelector('#panelSim [data-arr="arrPerp"]').checked), false);
+    assert.deepEqual(await ev(() => { const s = JSON.parse(localStorage.getItem("o3d-settings")); return [s.arrAlong, s.arrPerp]; }), [false, false]);
+    await set("arrAlong", true); await set("arrPerp", true); await p.waitForTimeout(300);
+    assert.match(await txt(), /along flat/);
+  });
+
   await t.test("custom etchant at 80 °C is faster than the 70 °C table (Arrhenius)", async () => {
     await p.click('[data-etch-open="sim"]'); await p.selectOption("#ceBase", "PAL40");
     await p.fill("#ceT", "80"); await p.dispatchEvent("#ceT", "input"); await p.click("#ceSave");

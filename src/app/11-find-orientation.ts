@@ -231,7 +231,7 @@ function drawFindMap() {
   for (let i = 0; i < O.length; i++) { const a = O[i], b = O[(i + 1) % O.length]; if (Math.hypot(b[0] - a[0], b[1] - a[1]) > 5000) { const A = toC(a), B = toC(b); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); } }
   ctx.stroke();
   // arrow from the middle of the primary flat, perpendicular to it and pointing outward (away from the centre)
-  { const yF = -Math.sqrt(R*R - WAFER.Lp*WAFER.Lp/4), A = toC([0, yF]), B = toC([0, yF - 0.2*R]), h = 7;
+  if (SET.arrPerp !== false) { const yF = -Math.sqrt(R*R - WAFER.Lp*WAFER.Lp/4), A = toC([0, yF]), B = toC([0, yF - 0.2*R]), h = 7;
     ctx.strokeStyle = ctx.fillStyle = col("accent"); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1] - h); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(B[0], B[1]); ctx.lineTo(B[0] - h*0.6, B[1] - h*1.3); ctx.lineTo(B[0] + h*0.6, B[1] - h*1.3); ctx.closePath(); ctx.fill();
     ctx.font = "500 11px IBM Plex Sans, sans-serif"; ctx.fillText(`${plainIdx(negIdx(C.FRAME_IDX[wf][1]))} ⊥ flat, outward`, B[0] + 6, B[1] - 4); }
@@ -254,7 +254,7 @@ function drawFindMap() {
   ctx.restore();
   if (V.z > 1) { ctx.strokeStyle = col("s-ink"); ctx.lineWidth = 1; ctx.strokeRect(10, 10, 2*R*s, 2*R*s + PB); }
   ctx.font = "11px IBM Plex Sans, sans-serif"; ctx.fillStyle = col("s-ink");
-  ctx.fillText(`(${wf}) ${S.wtype}-type, Ø 100 mm. Arrow: ⊥ flat, outward.`, 12, 10 + 2*R*s + PB + 16);
+  ctx.fillText(`(${wf}) ${S.wtype}-type, Ø 100 mm.${SET.arrPerp !== false ? " Arrow: ⊥ flat, outward." : ""}`, 12, 10 + 2*R*s + PB + 16);
   ctx.fillText(`Dashed: flat direction${FD.reveal ? "; orange: true ⟨110⟩" : ""}.`, 12, 10 + 2*R*s + PB + 30);
   ctx.fillText("Violet: mask; blue: etched outline.", 12, 10 + 2*R*s + PB + 44);
   if (S.compass) drawCompass(ctx, 10 + 2*R*s - 40, 50, 28, inPlaneDirs(fdFrameE()), FD.reveal ? FD.delta : 0);
