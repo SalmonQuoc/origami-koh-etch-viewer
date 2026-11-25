@@ -400,6 +400,11 @@ body.md-open { overflow: hidden; }
 .svList label { display: flex; gap: 6px; align-items: flex-start; font-size: 13.5px; }
 .svList label.off { opacity: .5; }
 .svList .note { font-size: 12px; }
+.pjList { display: flex; flex-direction: column; gap: 3px; max-height: 220px; overflow: auto; margin: 6px 0; }
+.pjRow { display: flex; gap: 8px; align-items: flex-start; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; font-size: 13.5px; }
+.pjRow.sel { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.pjRow .note { font-size: 12px; }
+.pjCur { font-size: 11px; padding: 0 5px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); }
 </style>
 </head>
 <body>
@@ -419,7 +424,7 @@ body.md-open { overflow: hidden; }
     <button data-w="100" aria-pressed="true" title="(100) wafer: the usual MEMS wafer; pits have {111} walls at 54.74°">(100)</button><button data-w="110" aria-pressed="false" title="(110) wafer: vertical {111} walls along ⟨112⟩">(110)</button><button data-w="111" aria-pressed="false" title="(111) wafer: the surface itself is a slow {111} plane">(111)</button></span></div>
   <div><span class="lbl">Scene</span><span class="seg" id="segM">
     <button data-m="model" aria-pressed="true" title="How to hold the HW2 paper octahedron over the wafer; click a face for its plane">Model on wafer</button><button data-m="pit" aria-pressed="false" title="Fast analytic pit: openings in a mask, {111}-bounded walls, any time">Etched pit</button><button data-m="sim" aria-pressed="false" title="Full 3D etch of any mask with 12 measured plane rates: undercut, corners, release">Etch simulator</button><button data-m="corner" aria-pressed="false" title="Convex-corner attack and compensation patterns, side by side">Corner lab</button><button data-m="find" aria-pressed="false" title="Read the flat error δ from etched alignment marks on the whole wafer">Find orientation</button></span></div>
-  <div class="tools"><button class="btn" id="bHelp" title="Quick start, mouse and keys (key ?)">? Help</button><button class="btn" id="bSave" title="Save the project, open a saved one, or export masks (SVG, DXF), pictures (PNG) and the etched surface (STL) (Ctrl+S)">💾 Save</button><button class="btn" id="bSettings" title="Layout, theme, editor and simulator settings">⚙ Settings</button><button class="btn" id="bExplain" aria-pressed="false" title="Show the explanations and source notes under the controls (key I)">ⓘ Explanations</button><span class="tsep" aria-hidden="true"></span><button class="btn" id="bSplit" aria-pressed="false" title="3D view and controls side by side, each scrolling on its own; drag the divider to resize (key S)">Split view</button><button class="btn hidden" id="bSwap" title="Put the controls on the other side">Swap sides</button><button class="btn" id="bTheater" aria-pressed="false" title="Wide stage with the panel below (key T)">Theater view</button><button class="btn" id="bFull" title="Full screen 3D view (Esc to leave)">Full screen</button></div>
+  <div class="tools"><button class="btn" id="bHelp" title="Quick start, mouse and keys (key ?)">? Help</button><button class="btn" id="bProject" title="Projects">📁 Projects</button><button class="btn" id="bSave" title="Save the open project in this browser now (Ctrl+S); the first save creates a project">💾 Save</button><button class="btn" id="bSettings" title="Layout, theme, editor and simulator settings">⚙ Settings</button><button class="btn" id="bExplain" aria-pressed="false" title="Show the explanations and source notes under the controls (key I)">ⓘ Explanations</button><span class="tsep" aria-hidden="true"></span><button class="btn" id="bSplit" aria-pressed="false" title="3D view and controls side by side, each scrolling on its own; drag the divider to resize (key S)">Split view</button><button class="btn hidden" id="bSwap" title="Put the controls on the other side">Swap sides</button><button class="btn" id="bTheater" aria-pressed="false" title="Wide stage with the panel below (key T)">Theater view</button><button class="btn" id="bFull" title="Full screen 3D view (Esc to leave)">Full screen</button></div>
 </div>
 <div class="guide hidden" id="guide" role="note"><span class="gico" aria-hidden="true">i</span><div id="guideTxt"></div><button class="x" id="guideX" title="Hide this tip (Settings can show the tips again)" aria-label="hide this tip">×</button></div>
 
@@ -973,7 +978,13 @@ body.md-open { overflow: hidden; }
   <div class="mdBar"><span id="mdPos">x — y — µm</span><span id="mdHint"></span><label title="Type a point (x,y), a relative point (@dx,dy), a length and angle (@L&lt;A), a length along the pointer, or a command: move dx,dy · copy dx,dy · rotate a · scale f · array nx,ny,px,py · grid step · fit · undo">command <input id="mdCmd" type="text" autocomplete="off" spellcheck="false" placeholder="x,y  @dx,dy  @L<A"></label><span id="mdMsg"></span></div>
 </div>
 <dialog id="dlgSave" class="dlg panel" aria-labelledby="svTitle">
-  <div class="dlghead"><h2 id="svTitle">Save, open and export</h2><button class="x" data-close aria-label="close">×</button></div>
+  <div class="dlghead"><h2 id="svTitle">Projects, files and export</h2><button class="x" data-close aria-label="close">×</button></div>
+  <h3>My projects</h3>
+  <p class="note">Each project keeps the masks, the corner lab, the orientation finder, custom etchants and the view, in this browser only. <span id="pjCurTxt"></span></p>
+  <div class="row"><input type="text" id="pjName" maxlength="80" placeholder="project name" aria-label="project name" style="flex:1;min-width:120px"><button class="btn" id="pjNew" title="Start a new project from the examples (with the typed name it is saved at once)">＋ New</button><button class="btn primary" id="pjSave" title="Save what is on the page into the open project (or a new one with the typed name)">💾 Save</button></div>
+  <div class="pjList" id="pjList" role="radiogroup" aria-label="saved projects"></div>
+  <div class="row"><button class="btn" id="pjOpen" title="Load the selected project onto the page">Open</button><button class="btn" id="pjDup" title="Copy the selected project">⧉ Duplicate</button><button class="btn" id="pjRen" title="Rename the selected project to the typed name">Rename</button><button class="btn" id="pjDel" title="Delete the selected project from this browser">🗑 Delete</button></div>
+  <p class="note hidden" id="pjMsg" role="status"></p>
   <h3>Project file</h3>
   <p class="note">One .json file that this page can open again, here or in another browser. Tick what it should hold.</p>
   <div class="svList" id="svParts"></div>

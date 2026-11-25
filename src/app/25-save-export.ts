@@ -150,8 +150,8 @@ function svFill() {
   $("svOpenBox").classList.add("hidden"); svMsg("");
 }
 let svPending = null;
-$("bSave").addEventListener("click", () => { svFill(); $("dlgSave").showModal(); });
-document.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s" && !(MD && MD.on) && !document.querySelector("dialog[open]")) { e.preventDefault(); svFill(); $("dlgSave").showModal(); } });
+$("bSave").addEventListener("click", () => pjQuick());
+document.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s" && !(MD && MD.on) && !document.querySelector("dialog[open]")) { e.preventDefault(); pjQuick(); } });
 $("dlgSave").addEventListener("click", ev => { if (ev.target.closest("[data-close]") || ev.target === $("dlgSave")) $("dlgSave").close(); });
 $("svSave").addEventListener("click", async () => {
   const parts = svTicked("svParts"); if (!parts.length) { svMsg("Tick at least one part to save."); return; }
@@ -192,3 +192,82 @@ $("svLoad").addEventListener("click", () => {
   let done = []; try { done = svApply(svPending, parts); } catch (err) { svMsg(`Loading stopped with an error: ${err && err.message ? err.message : err}`); return; }
   svPending = null; $("svOpenBox").classList.add("hidden"); svMsg(`Loaded: ${done.join(", ") || "nothing"}.`);
 });
+
+// ---- My projects: whole working states kept in this browser (create, save, open, duplicate, rename, delete)
+const PJ_PARTS = ["view", "sim", "pit", "corner", "find", "etchants"];   // settings and presets are global, not per project
+const PJ_DEF = { CL: Object.assign({}, CL), FD: { relW: FD.relW, delta: FD.delta, reveal: FD.reveal, rate: FD.rate, final: FD.final, t: FD.t, res: FD.res, correct: FD.correct }, S: { open: S.open, rate: S.rate, rot: S.rot } };
+var PJ = { list: [], cur: null, sel: null, del: null };
+try { const a = JSON.parse(localStorage.getItem("o3d-projects") || "[]"); if (Array.isArray(a)) PJ.list = a.filter(q => q && q.id && typeof q.name === "string" && q.proj && q.proj.parts); PJ.cur = localStorage.getItem("o3d-project-cur"); } catch (e) {}
+if (!PJ.list.some(q => q.id === PJ.cur)) PJ.cur = null;
+function pjStore() {
+  try { localStorage.setItem("o3d-projects", JSON.stringify(PJ.list)); if (PJ.cur) localStorage.setItem("o3d-project-cur", PJ.cur); else localStorage.removeItem("o3d-project-cur"); return true; }
+  catch (e) { return false; }
+}
+const pjGet = id => PJ.list.find(q => q.id === id);
+const pjNow = () => new Date().toISOString().slice(0, 16).replace("T", " ");
+function pjName(base) { let n = base, k = 2; while (PJ.list.some(q => q.name === n)) n = `${base} (${k++})`; return n; }
+function pjLabel() { const q = pjGet(PJ.cur); $("bProject").textContent = `📁 ${q ? q.name : "Projects"}`; $("bProject").title = q ? `Project “${q.name}”, saved ${q.saved}. Open the project list (new, open, duplicate, rename, delete), files and export.` : "Projects: create, open, duplicate, rename and delete projects kept in this browser; save and open project files; export"; }
+function pjSave(asNew?: boolean, name?: string) {   // the current state into the current project (or a new one)
+  let q = !asNew && pjGet(PJ.cur);
+  if (!q) { q = { id: psId(), name: pjName(name || `Project ${PJ.list.length + 1}`), saved: "", proj: null }; PJ.list.push(q); }
+  q.proj = svProject(PJ_PARTS); q.saved = pjNow(); PJ.cur = q.id; PJ.sel = q.id;
+  const ok = pjStore(); pjLabel();
+  return ok ? `Saved “${q.name}” (${q.saved}).` : "This browser does not allow storage, or it is full: download a project file instead.";
+}
+function pjOpen(id) {
+  const q = pjGet(id); if (!q) return "";
+  const done = svApply(q.proj, Object.keys(q.proj.parts)); PJ.cur = q.id; pjStore(); pjLabel();
+  return `Opened “${q.name}”: ${done.join(", ")}.`;
+}
+function pjNew(name) {   // a fresh start: examples in every scene, the current project closed
+  Object.assign(CL, mdClone(PJ_DEF.CL), { built: false }); Object.assign(FD, mdClone(PJ_DEF.FD), { items: [], sel: 0, mc: null, wfLoaded: null });
+  Object.assign(S, { open: PJ_DEF.S.open, rate: PJ_DEF.S.rate, rot: PJ_DEF.S.rot, pitShapes: [], pitSel: -1 });
+  Object.assign(SIM, { owner: "none", wfLoaded: null, preset: 0, sel: -1, probes: null, cl: null, rot: 0 });
+  $("pitRot").value = S.rot; $("selRate").value = S.rate; clSync(); fdSync(); fillOpenings(); renderCustomList(); prepPit(); rebuild(true);
+  PJ.cur = null;
+  if (name) { const m = pjSave(true, name); pjFill(); return `New project. ${m}`; }
+  pjStore(); pjLabel(); pjFill(); return "New project: every scene starts from its first example. Press Save to keep it.";
+}
+function pjFill() {
+  const L = PJ.list.slice().sort((a, b) => (b.saved || "").localeCompare(a.saved || ""));
+  if (!pjGet(PJ.sel)) PJ.sel = PJ.cur || (L[0] && L[0].id) || null;
+  $("pjList").innerHTML = L.length ? L.map(q => `<label class="pjRow${q.id === PJ.sel ? " sel" : ""}"><input type="radio" name="pjSel" value="${esc(q.id)}"${q.id === PJ.sel ? " checked" : ""}><span><b>${esc(q.name)}</b>${q.id === PJ.cur ? ' <span class="pjCur">open</span>' : ""}<br><span class="note">saved ${esc(q.saved)}</span></span></label>`).join("")
+    : `<p class="note">No projects yet. Name one and press <b>Save</b>, or press <b>New</b> to start from the examples.</p>`;
+  const has = !!pjGet(PJ.sel);
+  for (const id of ["pjOpen", "pjDup", "pjRen", "pjDel"]) $(id).disabled = !has;
+  $("pjDel").textContent = PJ.del && PJ.del === PJ.sel ? "Click again to delete" : "Delete";
+  const cur = pjGet(PJ.cur); $("pjCurTxt").innerHTML = cur ? `Open now: <b>${esc(cur.name)}</b>, last saved ${esc(cur.saved)}.` : "Nothing saved yet for what is on the page (no project open).";
+  pjLabel();
+}
+const pjMsg = t => { $("pjMsg").textContent = t || ""; $("pjMsg").classList.toggle("hidden", !t); };
+$("pjList").addEventListener("change", e => { PJ.sel = e.target.value; PJ.del = null; const q = pjGet(PJ.sel); if (q) $("pjName").value = q.name; pjFill(); });
+$("pjNew").addEventListener("click", () => { PJ.del = null; pjMsg(pjNew($("pjName").value.trim())); $("pjName").value = ""; });
+$("pjSave").addEventListener("click", () => { PJ.del = null; const nm = $("pjName").value.trim(); pjMsg(pjSave(false, nm)); pjFill(); });
+$("pjOpen").addEventListener("click", () => { PJ.del = null; pjMsg(pjOpen(PJ.sel)); pjFill(); });
+$("pjDup").addEventListener("click", () => {
+  const q = pjGet(PJ.sel); if (!q) return; PJ.del = null;
+  const c = { id: psId(), name: pjName(`${q.name} (copy)`), saved: pjNow(), proj: mdClone(q.proj) }; PJ.list.push(c); PJ.sel = c.id;
+  pjMsg(pjStore() ? `Duplicated as “${c.name}”. Open it to work on the copy.` : "This browser does not allow storage."); pjFill();
+});
+$("pjRen").addEventListener("click", () => {
+  const q = pjGet(PJ.sel), nm = $("pjName").value.trim(); if (!q) return; PJ.del = null;
+  if (!nm) { pjMsg("Type the new name in the name field first."); return; }
+  if (nm !== q.name && PJ.list.some(x => x.name === nm)) { pjMsg(`A project is already called “${nm}”.`); return; }
+  q.name = nm; pjStore(); pjMsg(`Renamed to “${nm}”.`); pjFill();
+});
+$("pjDel").addEventListener("click", () => {
+  const q = pjGet(PJ.sel); if (!q) return;
+  if (PJ.del !== q.id) { PJ.del = q.id; pjMsg(`Delete “${q.name}” from this browser? This cannot be undone (download it as a file first if you may need it). Click again to delete.`); pjFill(); return; }
+  PJ.list = PJ.list.filter(x => x.id !== q.id); if (PJ.cur === q.id) PJ.cur = null; PJ.del = null; PJ.sel = null;
+  pjStore(); pjMsg(`Deleted “${q.name}”. What is on the page stays as it is.`); pjFill();
+});
+$("pjName").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("pjSave").click(); } });
+// toolbar: 💾 Save saves the open project at once (Ctrl+S); 📁 opens the project list
+function pjQuick() {
+  const m = pjSave(false); const b = $("bSave"), t = b.textContent;
+  b.textContent = /^Saved/.test(m) ? "✓ Saved" : "⚠ Not saved"; b.title = m; setTimeout(() => { b.textContent = "💾 Save"; }, 1600);
+  if (!/^Saved/.test(m)) { pjOpenDlg(); pjMsg(m); }
+}
+function pjOpenDlg() { svFill(); PJ.sel = PJ.cur || PJ.sel; pjFill(); pjMsg(""); const q = pjGet(PJ.cur); $("pjName").value = q ? q.name : ""; $("dlgSave").showModal(); }
+$("bProject").addEventListener("click", pjOpenDlg);
+pjLabel();

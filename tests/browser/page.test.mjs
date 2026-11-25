@@ -240,8 +240,28 @@ test("page: scenes, simulator kernel, drawing, mask designer, save and export, s
     await ev(() => { window.__o3d.SIM.shapes = []; });
     const done = await p.evaluate(p0 => window.__o3d.svApply(p0, ["sim"]), proj);
     assert.deepEqual(done, ["etch simulator"]); assert.equal(await ev(() => window.__o3d.SIM.shapes.length), n);
-    await p.click("#bSave"); assert.ok(await ev(() => document.getElementById("dlgSave").open));
+    await p.click("#bProject"); assert.ok(await ev(() => document.getElementById("dlgSave").open));
     assert.ok(await ev(() => document.querySelectorAll("#svParts input").length >= 8)); await ev(() => document.getElementById("dlgSave").close());
+  });
+
+  await t.test("my projects: quick save, new, duplicate, rename, open and delete", async () => {
+    const n0 = await ev(() => window.__o3d.SIM.shapes.length);
+    await p.click("#bSave"); assert.ok(await ev(() => !document.getElementById("dlgSave").open));   // first save makes "Project 1"
+    const rows = () => ev(() => [...document.querySelectorAll("#pjList .pjRow b")].map(b => b.textContent));
+    await p.click("#bProject"); assert.deepEqual(await rows(), ["Project 1"]);
+    assert.match(await ev(() => document.getElementById("bProject").textContent), /Project 1/);
+    await p.click("#pjDup"); assert.deepEqual((await rows()).sort(), ["Project 1", "Project 1 (copy)"]);
+    await p.fill("#pjName", "Copy <b>x</b>"); await p.click("#pjRen");
+    assert.ok((await rows()).includes("Copy <b>x</b>"));   // names are shown as text
+    await p.fill("#pjName", "Empty"); await p.click("#pjNew");
+    assert.ok((await rows()).includes("Empty")); assert.match(await ev(() => document.getElementById("bProject").textContent), /Empty/);
+    await p.click('#pjList .pjRow:has-text("Project 1") input'); await p.click("#pjOpen");
+    assert.equal(await ev(() => window.__o3d.SIM.shapes.length), n0);
+    await p.click('#pjList .pjRow:has-text("Empty") input'); await p.click("#pjDel");
+    assert.equal((await rows()).length, 3);   // the first click only asks
+    await p.click("#pjDel"); assert.deepEqual((await rows()).sort(), ["Copy <b>x</b>", "Project 1"]);
+    assert.equal(await ev(() => JSON.parse(localStorage.getItem("o3d-projects")).length), 2);
+    await ev(() => { localStorage.removeItem("o3d-projects"); localStorage.removeItem("o3d-project-cur"); document.getElementById("dlgSave").close(); });
   });
 
   await t.test("no sideways scroll at phone width", async () => {

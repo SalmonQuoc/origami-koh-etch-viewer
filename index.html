@@ -400,6 +400,11 @@ body.md-open { overflow: hidden; }
 .svList label { display: flex; gap: 6px; align-items: flex-start; font-size: 13.5px; }
 .svList label.off { opacity: .5; }
 .svList .note { font-size: 12px; }
+.pjList { display: flex; flex-direction: column; gap: 3px; max-height: 220px; overflow: auto; margin: 6px 0; }
+.pjRow { display: flex; gap: 8px; align-items: flex-start; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; font-size: 13.5px; }
+.pjRow.sel { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.pjRow .note { font-size: 12px; }
+.pjCur { font-size: 11px; padding: 0 5px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); }
 </style>
 </head>
 <body>
@@ -419,7 +424,7 @@ body.md-open { overflow: hidden; }
     <button data-w="100" aria-pressed="true" title="(100) wafer: the usual MEMS wafer; pits have {111} walls at 54.74°">(100)</button><button data-w="110" aria-pressed="false" title="(110) wafer: vertical {111} walls along ⟨112⟩">(110)</button><button data-w="111" aria-pressed="false" title="(111) wafer: the surface itself is a slow {111} plane">(111)</button></span></div>
   <div><span class="lbl">Scene</span><span class="seg" id="segM">
     <button data-m="model" aria-pressed="true" title="How to hold the HW2 paper octahedron over the wafer; click a face for its plane">Model on wafer</button><button data-m="pit" aria-pressed="false" title="Fast analytic pit: openings in a mask, {111}-bounded walls, any time">Etched pit</button><button data-m="sim" aria-pressed="false" title="Full 3D etch of any mask with 12 measured plane rates: undercut, corners, release">Etch simulator</button><button data-m="corner" aria-pressed="false" title="Convex-corner attack and compensation patterns, side by side">Corner lab</button><button data-m="find" aria-pressed="false" title="Read the flat error δ from etched alignment marks on the whole wafer">Find orientation</button></span></div>
-  <div class="tools"><button class="btn" id="bHelp" title="Quick start, mouse and keys (key ?)">? Help</button><button class="btn" id="bSave" title="Save the project, open a saved one, or export masks (SVG, DXF), pictures (PNG) and the etched surface (STL) (Ctrl+S)">💾 Save</button><button class="btn" id="bSettings" title="Layout, theme, editor and simulator settings">⚙ Settings</button><button class="btn" id="bExplain" aria-pressed="false" title="Show the explanations and source notes under the controls (key I)">ⓘ Explanations</button><span class="tsep" aria-hidden="true"></span><button class="btn" id="bSplit" aria-pressed="false" title="3D view and controls side by side, each scrolling on its own; drag the divider to resize (key S)">Split view</button><button class="btn hidden" id="bSwap" title="Put the controls on the other side">Swap sides</button><button class="btn" id="bTheater" aria-pressed="false" title="Wide stage with the panel below (key T)">Theater view</button><button class="btn" id="bFull" title="Full screen 3D view (Esc to leave)">Full screen</button></div>
+  <div class="tools"><button class="btn" id="bHelp" title="Quick start, mouse and keys (key ?)">? Help</button><button class="btn" id="bProject" title="Projects">📁 Projects</button><button class="btn" id="bSave" title="Save the open project in this browser now (Ctrl+S); the first save creates a project">💾 Save</button><button class="btn" id="bSettings" title="Layout, theme, editor and simulator settings">⚙ Settings</button><button class="btn" id="bExplain" aria-pressed="false" title="Show the explanations and source notes under the controls (key I)">ⓘ Explanations</button><span class="tsep" aria-hidden="true"></span><button class="btn" id="bSplit" aria-pressed="false" title="3D view and controls side by side, each scrolling on its own; drag the divider to resize (key S)">Split view</button><button class="btn hidden" id="bSwap" title="Put the controls on the other side">Swap sides</button><button class="btn" id="bTheater" aria-pressed="false" title="Wide stage with the panel below (key T)">Theater view</button><button class="btn" id="bFull" title="Full screen 3D view (Esc to leave)">Full screen</button></div>
 </div>
 <div class="guide hidden" id="guide" role="note"><span class="gico" aria-hidden="true">i</span><div id="guideTxt"></div><button class="x" id="guideX" title="Hide this tip (Settings can show the tips again)" aria-label="hide this tip">×</button></div>
 
@@ -973,7 +978,13 @@ body.md-open { overflow: hidden; }
   <div class="mdBar"><span id="mdPos">x — y — µm</span><span id="mdHint"></span><label title="Type a point (x,y), a relative point (@dx,dy), a length and angle (@L&lt;A), a length along the pointer, or a command: move dx,dy · copy dx,dy · rotate a · scale f · array nx,ny,px,py · grid step · fit · undo">command <input id="mdCmd" type="text" autocomplete="off" spellcheck="false" placeholder="x,y  @dx,dy  @L<A"></label><span id="mdMsg"></span></div>
 </div>
 <dialog id="dlgSave" class="dlg panel" aria-labelledby="svTitle">
-  <div class="dlghead"><h2 id="svTitle">Save, open and export</h2><button class="x" data-close aria-label="close">×</button></div>
+  <div class="dlghead"><h2 id="svTitle">Projects, files and export</h2><button class="x" data-close aria-label="close">×</button></div>
+  <h3>My projects</h3>
+  <p class="note">Each project keeps the masks, the corner lab, the orientation finder, custom etchants and the view, in this browser only. <span id="pjCurTxt"></span></p>
+  <div class="row"><input type="text" id="pjName" maxlength="80" placeholder="project name" aria-label="project name" style="flex:1;min-width:120px"><button class="btn" id="pjNew" title="Start a new project from the examples (with the typed name it is saved at once)">＋ New</button><button class="btn primary" id="pjSave" title="Save what is on the page into the open project (or a new one with the typed name)">💾 Save</button></div>
+  <div class="pjList" id="pjList" role="radiogroup" aria-label="saved projects"></div>
+  <div class="row"><button class="btn" id="pjOpen" title="Load the selected project onto the page">Open</button><button class="btn" id="pjDup" title="Copy the selected project">⧉ Duplicate</button><button class="btn" id="pjRen" title="Rename the selected project to the typed name">Rename</button><button class="btn" id="pjDel" title="Delete the selected project from this browser">🗑 Delete</button></div>
+  <p class="note hidden" id="pjMsg" role="status"></p>
   <h3>Project file</h3>
   <p class="note">One .json file that this page can open again, here or in another browser. Tick what it should hold.</p>
   <div class="svList" id="svParts"></div>
@@ -11194,15 +11205,11 @@ function svFill() {
   svMsg("");
 }
 let svPending = null;
-$("bSave").addEventListener("click", () => {
-  svFill();
-  $("dlgSave").showModal();
-});
+$("bSave").addEventListener("click", () => pjQuick());
 document.addEventListener("keydown", (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s" && !(MD && MD.on) && !document.querySelector("dialog[open]")) {
     e.preventDefault();
-    svFill();
-    $("dlgSave").showModal();
+    pjQuick();
   }
 });
 $("dlgSave").addEventListener("click", (ev) => {
@@ -11298,6 +11305,197 @@ $("svLoad").addEventListener("click", () => {
   $("svOpenBox").classList.add("hidden");
   svMsg(`Loaded: ${done.join(", ") || "nothing"}.`);
 });
+const PJ_PARTS = ["view", "sim", "pit", "corner", "find", "etchants"];
+const PJ_DEF = { CL: Object.assign({}, CL), FD: { relW: FD.relW, delta: FD.delta, reveal: FD.reveal, rate: FD.rate, final: FD.final, t: FD.t, res: FD.res, correct: FD.correct }, S: { open: S.open, rate: S.rate, rot: S.rot } };
+var PJ = { list: [], cur: null, sel: null, del: null };
+try {
+  const a = JSON.parse(localStorage.getItem("o3d-projects") || "[]");
+  if (Array.isArray(a)) PJ.list = a.filter((q) => q && q.id && typeof q.name === "string" && q.proj && q.proj.parts);
+  PJ.cur = localStorage.getItem("o3d-project-cur");
+} catch (e) {
+}
+if (!PJ.list.some((q) => q.id === PJ.cur)) PJ.cur = null;
+function pjStore() {
+  try {
+    localStorage.setItem("o3d-projects", JSON.stringify(PJ.list));
+    if (PJ.cur) localStorage.setItem("o3d-project-cur", PJ.cur);
+    else localStorage.removeItem("o3d-project-cur");
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+const pjGet = (id) => PJ.list.find((q) => q.id === id);
+const pjNow = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 16).replace("T", " ");
+function pjName(base) {
+  let n = base, k = 2;
+  while (PJ.list.some((q) => q.name === n)) n = `${base} (${k++})`;
+  return n;
+}
+function pjLabel() {
+  const q = pjGet(PJ.cur);
+  $("bProject").textContent = `\u{1F4C1} ${q ? q.name : "Projects"}`;
+  $("bProject").title = q ? `Project \u201C${q.name}\u201D, saved ${q.saved}. Open the project list (new, open, duplicate, rename, delete), files and export.` : "Projects: create, open, duplicate, rename and delete projects kept in this browser; save and open project files; export";
+}
+function pjSave(asNew, name) {
+  let q = !asNew && pjGet(PJ.cur);
+  if (!q) {
+    q = { id: psId(), name: pjName(name || `Project ${PJ.list.length + 1}`), saved: "", proj: null };
+    PJ.list.push(q);
+  }
+  q.proj = svProject(PJ_PARTS);
+  q.saved = pjNow();
+  PJ.cur = q.id;
+  PJ.sel = q.id;
+  const ok = pjStore();
+  pjLabel();
+  return ok ? `Saved \u201C${q.name}\u201D (${q.saved}).` : "This browser does not allow storage, or it is full: download a project file instead.";
+}
+function pjOpen(id) {
+  const q = pjGet(id);
+  if (!q) return "";
+  const done = svApply(q.proj, Object.keys(q.proj.parts));
+  PJ.cur = q.id;
+  pjStore();
+  pjLabel();
+  return `Opened \u201C${q.name}\u201D: ${done.join(", ")}.`;
+}
+function pjNew(name) {
+  Object.assign(CL, mdClone(PJ_DEF.CL), { built: false });
+  Object.assign(FD, mdClone(PJ_DEF.FD), { items: [], sel: 0, mc: null, wfLoaded: null });
+  Object.assign(S, { open: PJ_DEF.S.open, rate: PJ_DEF.S.rate, rot: PJ_DEF.S.rot, pitShapes: [], pitSel: -1 });
+  Object.assign(SIM, { owner: "none", wfLoaded: null, preset: 0, sel: -1, probes: null, cl: null, rot: 0 });
+  $("pitRot").value = S.rot;
+  $("selRate").value = S.rate;
+  clSync();
+  fdSync();
+  fillOpenings();
+  renderCustomList();
+  prepPit();
+  rebuild(true);
+  PJ.cur = null;
+  if (name) {
+    const m = pjSave(true, name);
+    pjFill();
+    return `New project. ${m}`;
+  }
+  pjStore();
+  pjLabel();
+  pjFill();
+  return "New project: every scene starts from its first example. Press Save to keep it.";
+}
+function pjFill() {
+  const L = PJ.list.slice().sort((a, b) => (b.saved || "").localeCompare(a.saved || ""));
+  if (!pjGet(PJ.sel)) PJ.sel = PJ.cur || L[0] && L[0].id || null;
+  $("pjList").innerHTML = L.length ? L.map((q) => `<label class="pjRow${q.id === PJ.sel ? " sel" : ""}"><input type="radio" name="pjSel" value="${esc(q.id)}"${q.id === PJ.sel ? " checked" : ""}><span><b>${esc(q.name)}</b>${q.id === PJ.cur ? ' <span class="pjCur">open</span>' : ""}<br><span class="note">saved ${esc(q.saved)}</span></span></label>`).join("") : `<p class="note">No projects yet. Name one and press <b>Save</b>, or press <b>New</b> to start from the examples.</p>`;
+  const has = !!pjGet(PJ.sel);
+  for (const id of ["pjOpen", "pjDup", "pjRen", "pjDel"]) $(id).disabled = !has;
+  $("pjDel").textContent = PJ.del && PJ.del === PJ.sel ? "Click again to delete" : "Delete";
+  const cur = pjGet(PJ.cur);
+  $("pjCurTxt").innerHTML = cur ? `Open now: <b>${esc(cur.name)}</b>, last saved ${esc(cur.saved)}.` : "Nothing saved yet for what is on the page (no project open).";
+  pjLabel();
+}
+const pjMsg = (t) => {
+  $("pjMsg").textContent = t || "";
+  $("pjMsg").classList.toggle("hidden", !t);
+};
+$("pjList").addEventListener("change", (e) => {
+  PJ.sel = e.target.value;
+  PJ.del = null;
+  const q = pjGet(PJ.sel);
+  if (q) $("pjName").value = q.name;
+  pjFill();
+});
+$("pjNew").addEventListener("click", () => {
+  PJ.del = null;
+  pjMsg(pjNew($("pjName").value.trim()));
+  $("pjName").value = "";
+});
+$("pjSave").addEventListener("click", () => {
+  PJ.del = null;
+  const nm = $("pjName").value.trim();
+  pjMsg(pjSave(false, nm));
+  pjFill();
+});
+$("pjOpen").addEventListener("click", () => {
+  PJ.del = null;
+  pjMsg(pjOpen(PJ.sel));
+  pjFill();
+});
+$("pjDup").addEventListener("click", () => {
+  const q = pjGet(PJ.sel);
+  if (!q) return;
+  PJ.del = null;
+  const c = { id: psId(), name: pjName(`${q.name} (copy)`), saved: pjNow(), proj: mdClone(q.proj) };
+  PJ.list.push(c);
+  PJ.sel = c.id;
+  pjMsg(pjStore() ? `Duplicated as \u201C${c.name}\u201D. Open it to work on the copy.` : "This browser does not allow storage.");
+  pjFill();
+});
+$("pjRen").addEventListener("click", () => {
+  const q = pjGet(PJ.sel), nm = $("pjName").value.trim();
+  if (!q) return;
+  PJ.del = null;
+  if (!nm) {
+    pjMsg("Type the new name in the name field first.");
+    return;
+  }
+  if (nm !== q.name && PJ.list.some((x) => x.name === nm)) {
+    pjMsg(`A project is already called \u201C${nm}\u201D.`);
+    return;
+  }
+  q.name = nm;
+  pjStore();
+  pjMsg(`Renamed to \u201C${nm}\u201D.`);
+  pjFill();
+});
+$("pjDel").addEventListener("click", () => {
+  const q = pjGet(PJ.sel);
+  if (!q) return;
+  if (PJ.del !== q.id) {
+    PJ.del = q.id;
+    pjMsg(`Delete \u201C${q.name}\u201D from this browser? This cannot be undone (download it as a file first if you may need it). Click again to delete.`);
+    pjFill();
+    return;
+  }
+  PJ.list = PJ.list.filter((x) => x.id !== q.id);
+  if (PJ.cur === q.id) PJ.cur = null;
+  PJ.del = null;
+  PJ.sel = null;
+  pjStore();
+  pjMsg(`Deleted \u201C${q.name}\u201D. What is on the page stays as it is.`);
+  pjFill();
+});
+$("pjName").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    $("pjSave").click();
+  }
+});
+function pjQuick() {
+  const m = pjSave(false);
+  const b = $("bSave"), t = b.textContent;
+  b.textContent = /^Saved/.test(m) ? "\u2713 Saved" : "\u26A0 Not saved";
+  b.title = m;
+  setTimeout(() => {
+    b.textContent = "\u{1F4BE} Save";
+  }, 1600);
+  if (!/^Saved/.test(m)) {
+    pjOpenDlg();
+    pjMsg(m);
+  }
+}
+function pjOpenDlg() {
+  svFill();
+  PJ.sel = PJ.cur || PJ.sel;
+  pjFill();
+  pjMsg("");
+  const q = pjGet(PJ.cur);
+  $("pjName").value = q ? q.name : "";
+  $("dlgSave").showModal();
+}
+$("bProject").addEventListener("click", pjOpenDlg);
+pjLabel();
 
 })();
 </script>
