@@ -64,7 +64,7 @@ function loadEtchants(db: EtchantDb) {
 }
 
 // sim-examples.json -> SPRESETS[wafer] (shapes get the defaults of their type)
-interface SimExample { name: string; fk: string; rate: string; t: number; hx: number; hy: number; pre?: number; dxMax?: number; note: string; shapes: any[] }
+interface SimExample { name: string; fk: string; rate: string; t: number; hx: number; hy: number; pre?: number; dxMax?: number; boron?: { c: string; z0: number; z1: number }; note: string; shapes: any[] }
 function loadSimExamples(db: { wafers: Record<string, SimExample[]> }) {
   const out: Record<string, SimExample[]> = {};
   for (const [w, L] of Object.entries(db.wafers)) out[w] = L.map(p => Object.assign({}, p, { shapes: p.shapes.map(s => Object.assign({}, s)) }));

@@ -65,6 +65,8 @@ export function validateSimExamples(db, keys, err) {
       if (!keys.has(p.rate)) err(`${at}: rate ${p.rate} is not an etchant key`);
       for (const k of ["t", "hx", "hy"]) if (!isNum(p[k]) || p[k] <= 0) err(`${at}: ${k} must be a number > 0`);
       if (!Array.isArray(p.shapes) || !p.shapes.length) err(`${at}: needs shapes`);
+      if (p.boron != null && !(["off", "1e19", "2e19", "3e19", "5e19", "7e19", "1e20", "book", "tmah"].includes(p.boron.c) && isNum(p.boron.z0) && isNum(p.boron.z1) && p.boron.z1 > p.boron.z0 && p.boron.z0 >= 0))
+        err(`${at}: boron must be { c: a key of BORON in module 09, z0 >= 0, z1 > z0 } (µm)`);
       (p.shapes || []).forEach((s, k) => validateShape(s, `${at} shape ${k + 1}`, err));
     });
   }

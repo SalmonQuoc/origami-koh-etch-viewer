@@ -20,6 +20,8 @@ pub struct Sim {
     /// top-row boundary data: ghost value over openings, opening flag
     pub gopen: Vec<f32>,
     pub open: Vec<u8>,
+    /// rate factor per node row k (heavily boron-doped layer); 1 outside a layer
+    pub kz: Vec<f32>,
     /// rate table (N+1)^2 over the standard triangle, N = n_rate
     pub tab: Vec<f32>,
     pub n_rate: usize,
@@ -54,6 +56,7 @@ impl Sim {
             hr: vec![0.0; nn],
             gopen: vec![0.0; nxy],
             open: vec![0; nxy],
+            kz: vec![1.0; nz],
             tab: vec![0.0; w * w],
             n_rate,
             e: vec![0.0; 9],
@@ -129,7 +132,7 @@ impl Sim {
                 let kx = Kern {
                     nx, ny, nz, nxy, idx: 1.0 / self.dx, al: self.al,
                     e: [self.e[0], self.e[1], self.e[2], self.e[3], self.e[4], self.e[5], self.e[6], self.e[7], self.e[8]],
-                    tab: &self.tab, n: self.n_rate, gopen: &self.gopen, open: &self.open,
+                    tab: &self.tab, n: self.n_rate, gopen: &self.gopen, open: &self.open, kz: &self.kz,
                 };
                 let act = &self.act;
                 let ijk = &self.act_ijk;
@@ -217,6 +220,7 @@ struct Kern<'a> {
     n: usize,
     gopen: &'a [f32],
     open: &'a [u8],
+    kz: &'a [f32],
 }
 
 impl<'a> Kern<'a> {
@@ -305,7 +309,8 @@ impl<'a> Kern<'a> {
             let (t00, t01, t10, t11) = (g(tab, o), g(tab, o + 1), g(tab, o + wt), g(tab, o + wt + 1));
             hn = ((t00 * (1.0 - dv) + t01 * dv) * (1.0 - du) + (t10 * (1.0 - dv) + t11 * dv) * du) * pn;
         }
-        hn - 0.5 * (self.al[0] * (dxp - dxm) + self.al[1] * (dyp - dym) + self.al[2] * (dzp - dzm))
+        // the layer factor scales the rate and the dissipation together (local Lax-Friedrichs); exactly 1 outside a layer
+        g(self.kz, k) * (hn - 0.5 * (self.al[0] * (dxp - dxm) + self.al[1] * (dyp - dym) + self.al[2] * (dzp - dzm)))
     }
 }
 

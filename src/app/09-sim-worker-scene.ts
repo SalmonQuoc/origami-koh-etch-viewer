@@ -18,6 +18,32 @@ function startWorker() {
   }
 }
 
+// ---- heavily boron-doped (p++) layer: etch-rate factor against lightly doped silicon
+// Fig. 4.11 values are read from the 24 wt% KOH, 60 °C curve (Pal & Sato p. 93; from Seidel et al. 1990, Part II), as the
+// rate at the concentration over the rate of lightly doped silicon (about 27 µm/h); reading error about ±20 %.
+// default layer: 3 µm thick (thermal diffusion reaches 2–3 µm in practice, Pal & Sato p. 93); its depth is a free choice
+var BORON_DEF = { c: "off", z0: 20, z1: 23 };
+var BORON = {
+  off: { name: "none: lightly doped (the rates’ basis)", f: 1, src: "The rate tables are for lightly doped silicon: doping at a normal level does not change the etch rate (Pal & Sato p. 93); “lightly doped” is below 10¹⁸ cm⁻³ (p. 191)." },
+  "1e19": { name: "1 × 10¹⁹ cm⁻³: rate × 0.85", f: 0.85, src: "Rate × 0.85: read from Fig. 4.11 (Pal & Sato p. 93), 24 wt% KOH at 60 °C." },
+  "2e19": { name: "2 × 10¹⁹ cm⁻³: rate × 0.47", f: 0.47, src: "Rate × 0.47: read from Fig. 4.11 (Pal & Sato p. 93), 24 wt% KOH at 60 °C." },
+  "3e19": { name: "3 × 10¹⁹ cm⁻³: rate × 0.30", f: 0.30, src: "Rate × 0.30: read from Fig. 4.11 (Pal & Sato p. 93), 24 wt% KOH at 60 °C." },
+  "5e19": { name: "5 × 10¹⁹ cm⁻³: rate × 0.13", f: 0.13, src: "Rate × 0.13: read from Fig. 4.11 (Pal & Sato p. 93), 24 wt% KOH at 60 °C." },
+  "7e19": { name: "7 × 10¹⁹ cm⁻³: rate × 0.04", f: 0.04, src: "Rate × 0.04: read from Fig. 4.11 (Pal & Sato p. 93), 24 wt% KOH at 60 °C." },
+  "1e20": { name: "1 × 10²⁰ cm⁻³: rate × 0.022", f: 0.022, src: "Rate × 0.022: read from Fig. 4.11 (Pal & Sato p. 93), 24 wt% KOH at 60 °C (the 10 wt% curve falls further, to about 0.1 µm/h)." },
+  book: { name: "above 10¹⁹ cm⁻³, KOH: rate ÷ 100", f: 0.01, src: "Rate ÷ 100: “etch rates can be reduced by one hundreds” above 1 × 10¹⁹ cm⁻³ in KOH (Pal & Sato p. 93)." },
+  tmah: { name: "2.5 × 10²⁰ cm⁻³, TMAH: rate ÷ 40", f: 0.025, src: "Rate ÷ 40: heavily to lightly doped silicon in TMAH, about 1:40; the rate drops to a low level at 2.5 × 10²⁰ cm⁻³ (Pal & Sato p. 191)." },
+};
+// a concentration key from outside (a select, a file): the matching constant key of BORON, else "off"
+function boronKey(v) { return Object.keys(BORON).find(k => k === v) || "off"; }
+function boronIn(b) {   // a saved layer, checked; anything else: no layer
+  const o = Object.assign({}, BORON_DEF);
+  const c = b ? boronKey(b.c) : "off";
+  if (c !== "off") { o.c = c; if (Number(b.z0) >= 0) o.z0 = Number(b.z0); if (Number(b.z1) >= 0) o.z1 = Number(b.z1); }
+  return o;
+}
+function boronNow() { const b = SIM.boron; return b && BORON[b.c] && BORON[b.c].f < 1 && b.z1 > b.z0 ? b : null; }
+
 // ---- configuration from the UI state
 var SIM_CELLS = { draft: 1.5e5, normal: 4e5, fine: 1e6, ultra: 2.5e6 };
 var SIM_DXF = { draft: 1.4, normal: 1, fine: 0.7, ultra: 0.5 };   // factor on the cell-size cap
@@ -36,7 +62,8 @@ function simConfig() {
     if (SIM.dxMax) dx = Math.max(0.5, Math.min(dx, Math.round(SIM.dxMax*(SIM_DXF[SIM.quality] || 1)*4)/4));
   }
   Lz = Math.min(SIM.thick, Math.max(3*dx, Lz));
-  return { frame: simE(), rates: R, probes: SIM.probes || null, shapes, X0, X1, Y0, Y1, depth: Lz, dx, pre: SIM.pre || 0 };
+  return { frame: simE(), rates: R, probes: SIM.probes || null, shapes, X0, X1, Y0, Y1, depth: Lz, dx, pre: SIM.pre || 0,
+    boron: boronNow() ? { z0: SIM.boron.z0, z1: SIM.boron.z1, f: BORON[SIM.boron.c].f } : null };
 }
 function simDomain() { const g = SIM.grid; return [-SIM.hx, -SIM.hx + g.Nx*g.dx, -SIM.hy, -SIM.hy + g.Ny*g.dx]; }
 function cutSpec() {   // the section line A -> B (module 23); the engine samples the vertical plane through the whole
@@ -446,6 +473,7 @@ function updateDirtyNote() { $("simDirty").classList.toggle("hidden", !SIM.dirty
 function loadPreset(wf, i) {
   const p = SPRESETS[wf][i]; SIM.preset = i;
   SIM.fk = p.fk; SIM.rate = p.rate; SIM.t = p.t; SIM.pre = p.pre || 0; SIM.rot = 0; SIM.probes = null; SIM.cl = null; SIM.owner = "sim"; SIM.hx = p.hx; SIM.hy = p.hy; SIM.dxMax = p.dxMax || 0;
+  SIM.boron = Object.assign({}, BORON_DEF, p.boron || {});
   SIM.shapes = p.shapes.map(s => Object.assign({}, s)); SIM.sel = -1; SIM.cutPos = 0; SIM.cutAxis = "y"; SIM.cutLine = null;
   $("simNote").innerHTML = p.note;
   syncSimInputs(); renderShapeList();
@@ -453,6 +481,8 @@ function loadPreset(wf, i) {
 function syncSimInputs() {
   $("simFrame").value = SIM.fk; $("simFrameRow").classList.toggle("hidden", SFR[SIM.fk].wf !== "110");
   $("simRate").value = SIM.rate; $("simTime").value = SIM.t; $("simPre").value = SIM.pre; $("simRot").value = SIM.rot || 0; $("simThick").value = SIM.thick;
+  const b = SIM.boron || (SIM.boron = Object.assign({}, BORON_DEF));
+  $("simBoron").value = BORON[b.c] ? b.c : "off"; $("simBz0").value = b.z0; $("simBz1").value = b.z1; boronNote();
   $("simHx").value = 2*SIM.hx; $("simHy").value = 2*SIM.hy; $("simQual").value = SIM.quality;
   syncSecUI("maskCanvas");
   $("simFrameSrc").textContent = SFR[SIM.fk].src;
@@ -473,6 +503,17 @@ $("simRate").addEventListener("change", e => { SIM.rate = e.target.value; $("sim
 $("simRot").addEventListener("change", e => { SIM.rot = Number(e.target.value) || 0; markDirty(); });
 for (const [id, key, mul] of [["simTime", "t", 1], ["simPre", "pre", 1], ["simThick", "thick", 1], ["simHx", "hx", 0.5], ["simHy", "hy", 0.5]] as [string, string, number][])
   $(id).addEventListener("change", e => { const v = Number(e.target.value); if (!(v >= 0)) return; SIM[key] = v*mul; if (key === "hx" || key === "hy") syncSecUI("maskCanvas"); markDirty(); });
+function boronNote() {
+  const b = SIM.boron, k = b && BORON[b.c] ? b.c : "off", on = k !== "off";
+  $("simBzRow").classList.toggle("hidden", !on);
+  let t = BORON[k].src;
+  if (on) t += b.z1 > b.z0 ? ` Layer from ${b.z0} to ${b.z1} µm below the surface; the factor is applied to every orientation of the chosen etchant (assumption: Fig. 4.11 is for Si(100) only, and the other etchants and temperatures are assumed to scale the same way; all common alkaline etchants slow down at high boron doping, p. 191).` : " Set the layer depth: the bottom must be below the top.";
+  $("simBoronSrc").textContent = t;
+}
+$("simBoron").innerHTML = Object.entries(BORON).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join("");
+$("simBoron").addEventListener("change", e => { SIM.boron = Object.assign({}, BORON_DEF, SIM.boron, { c: boronKey(e.target.value) }); boronNote(); markDirty(); });
+for (const [id, key] of [["simBz0", "z0"], ["simBz1", "z1"]] as [string, string][])
+  $(id).addEventListener("change", e => { const v = Number(e.target.value); if (!(v >= 0)) return; SIM.boron = Object.assign({}, BORON_DEF, SIM.boron, { [key]: v }); boronNote(); markDirty(); });
 $("simQual").addEventListener("change", e => { SIM.quality = e.target.value; markDirty(); });
 $("simT").addEventListener("input", e => { SIM.tv = Number(e.target.value); $("simTnow").textContent = `${SIM.tv.toFixed(0)} min`; requestView(SIM.tv); });
 $("bSimPlay").addEventListener("click", () => {

@@ -121,6 +121,11 @@ function etchEngineFactory() {
         phi[k*NXY + q] = v; if (v <= 0) T[k*NXY + q] = 0;
       } }
     const gOpen = new Float32Array(NXY); for (let q = 0; q < NXY; q++) gOpen[q] = Math.max(-0.5*dx, sd[q]);
+    // rate factor per node row (heavily boron-doped layer, cfg.boron = {z0, z1, f}): 1 outside the layer, f inside;
+    // a row the layer only partly fills gets the factor of the etch time through it, 1/((1 - w) + w/f) for fill fraction w
+    const kz = new Float32Array(Nz).fill(1), bl = cfg.boron;
+    if (bl && bl.f > 0 && bl.f < 1 && bl.z1 > bl.z0)
+      for (let k = 0; k < Nz; k++) { const w = Math.max(0, Math.min((k + 1)*dx, bl.z1) - Math.max(k*dx, bl.z0))/dx; if (w > 0) kz[k] = 1/((1 - w) + w/bl.f); }
     // dissipation coefficients alpha_i >= max |dH/dp_i| (sampled)
     const al = [0, 0, 0], h = 1e-4; let rmax = 0;
     for (let s = 0; s < 30000; s++) {
@@ -129,7 +134,7 @@ function etchEngineFactory() {
       for (let i = 0; i < 3; i++) { const q = p.slice(); q[i] += h; const nq = Math.hypot(q[0], q[1], q[2]); const g = (Rg(q[0]/nq, q[1]/nq, q[2]/nq)*nq - H0)/h; if (Math.abs(g) > al[i]) al[i] = Math.abs(g); }
     }
     const as = cfg.alphaScale || 1; for (let i = 0; i < 3; i++) al[i] *= as;
-    const S = { cfg, Nx, Ny, Nz, NXY, NN, dx, B, phi, T, Hr, gOpen, open, sd, RT, Rg, al, rmax, t: 0, steps: 0, e: [e1, e2, e3], order: cfg.order === 1 ? 1 : 2 };
+    const S = { cfg, Nx, Ny, Nz, NXY, NN, dx, B, phi, T, Hr, gOpen, open, sd, kz, RT, Rg, al, rmax, t: 0, steps: 0, e: [e1, e2, e3], order: cfg.order === 1 ? 1 : 2 };
     S.dt0 = (cfg.cfl || 0.9)*dx/(al[0] + al[1] + al[2]);
     // band bookkeeping
     if (WX && !cfg.noWasm && wasmSim(S)) return S;   // Rust/WebAssembly kernel: same scheme, faster
@@ -201,7 +206,8 @@ function etchEngineFactory() {
       const du = fu - iu, dv = fv - iv, o = iu*WT + iv;
       Hn = ((tab[o]*(1-dv) + tab[o+1]*dv)*(1-du) + (tab[o+WT]*(1-dv) + tab[o+WT+1]*dv)*du)*pn;
     }
-    return Hn - 0.5*(al[0]*(dxp - dxm) + al[1]*(dyp - dym) + al[2]*(dzp - dzm));
+    // the layer factor scales the rate and the dissipation together (local Lax-Friedrichs); it is exactly 1 outside a layer
+    return S.kz[k]*(Hn - 0.5*(al[0]*(dxp - dxm) + al[1]*(dyp - dym) + al[2]*(dzp - dzm)));
   }
 
   // one time step = two forward-Euler stages averaged (Heun / TVD Runge-Kutta 2) when cfg.order is 2 (default),
@@ -500,6 +506,7 @@ function etchEngineFactory() {
       const buf = () => WX.memory.buffer;
       new Float32Array(buf(), WX.sim_phi_ptr(h), S.NN).set(S.phi); new Float32Array(buf(), WX.sim_t_ptr(h), S.NN).set(S.T);
       new Float32Array(buf(), WX.sim_gopen_ptr(h), S.NXY).set(S.gOpen); new Uint8Array(buf(), WX.sim_open_ptr(h), S.NXY).set(S.open);
+      if (WX.sim_kz_ptr) new Float32Array(buf(), WX.sim_kz_ptr(h), S.Nz).set(S.kz); else if (S.kz.some(v => v !== 1)) { WX.sim_free(h); return false; }
       new Float32Array(buf(), WX.sim_tab_ptr(h), S.RT.tab.length).set(S.RT.tab); new Float64Array(buf(), WX.sim_e_ptr(h), 9).set([...S.e[0], ...S.e[1], ...S.e[2]]);
       WX.sim_init(h); S.wasm = h; S.phi = null; wasmBind(S); return true;
     } catch (e) { return false; }
