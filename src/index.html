@@ -578,6 +578,7 @@ body.md-open { overflow: hidden; }
       </div>
       <div class="row"><button class="btn" id="clAuto">Size from the design rule</button><button class="btn primary" id="clRun" title="Build the mask from these settings and run (replaces hand edits)">Build and run</button><button class="btn" id="clDesign" title="Draw your own compensation in the full-screen designer; the mesas stay locked">⛶ Draw compensation</button><button class="btn" id="clRunMask" title="Run the mask as it is now, with your edits">▶ Run my edited mask</button></div>
       <p class="note src" id="clRule"></p>
+      <div class="row"><button class="btn hidden" id="clRestore" title="Bring back the mask you drew before Build and run replaced it">↶ Restore my drawn mask</button></div>
       <p class="note hidden" id="clEdited">This corner lab mask has your own edits; they are kept in the project. <b>Build and run</b> replaces them by the mask built from the settings.</p>
       <h3>Corner result</h3>
       <dl class="kv" id="clReadout"></dl>
@@ -1024,6 +1025,12 @@ body.md-open { overflow: hidden; }
   </div>
   <div class="mdBar"><span id="mdPos">x — y — µm</span><span id="mdHint"></span><label title="Type a point (x,y), a relative point (@dx,dy), a length and angle (@L&lt;A), a length along the pointer, or a command: move dx,dy · copy dx,dy · rotate a · scale f · array nx,ny,px,py · grid step · fit · undo">command <input id="mdCmd" type="text" autocomplete="off" spellcheck="false" placeholder="x,y  @dx,dy  @L<A"></label><span id="mdMsg"></span></div>
 </div>
+<dialog id="dlgClBuild" class="dlg panel" aria-labelledby="clAskTitle" style="max-width:520px">
+  <div class="dlghead"><h2 id="clAskTitle">Replace your drawn mask?</h2><button class="x" aria-label="close">×</button></div>
+  <p>You have changed the corner lab mask by hand<span id="clAskWhy"></span>. <b>Build and run</b> makes a new mask from the settings and replaces your drawing.</p>
+  <p class="note">If you replace it, <b>↶ Restore my drawn mask</b> brings it back.</p>
+  <div class="row" style="justify-content:flex-end;gap:8px;flex-wrap:wrap"><button class="btn" id="clAskCancel">Cancel</button><button class="btn" id="clAskBuild">Replace it: build from the settings</button><button class="btn primary" id="clAskRun">Run my drawn mask</button></div>
+</dialog>
 <dialog id="dlgSave" class="dlg panel" aria-labelledby="svTitle">
   <div class="dlghead"><h2 id="svTitle">Projects, files and export</h2><button class="x" data-close aria-label="close">×</button></div>
   <h3>My projects</h3>

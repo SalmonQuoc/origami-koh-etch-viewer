@@ -578,6 +578,7 @@ body.md-open { overflow: hidden; }
       </div>
       <div class="row"><button class="btn" id="clAuto">Size from the design rule</button><button class="btn primary" id="clRun" title="Build the mask from these settings and run (replaces hand edits)">Build and run</button><button class="btn" id="clDesign" title="Draw your own compensation in the full-screen designer; the mesas stay locked">⛶ Draw compensation</button><button class="btn" id="clRunMask" title="Run the mask as it is now, with your edits">▶ Run my edited mask</button></div>
       <p class="note src" id="clRule"></p>
+      <div class="row"><button class="btn hidden" id="clRestore" title="Bring back the mask you drew before Build and run replaced it">↶ Restore my drawn mask</button></div>
       <p class="note hidden" id="clEdited">This corner lab mask has your own edits; they are kept in the project. <b>Build and run</b> replaces them by the mask built from the settings.</p>
       <h3>Corner result</h3>
       <dl class="kv" id="clReadout"></dl>
@@ -1024,6 +1025,12 @@ body.md-open { overflow: hidden; }
   </div>
   <div class="mdBar"><span id="mdPos">x — y — µm</span><span id="mdHint"></span><label title="Type a point (x,y), a relative point (@dx,dy), a length and angle (@L&lt;A), a length along the pointer, or a command: move dx,dy · copy dx,dy · rotate a · scale f · array nx,ny,px,py · grid step · fit · undo">command <input id="mdCmd" type="text" autocomplete="off" spellcheck="false" placeholder="x,y  @dx,dy  @L<A"></label><span id="mdMsg"></span></div>
 </div>
+<dialog id="dlgClBuild" class="dlg panel" aria-labelledby="clAskTitle" style="max-width:520px">
+  <div class="dlghead"><h2 id="clAskTitle">Replace your drawn mask?</h2><button class="x" aria-label="close">×</button></div>
+  <p>You have changed the corner lab mask by hand<span id="clAskWhy"></span>. <b>Build and run</b> makes a new mask from the settings and replaces your drawing.</p>
+  <p class="note">If you replace it, <b>↶ Restore my drawn mask</b> brings it back.</p>
+  <div class="row" style="justify-content:flex-end;gap:8px;flex-wrap:wrap"><button class="btn" id="clAskCancel">Cancel</button><button class="btn" id="clAskBuild">Replace it: build from the settings</button><button class="btn primary" id="clAskRun">Run my drawn mask</button></div>
+</dialog>
 <dialog id="dlgSave" class="dlg panel" aria-labelledby="svTitle">
   <div class="dlghead"><h2 id="svTitle">Projects, files and export</h2><button class="x" data-close aria-label="close">×</button></div>
   <h3>My projects</h3>
@@ -5340,6 +5347,7 @@ function clBuild(run = true, keepEdits = false) {
   });
   SIM.probes = [{ x: xL, y: yc, ux: SQ2, uy: SQ2, s0: -0.45 * Math.min(A, 2 * Ly1), s1: reach + m }, { x: xR, y: yc, ux: -SQ2, uy: SQ2, s0: -0.45 * Math.min(A, 2 * Ly1), s1: reach + m }];
   SIM.cl = { tT, H, xL, xR, yc, type: CL.type };
+  CL.built0 = JSON.stringify(sh);
   if (!keepEdits) CL.mask = null;
   CL.built = true;
   syncSimInputs();
@@ -5387,7 +5395,7 @@ $("clType").addEventListener("change", (e) => {
   CL.type = e.target.value;
   Object.assign(CL, clRule(CL.type, CL.H));
   clSync();
-  clBuild();
+  clRebuild("the compensation type changed");
 });
 for (const [id, k] of [["clH", "H"], ["clA", "A"], ["clS1", "s1"], ["clS2", "s2"]]) $(id).addEventListener("change", (e) => {
   const v = Number(e.target.value);
@@ -5399,9 +5407,59 @@ $("clAuto").addEventListener("click", () => {
   CL.s1 = r.s1;
   CL.s2 = r.s2;
   clSync();
-  clBuild();
+  clRebuild("the sizes come from the design rule");
 });
-$("clRun").addEventListener("click", () => clBuild());
+$("clRun").addEventListener("click", () => clRebuild(""));
+function clHasEdits() {
+  return Array.isArray(CL.mask) && CL.mask.length > 0 && JSON.stringify(CL.mask.map((s) => {
+    const c = Object.assign({}, s);
+    delete c.lock;
+    delete c.name;
+    return c;
+  })) !== (CL.built0 ? JSON.stringify(JSON.parse(CL.built0).map((s) => {
+    const c = Object.assign({}, s);
+    delete c.lock;
+    delete c.name;
+    return c;
+  })) : "");
+}
+let clPending = null;
+function clRebuild(why) {
+  if (!clHasEdits()) {
+    clBuild();
+    return;
+  }
+  clPending = why;
+  $("clAskWhy").textContent = why ? ` (${why})` : "";
+  $("dlgClBuild").showModal();
+  $("clAskRun").focus();
+}
+$("dlgClBuild").addEventListener("click", (ev) => {
+  const b = ev.target.closest("button");
+  if (!b) {
+    if (ev.target === $("dlgClBuild")) $("dlgClBuild").close();
+    return;
+  }
+  $("dlgClBuild").close();
+  if (b.id === "clAskRun") {
+    if (SIM.owner !== "corner") clBuild(true, true);
+    else {
+      simRun();
+      buildSim(false);
+    }
+  } else if (b.id === "clAskBuild") {
+    CL.maskBak = JSON.parse(JSON.stringify(CL.mask));
+    clBuild();
+    clEditNote();
+  }
+  clPending = null;
+});
+$("clRestore").addEventListener("click", () => {
+  if (!Array.isArray(CL.maskBak)) return;
+  CL.mask = CL.maskBak;
+  CL.maskBak = null;
+  clBuild(true, true);
+});
 $("clRunMask").addEventListener("click", () => {
   if (SIM.owner !== "corner") {
     clBuild(true, true);
@@ -5412,7 +5470,9 @@ $("clRunMask").addEventListener("click", () => {
 });
 function clEditNote() {
   const e = $("clEdited");
-  if (e) e.classList.toggle("hidden", !(Array.isArray(CL.mask) && CL.mask.length));
+  if (e) e.classList.toggle("hidden", !clHasEdits());
+  const r = $("clRestore");
+  if (r) r.classList.toggle("hidden", !(Array.isArray(CL.maskBak) && !clHasEdits()));
 }
 function simHover(ev) {
   if (!simScene || !simScene.pick) {
@@ -7715,6 +7775,7 @@ window.__o3d = {
     return MD;
   },
   mdCommand,
+  mdDo,
   mdOpen,
   svProject,
   svApply,
@@ -9146,7 +9207,7 @@ function mdToFree(sh) {
   const W = shapePolys(sh)[0], c = polyCentroid(W), cx = mdR(c[0]), cy = mdR(c[1]);
   const pts = W.map((p) => [mdR(p[0] - cx), mdR(p[1] - cy)]);
   const o = mdClone(sh);
-  for (const k of ["a1", "a2", "t", "n", "name"]) delete o[k];
+  for (const k of ["a1", "a2", "t", "n"]) delete o[k];
   const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
   return Object.assign(o, { type: "free", cx, cy, ang: 0, k: 100, pts, w: mdR(Math.max(...xs) - Math.min(...xs)), h: mdR(Math.max(...ys) - Math.min(...ys)) });
 }
@@ -9480,7 +9541,7 @@ function mdFrame() {
   if (!MD.sel.length || MD.sel.some(mdLk)) return null;
   if (MD.sel.length === 1) {
     const sh = MD.shapes[MD.sel[0]];
-    if (sh && sh.type !== "para" && !mdArr(sh)) return { kind: "local", o: [sh.cx, sh.cy], a: sh.ang || 0, b: mdLocalBox(sh), uni: !!MD_UNI[sh.type] };
+    if (sh && sh.type !== "para" && sh.type !== "pts" && !mdArr(sh)) return { kind: "local", o: [sh.cx, sh.cy], a: sh.ang || 0, b: mdLocalBox(sh), uni: !!MD_UNI[sh.type] };
   }
   const b = mdBBox(MD.sel.map((i) => MD.shapes[i]).filter(Boolean));
   if (!b) return null;
@@ -9862,6 +9923,7 @@ function mdDown(ev) {
   if (t === "select") {
     const hh = mdHandleAt(sx, sy);
     if (hh) {
+      mdFreePts();
       MD.drag = { kind: "handle", h: hh.h, F: hh.F, orig: MD.sel.map((i2) => mdClone(MD.shapes[i2])), w0: mdToW(sx, sy) };
       return;
     }
@@ -9881,6 +9943,7 @@ function mdDown(ev) {
     }
     if (!MD.sel.includes(i)) MD.sel = [i];
     MD.sel = MD.sel.filter((j) => !mdLk(j));
+    mdFreePts();
     if (ev.altKey) {
       const c = MD.sel.map((j) => {
         const x = mdClone(MD.shapes[j]);
@@ -10260,8 +10323,19 @@ function mdDo(cmd, arg) {
       note = ` ${lk.length} locked shape${lk.length === 1 ? " was" : "s were"} left as ${lk.length === 1 ? "it was" : "they were"}.`;
     }
   }
+  if (cmd === "rot" || cmd === "scale") arg = Number(arg);
+  if (MD_MOD[cmd] || cmd === "dup") mdFreePts();
   mdDo0(cmd, arg);
   if (note) mdMsg($("mdMsg").textContent + note);
+}
+function mdFreePts() {
+  for (const i of MD.sel) {
+    const sh = MD.shapes[i];
+    if (sh && sh.type === "pts" && !sh.lock) {
+      const f = mdToFree(sh);
+      if (f) MD.shapes[i] = f;
+    }
+  }
 }
 function mdDo0(cmd, arg) {
   const need = () => {

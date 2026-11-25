@@ -90,7 +90,7 @@ function mdToFree(sh) {   // the shape as an editable outline (null where it has
   if (sh.type === "frame" || sh.type === "ring" || mdArr(sh)) return null;
   const W = shapePolys(sh)[0], c = polyCentroid(W), cx = mdR(c[0]), cy = mdR(c[1]);
   const pts = W.map(p => [mdR(p[0] - cx), mdR(p[1] - cy)]);   // same corner order, so a corner index stays valid
-  const o = mdClone(sh); for (const k of ["a1", "a2", "t", "n", "name"]) delete o[k];
+  const o = mdClone(sh); for (const k of ["a1", "a2", "t", "n"]) delete o[k];
   const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
   return Object.assign(o, { type: "free", cx, cy, ang: 0, k: 100, pts, w: mdR(Math.max(...xs) - Math.min(...xs)), h: mdR(Math.max(...ys) - Math.min(...ys)) });
 }
@@ -279,7 +279,7 @@ function mdFrame() {   // single shape: its own axes (stretch); several or an ar
   if (!MD.sel.length || MD.sel.some(mdLk)) return null;
   if (MD.sel.length === 1) {
     const sh = MD.shapes[MD.sel[0]];
-    if (sh && sh.type !== "para" && !mdArr(sh)) return { kind: "local", o: [sh.cx, sh.cy], a: sh.ang || 0, b: mdLocalBox(sh), uni: !!MD_UNI[sh.type] };
+    if (sh && sh.type !== "para" && sh.type !== "pts" && !mdArr(sh)) return { kind: "local", o: [sh.cx, sh.cy], a: sh.ang || 0, b: mdLocalBox(sh), uni: !!MD_UNI[sh.type] };
   }
   const b = mdBBox(MD.sel.map(i => MD.shapes[i]).filter(Boolean)); if (!b) return null;
   return { kind: "box", o: [0, 0], a: 0, b, uni: true };
@@ -455,12 +455,12 @@ function mdDown(ev) {
   const t = MD.tool;
   if (t === "select") {
     const hh = mdHandleAt(sx, sy);
-    if (hh) { MD.drag = { kind: "handle", h: hh.h, F: hh.F, orig: MD.sel.map(i => mdClone(MD.shapes[i])), w0: mdToW(sx, sy) }; return; }
+    if (hh) { mdFreePts(); MD.drag = { kind: "handle", h: hh.h, F: hh.F, orig: MD.sel.map(i => mdClone(MD.shapes[i])), w0: mdToW(sx, sy) }; return; }
     const i = mdPick(sx, sy);
     if (i < 0) { if (!ev.shiftKey) MD.sel = []; MD.drag = { kind: "box", s0: [sx, sy], add: ev.shiftKey }; mdPanel(); mdRequest(); return; }
     if (ev.shiftKey) { MD.sel = MD.sel.includes(i) ? MD.sel.filter(j => j !== i) : MD.sel.concat([i]); mdPanel(); mdRequest(); return; }
     if (!MD.sel.includes(i)) MD.sel = [i];
-    MD.sel = MD.sel.filter(j => !mdLk(j));
+    MD.sel = MD.sel.filter(j => !mdLk(j)); mdFreePts();
     if (ev.altKey) { const c = MD.sel.map(j => { const x = mdClone(MD.shapes[j]); delete x.name; delete x.lock; return x; }); const n = MD.shapes.length; MD.shapes.push(...c); MD.sel = c.map((_, k) => n + k); }
     const b = mdSnap(sx, sy, { skip: MD.sel });
     MD.drag = { kind: "move", b: b.p, orig: MD.sel.map(j => mdClone(MD.shapes[j])), moved: ev.altKey };
@@ -641,9 +641,14 @@ function mdDo(cmd, arg?: any) {
       note = ` ${lk.length} locked shape${lk.length === 1 ? " was" : "s were"} left as ${lk.length === 1 ? "it was" : "they were"}.`;
     }
   }
+  if (cmd === "rot" || cmd === "scale") arg = Number(arg);   // from a button the value is text: "90" would be glued to the angle, not added
+  if (MD_MOD[cmd] || cmd === "dup") mdFreePts();
   mdDo0(cmd, arg);
   if (note) mdMsg($("mdMsg").textContent + note);
 }
+// an outline given by absolute corners ("pts", e.g. the pit examples) ignores its centre and angle: turn the selected
+// ones into editable outlines first, otherwise moving, turning, scaling or copying them does nothing
+function mdFreePts() { for (const i of MD.sel) { const sh = MD.shapes[i]; if (sh && sh.type === "pts" && !sh.lock) { const f = mdToFree(sh); if (f) MD.shapes[i] = f; } } }
 function mdDo0(cmd, arg?: any) {
   const need = () => { if (!MD.sel.length) { mdMsg("Select a shape first."); return false; } return true; };
   const box = () => mdSelBox(), ctr = () => { const b = box(); return [(b[0] + b[2])/2, (b[1] + b[3])/2]; };
