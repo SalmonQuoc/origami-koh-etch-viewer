@@ -43,7 +43,7 @@ Other functions:
 
 ## Run it
 
-Open https://salmonquoc.github.io/origami-koh-etch-viewer/ (GitHub Pages, published from `index.html` on `main` after the checks pass), or download `index.html` and open it in a browser. The page loads three.js r128 from cdnjs and jsDelivr; everything else, including the WebAssembly kernel and the data, is inside the file.
+Open https://salmonquoc.github.io/origami-koh-etch-viewer/ (GitHub Pages, published from `index.html` on `main` after the checks pass), or download `index.html` and open it in a browser. The page loads three.js r128 (npm package three@0.128.0) from jsDelivr, pinned by SHA-384 integrity hashes, and fonts from Google Fonts; everything else, including the WebAssembly kernel and the data, is inside the file. A Content Security Policy in the page allows nothing else to load and no data to be sent; see [SECURITY.md](SECURITY.md).
 
 To change the page, edit `src/`, `data/` or `engine/` and run `npm run build` (see [CONTRIBUTING.md](CONTRIBUTING.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/DATA.md](docs/DATA.md)).
 

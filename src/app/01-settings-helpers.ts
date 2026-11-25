@@ -9,6 +9,8 @@ let layoutBusy = false;   // true while applyLayout() switches split/theater, so
 const snapV = v => { const st = Number(SET.snap) || 1; return Math.round(v/st)*st; };
 const EDC: Record<string, number[]> = {};   // cursor position in each 2D editor (world µm), set in 19-coordinates.ts
 const edGrid = (W: number) => niceStep(W/8);
+// text from files or storage (names of etchants and presets) is escaped before it goes into HTML
+function escHTML(v: unknown) { return String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
 const EDZ: Record<string, { z: number; cx: number; cy: number }> = {};
 const EDM: Record<string, { on: boolean; a: number[] | null; b: number[] | null }> = {};   // measuring tool in the 2D editors (module 19)
 const fmtLen = (v: number) => { const a = Math.abs(v); return a >= 1000 ? `${+(v/1000).toPrecision(4)} mm` : a >= 10 ? `${+v.toFixed(1)} µm` : `${+v.toFixed(2)} µm`; };   // zoom and centre of each 2D editor (19-coordinates.ts)  // grid and tick step of an editor W µm wide

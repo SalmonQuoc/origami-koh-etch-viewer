@@ -207,6 +207,21 @@ test("page: scenes, simulator kernel, drawing, settings, custom etchant, presets
     await p.selectOption("#stLayout", "standard"); await ev(() => document.getElementById("dlgSet").close());
   });
 
+  await t.test("names in an imported etchant file are shown as text, not run as HTML", async () => {
+    const evil = { format: "origami-etchants", version: 1, etchants: [{ name: '<img src=x onerror="window.__pwned=1">', mode: "base", base: "PAL30", T: 70, conc: 30, factor: 1 }] };
+    await p.setInputFiles("#ceImport", { name: "evil.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(evil)) });
+    await p.waitForTimeout(300);
+    assert.equal(await ev(() => window.__pwned), undefined);
+    assert.equal(await ev(() => document.querySelectorAll("#simRate img, #selRate img, #ceList img").length), 0);
+    assert.ok(await ev(() => [...document.querySelectorAll("#simRate option")].some(o => o.textContent.includes("<img"))));
+  });
+
+  await t.test("the page declares a Content Security Policy and pins three.js by hash", async () => {
+    const [csp, sri] = await ev(() => [document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.content || "", [...document.querySelectorAll("script[src]")].map(s => s.integrity)]);
+    assert.match(csp, /connect-src 'none'/); assert.match(csp, /default-src 'none'/);
+    assert.ok(sri.length >= 2 && sri.every(h => /^sha384-/.test(h)), JSON.stringify(sri));
+  });
+
   await t.test("no sideways scroll at phone width", async () => {
     await p.setViewportSize({ width: 390, height: 844 });
     for (const m of ["model", "pit", "sim", "find"]) {

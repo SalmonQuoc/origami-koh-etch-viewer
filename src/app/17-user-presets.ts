@@ -46,7 +46,7 @@ function psLoad(id) {
 }
 function psValid(q) {
   return q && typeof q.name === "string" && ["sim", "pit"].includes(q.kind) && ["100", "110", "111"].includes(q.wf) && q.data && Array.isArray(q.data.shapes)
-    && q.data.shapes.every(s => s && SHAPE_TYPES[s.type]) && (q.kind === "pit" || (SFR[q.data.fk] && q.data.t > 0 && q.data.hx > 0 && q.data.hy > 0));
+    && q.data.shapes.every(s => s && SHAPE_TYPES[s.type] && (s.op == null || s.op === "open" || s.op === "mask") && ["cx", "cy", "w", "h", "ang"].every(k => s[k] == null || typeof s[k] === "number")) && (q.kind === "pit" || (SFR[q.data.fk] && q.data.t > 0 && q.data.hx > 0 && q.data.hy > 0));
 }
 const psId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 for (const kind of ["sim", "pit"]) {

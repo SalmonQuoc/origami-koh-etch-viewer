@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Content Security Policy: only the page itself, the two pinned three.js files from jsDelivr (checked by their hashes below) and Google Fonts may load;
+     the etch kernel runs as WebAssembly in a worker made from the page. Nothing is sent anywhere (connect-src 'none'). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; worker-src blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
 <title>Origami 3D Viewer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -871,8 +875,9 @@ canvas.measuring { cursor: crosshair !important; }
 <!-- controls of the 3D view, set from the 👁 Show tab (module 22); kept here so their handlers still run -->
 <div id="ctlStore" hidden><label><input type="checkbox" id="cCorners" checked> corner directions</label><label><input type="checkbox" id="cFaces"> face indices</label><label><input type="checkbox" id="cUpper" checked> upper half (above the wafer)</label><label><input type="checkbox" id="cCut"> cut open at the section line</label><label><input type="checkbox" id="cBlock" checked> silicon block (off: cast of the pit)</label><label><input type="checkbox" id="cGhost" checked> final {111} shape (wire)</label><label><input type="checkbox" id="cMask" checked> mask layer</label><select id="pitColor"><option value="plane">crystal plane family</option><option value="depth">depth below the surface</option><option value="rate">etch rate of the wall</option></select><label><input type="checkbox" class="cCompass" checked> crystal compass</label><div id="pitLegend"><span><i class="sw" style="background:var(--mask)"></i>mask film (true thickness)</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span><span><i class="sw" style="background:var(--s-cut)"></i>cut face</span></div><label><input type="checkbox" id="cSimMask" checked> mask layer</label><label><input type="checkbox" id="cSimCut"> cut open at the section line</label><div id="simLegend"><span><i class="sw" style="background:var(--mask)"></i>mask film (true thickness)</span><span><i class="sw" style="background:var(--mask);filter:brightness(.55)"></i>mask with no silicon under it</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span></div><select id="simColor"><option value="plane">crystal plane family</option><option value="depth">depth below the surface</option><option value="rate">local etch rate R(n)</option><option value="time">time the etch front reached the surface</option></select><div id="simPlaneLegend" style="margin-top:6px"><span><i class="sw" style="background:var(--f111)"></i>{111}</span><span><i class="sw" style="background:var(--f100)"></i>{100}</span><span><i class="sw" style="background:var(--f110)"></i>{110}</span><span><i class="sw" style="background:var(--fhi)"></i>higher index ({311}, {211}, {411} …)</span><span><i class="sw" style="background:var(--s-side)"></i>no plane within 4°</span><span><i class="sw" style="background:var(--s-cut)"></i>cut face</span></div></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<!-- three.js r128 from the npm package three@0.128.0; the integrity hashes are SHA-384 of the files in that package (checked against the npm registry) -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js" integrity="sha384-wagZhIFgY4hD+7awjQjR4e2E294y6J2HSnd8eTNc15ZubTeQeVRZwhQJ+W6hnBsf" crossorigin="anonymous"></script>
 <!-- @scripts -->
 </body>
 </html>
