@@ -1,7 +1,8 @@
 // Physical checks of the etch engine (run with the WebAssembly kernel when it is built, else with JavaScript).
 import test from "node:test";
 import assert from "node:assert/strict";
-import { engine, CASES, PAL30, F100, wasmBytes } from "./load-engine.mjs";
+import { engine, CASES, PAL30, F100, F110, wasmBytes } from "./load-engine.mjs";
+import { fitAngle, bevel, lateralMaxima } from "./measure.mjs";
 
 const E = engine(!!wasmBytes);
 
@@ -55,4 +56,28 @@ test("a 10 µm <110> Si wall between two windows keeps its {111} sides (dx 2 µm
     return 0;
   };
   for (const z of [5, 10]) { const w = width(z), want = 10 + 2*z/Math.tan(54.74*Math.PI/180); assert.ok(Math.abs(w - want) <= 1.5*dx, `wall width at ${z} µm depth ${w.toFixed(1)} µm, expected ${want.toFixed(1)}`); }
+});
+
+test("(110) groove with <110> edges: shallow {111} walls at 35.26° within 1° (dx 2 µm)", () => {
+  // Pal & Sato p. 213, Fig. 6.2: the <110> direction on (110) has slanted {111} planes at 35.3°; floor moves at R(110)
+  const sq = (cx, cy, w, h) => [[cx-w/2, cy-h/2], [cx+w/2, cy-h/2], [cx+w/2, cy+h/2], [cx-w/2, cy+h/2]], dx = 2, t = 30;
+  const c = { frame: F110, rates: PAL30, shapes: [{ pts: sq(0, 0, 2000, 200), op: "open" }], X0: -60, X1: 60, Y0: -160, Y1: 160, depth: 60, dx };
+  const S = E.create(c); E.step(S, t, 1e9);
+  const { Nx, Ny, Nz, NXY } = S, i = Math.floor(Nx/2), depth = E.stats(S, t).depth;
+  const edge = k => { for (let j = Math.floor(Ny/2); j < Ny - 1; j++) { const a = S.phi[k*NXY + j*Nx + i], b = S.phi[k*NXY + (j+1)*Nx + i]; if (a <= 0 && b > 0) return (j + 0.5 + a/(a - b))*dx + c.Y0; } return null; };
+  const P = []; for (let k = 0; k < Nz; k++) { const y = edge(k), z = (k + 0.5)*dx; if (y != null && z > 0.2*depth && z < 0.8*depth) P.push([y, z]); }
+  const ang = fitAngle(P);
+  assert.ok(Math.abs(depth - PAL30["110"]*t) <= dx, `floor ${depth.toFixed(2)} µm, expected ${(PAL30["110"]*t).toFixed(2)}`);
+  assert.ok(P.length >= 5 && Math.abs(ang - 35.26) < 1, `wall angle ${ang.toFixed(2)}° from ${P.length} points`);
+});
+
+test("undercut convex corner of a (100) mesa follows the bevel of the rate map (dx 4 µm)", () => {
+  // the simulated bevel must match the largest lateral rate of the same rate map (minimum envelope, Pal & Sato pp. 228, 235)
+  // within 2.5°; both are about 5° below the measured 30 ± 1° (p. 231), a limit of the 12-orientation map (check log 2026-11-25)
+  const sq = (cx, cy, w, h) => [[cx-w/2, cy-h/2], [cx+w/2, cy-h/2], [cx+w/2, cy+h/2], [cx-w/2, cy+h/2]], H = 160, dx = 4, t = 40;
+  const S = E.create({ frame: F100, rates: PAL30, shapes: [{ pts: sq(0, 0, 4000, 4000), op: "open" }, { pts: sq(0, 0, 2*H, 2*H), op: "mask" }], X0: 0, X1: H + 40, Y0: 0, Y1: H + 40, depth: 50, dx });
+  E.step(S, t, 1e9);
+  const b = bevel(S, H, dx), m = lateralMaxima(E, E.makeRate(PAL30), 0.5);
+  assert.ok(m.length >= 1, "the rate map has a lateral-rate maximum between 0° and 45°");
+  assert.ok(b.n >= 5 && Math.abs(b.alpha - m[0][0]) < 2.5, `bevel ${b.alpha.toFixed(1)}° against ${m[0][0].toFixed(1)}° of the rate map`);
 });
