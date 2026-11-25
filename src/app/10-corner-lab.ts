@@ -1,5 +1,5 @@
 // ---- corner lab: a mesa corner left unprotected next to one with compensation, on (100)
-const CL: CornerState = { rate: "PAL30", H: 40, A: 200, type: "beam110", s1: 108, s2: 40, built: false };
+const CL: CornerState = { rate: "PAL30", H: 40, A: 200, type: "beam110", s1: 108, s2: 40, built: false, mask: null };   // mask: the hand-edited mask (null: built from the settings)
 const CL_TYPES = {   // size labels and the design rules (sourced) or design choices
   none:    { l1: null, l2: null },
   square:  { l1: "square side a", l2: null },
@@ -19,7 +19,7 @@ function clSync() {
   if (T.l1) $("clL1").firstChild.textContent = T.l1 + " "; if (T.l2) $("clL2").firstChild.textContent = T.l2 + " ";
   $("clRule").textContent = clRule(CL.type, CL.H).txt;
 }
-function clBuild(run = true) {
+function clBuild(run = true, keepEdits = false) {
   const H = CL.H, A = CL.A, R100 = SRATES[CL.rate].r["100"], tT = H/R100;
   const reach = CL.type === "square" ? CL.s1*0.75 : CL.type === "none" ? 0 : CL.s1;
   const m = 1.6*H + 30, hx = A/2 + reach + m, Ly1 = Math.max(0.5*A, 1.5*H), Ly = Ly1 + reach + m, hy = Ly/2, yc = hy - reach - m;
@@ -27,15 +27,17 @@ function clBuild(run = true) {
   const sh = [shp("rect", "open", 0, 0, 2*hx + 40, 2*hy + 40),
               shp("rect", "mask", (-hx - 20 + xL)/2, (yc - hy - 20)/2, xL + hx + 20, yc + hy + 20),
               shp("rect", "mask", (xR + hx + 20)/2, (yc - hy - 20)/2, hx + 20 - xR, yc + hy + 20)];
+  for (const x of sh) x.lock = true;   // domain and mesas: locked, so editing in the designer or the table changes only the compensation
   const a = CL.s1, w = CL.s2, d = [-SQ2, SQ2];
   if (CL.type === "square") sh.push(shp("rect", "mask", xR, yc, a, a));
   else if (CL.type === "beam110") sh.push(shp("rect", "mask", xR - a/2, yc - w/2, a, w));
   else if (CL.type === "beam100") sh.push(shp("rect", "mask", xR + d[0]*a/2, yc + d[1]*a/2, a, w, 135));
   Object.assign(SIM, { fk: "100", rot: 0, rate: CL.rate, t: Math.max(5, Math.round(1.3*tT)), pre: 0, hx: Math.ceil(hx/5)*5, hy: Math.ceil(hy/5)*5, dxMax: Math.max(0.5, H/16),
-    shapes: sh, sel: -1, preset: -1, cutPos: Math.round(yc - 0.15*H), cutAxis: "y", cutLine: null, owner: "corner", wfLoaded: null });
+    shapes: keepEdits && Array.isArray(CL.mask) && CL.mask.length ? JSON.parse(JSON.stringify(CL.mask)) : sh, sel: -1, preset: -1, cutPos: Math.round(yc - 0.15*H), cutAxis: "y", cutLine: null, owner: "corner", wfLoaded: null });
   SIM.probes = [{ x: xL, y: yc, ux: SQ2, uy: SQ2, s0: -0.45*Math.min(A, 2*Ly1), s1: reach + m }, { x: xR, y: yc, ux: -SQ2, uy: SQ2, s0: -0.45*Math.min(A, 2*Ly1), s1: reach + m }];
   SIM.cl = { tT, H, xL, xR, yc, type: CL.type };
-  CL.built = true; syncSimInputs(); renderShapeList();
+  if (!keepEdits) CL.mask = null;
+  CL.built = true; syncSimInputs(); renderShapeList(); clEditNote();
   if (run) { simRun(); buildSim(true); }
 }
 function clValueAt(h, k, t) {   // probe k of the history at time t (linear)
@@ -66,6 +68,8 @@ $("clType").addEventListener("change", e => { CL.type = e.target.value; Object.a
 for (const [id, k] of [["clH", "H"], ["clA", "A"], ["clS1", "s1"], ["clS2", "s2"]]) $(id).addEventListener("change", e => { const v = Number(e.target.value); if (v >= 0) CL[k] = v; clSync(); });
 $("clAuto").addEventListener("click", () => { const r = clRule(CL.type, CL.H); CL.s1 = r.s1; CL.s2 = r.s2; clSync(); clBuild(); });
 $("clRun").addEventListener("click", () => clBuild());
+$("clRunMask").addEventListener("click", () => { if (SIM.owner !== "corner") { clBuild(true, true); return; } simRun(); buildSim(false); });
+function clEditNote() { const e = $("clEdited"); if (e) e.classList.toggle("hidden", !(Array.isArray(CL.mask) && CL.mask.length)); }
 // hover on the 3D surface
 function simHover(ev) {
   if (!simScene || !simScene.pick) { tip.style.display = "none"; return; }

@@ -183,16 +183,36 @@ body.stacked aside.panel > * { break-inside: avoid; }
 body.lbl-off .labels { display: none; }
 /* enlarged editor or panel: a large window over the page */
 .enl { position: relative; }
-.enlBtn { position: absolute; top: 0; right: 0; z-index: 2; font-size: 12px !important; padding: 2px 8px !important; }
-.enl.enlarged { position: fixed; inset: 3vh 3vw; z-index: 70; background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+.enl.enlarged { position: fixed; inset: 1.5vh 1.5vw; z-index: 70; background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
   padding: 46px 22px 22px; overflow: auto; box-shadow: 0 12px 48px rgba(0, 0, 0, .35); margin: 0 !important; }
-.enl.enlarged > .enlBtn { top: 10px; right: 14px; }
-.enl:not(.panel):not(.enlarged) > .enlBtn { position: static; display: block; margin: 0 0 6px auto; }
 .enl.enlarged::before { content: attr(data-title); position: absolute; top: 12px; left: 22px; font: 600 17px/1.3 "Source Serif 4", Georgia, serif; color: var(--ink); }
 .enl.enlarged.hidden { display: block !important; }
 #enlBack { position: fixed; inset: 0; z-index: 69; background: rgba(0, 0, 0, .45); }
 body.enl-open { overflow: hidden; }
 .enl.enlarged .maskcv { margin: 0 auto; }
+.enl.enlarged:fullscreen { inset: 0; border-radius: 0; border: 0; width: 100vw; height: 100vh; }
+.enl.enlarged:fullscreen::backdrop { background: var(--panel); }
+.enlBar { position: absolute; top: 0; right: 0; z-index: 2; display: flex; gap: 6px; }
+.enlBar .btn { font-size: 12px !important; padding: 2px 8px !important; }
+.enl.enlarged > .enlBar { top: 10px; right: 14px; }
+.enl:not(.panel):not(.enlarged) > .enlBar { position: static; justify-content: flex-end; margin: 0 0 6px; }
+.edTools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: flex-end; margin: 0 0 4px; font-size: 12.5px; }
+.gridPick { display: inline-flex; gap: 4px; align-items: center; font-size: 12.5px; color: var(--muted); }
+.gridPick select { font-size: 12px; padding: 1px 3px; }
+/* enlarged mask editors: the shape list beside the drawing (right or left, setting listSide) */
+.enl.enlarged.edl { display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, 42%); grid-auto-rows: min-content; column-gap: 18px; align-content: start; }
+.enl.enlarged.edl > * { grid-column: 1; }
+.enl.enlarged.edl > .enlBar { grid-column: auto; }
+.enl.enlarged.edl > .edSide { grid-column: 2; grid-row: 1 / span 30; overflow: auto; max-height: calc(100% - 4px); align-self: stretch; border-left: 1px solid var(--line); padding-left: 14px; }
+body.list-left .enl.enlarged.edl { grid-template-columns: minmax(340px, 42%) minmax(0, 1fr); }
+body.list-left .enl.enlarged.edl > * { grid-column: 2; }
+body.list-left .enl.enlarged.edl > .edSide { grid-column: 1; border-left: 0; border-right: 1px solid var(--line); padding: 0 14px 0 0; }
+.enl.enlarged.edl > .edSide .addrow { margin-top: 0; }
+.enl:not(.enlarged) .edSideBtn { display: none; }
+body.list-left .mdBody { grid-template-columns: auto 290px minmax(0, 1fr); }
+body.list-left .mdSide { order: -1; grid-column: 2; grid-row: 1; border-left: 0; border-right: 1px solid var(--line); }
+body.list-left .mdCanvasBox { grid-column: 3; grid-row: 1; }
+body.list-left .mdTools { grid-column: 1; grid-row: 1; }
 /* drawing a free outline */
 .drawhelp { margin: 4px 0; padding: 6px 8px; border-radius: 6px; background: var(--chip); font-size: 12.5px; color: var(--ink); }
 /* a switched-on toggle (Explanations, Split, Theater, Full screen, Draw, Play, Enlarge) takes the accent colour */
@@ -236,6 +256,11 @@ section.refs a { color: var(--accent); overflow-wrap: anywhere; }
 .cards { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
 .card { border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; cursor: pointer; }
 .card.sel { border-color: var(--accent); background: var(--chip); }
+button.lockB { font-size: 13px !important; opacity: .4; }
+button.lockB.on, tr:hover button.lockB, .card:hover button.lockB { opacity: 1; }
+.card.locked, table.shapes tr.locked td { color: var(--muted); }
+.card.locked input, .card.locked select, table.shapes tr.locked input, table.shapes tr.locked select { opacity: .65; }
+button.x:disabled { opacity: .3; cursor: default; }
 .card .top { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
 .card .top b { font-weight: 600; }
 .card .fl { display: flex; flex-wrap: wrap; gap: 2px 8px; margin-top: 2px; }
@@ -358,6 +383,71 @@ canvas.measuring { cursor: crosshair !important; }
 @media (min-width: 901px) { .bar { position: sticky; top: 0; } }   /* the bar stays in reach while the panel scrolls */
 @media (max-width: 700px) { .tsep { display: none; } }
 .byline a, .apphead a { color: var(--accent); }
+/* ---- mask designer (module 24): full-screen vector editor over the page ---- */
+body.md-open { overflow: hidden; }
+.md { position: fixed; inset: 0; z-index: 60; background: var(--bg); color: var(--ink); display: flex; flex-direction: column; font: 13px "IBM Plex Sans", sans-serif; }
+.md.hidden { display: none; }
+.md .btn { font-size: 12.5px; padding: 4px 9px; }
+.md .btn:disabled { opacity: .45; cursor: default; }
+.mdTop, .mdSnap { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 6px 10px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.mdTop b { font-size: 15px; }
+.mdGrp { display: inline-flex; gap: 3px; flex-wrap: wrap; }
+.mdSnap label { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.mdSnap select, .mdSnap input[type=number], .mdSide select, .mdSide input[type=number], .mdBar input { font: 12.5px "IBM Plex Mono", monospace; padding: 2px 4px; border: 1px solid var(--line); border-radius: 5px; background: var(--bg); color: var(--ink); max-width: 230px; }
+.mdSnap input[type=number] { width: 60px; }
+.mdBody { flex: 1; display: grid; grid-template-columns: auto minmax(0, 1fr) 290px; min-height: 0; }
+.mdTools { display: flex; flex-direction: column; gap: 4px; padding: 8px 6px; border-right: 1px solid var(--line); background: var(--panel); }
+.mdTools button { width: 86px; text-align: left; padding: 5px 7px; font-size: 12px; }
+.mdTools button kbd { float: right; opacity: .6; font: 11px "IBM Plex Mono", monospace; }
+.mdCanvasBox { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+#mdCanvas { position: absolute; inset: 0; display: block; touch-action: none; outline: none; }
+.mdSide { border-left: 1px solid var(--line); background: var(--panel); padding: 8px 10px; overflow: auto; }
+.mdSide h4 { margin: 4px 0 6px; font-size: 13.5px; }
+.mdSide > label, .mdSide .dsel { display: flex; justify-content: space-between; gap: 6px; align-items: center; margin: 3px 0; }
+.mdF { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; margin: 4px 0; }
+.mdF label { display: flex; flex-direction: column; font-size: 11.5px; color: var(--muted); }
+.mdF input { width: 100%; box-sizing: border-box; }
+.mdAlign { display: flex; flex-wrap: wrap; gap: 3px; margin: 6px 0; }
+.mdCorners div { display: grid; grid-template-columns: 1fr; gap: 2px; max-height: 220px; overflow: auto; }
+.mdV { display: grid; grid-template-columns: 22px 1fr 1fr; gap: 3px; align-items: center; font-size: 11px; }
+.mdV input { width: 100%; box-sizing: border-box; }
+#mdList { display: flex; flex-direction: column; gap: 1px; }
+.mdRow { display: flex; align-items: center; gap: 6px; padding: 3px 6px; border-radius: 5px; cursor: pointer; font-size: 12.5px; border-top: 2px solid transparent; border-bottom: 2px solid transparent; }
+.mdRow .mdNm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mdRow .mdGrip { color: var(--muted); cursor: grab; font-size: 11px; letter-spacing: -2px; }
+.mdRow.locked .mdNm { color: var(--muted); }
+.mdRow.locked .mdGrip { visibility: hidden; }
+.mdRow.dropA { border-top-color: var(--accent); }
+.mdRow.dropB { border-bottom-color: var(--accent); }
+.mdRow button { border: 1px solid transparent; background: none; color: inherit; border-radius: 4px; padding: 0 4px; cursor: pointer; }
+.mdRow button:hover:not(:disabled) { border-color: var(--line); }
+.mdRow button:disabled { cursor: default; opacity: .7; }
+.mdLk { opacity: .35; font-size: 12px; }
+.mdLk.on, .mdRow:hover .mdLk { opacity: 1; }
+.mdLayBar { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 4px 0; }
+.mdLayBar .btn { padding: 2px 7px; font-size: 12px; }
+.mdLockRow { gap: 6px; align-items: flex-end; margin: 4px 0; }
+.mdRow:hover { background: var(--chip); }
+.mdRow.sel { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.mdOp { font: 11px "IBM Plex Mono", monospace; color: var(--muted); }
+.mdOp.mask { color: var(--mask); }
+.mdBar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 5px 10px; border-top: 1px solid var(--line); background: var(--panel); font-size: 12px; }
+#mdPos { font: 12px "IBM Plex Mono", monospace; min-width: 260px; }
+#mdHint { color: var(--muted); flex: 1 1 300px; }
+.mdBar label { display: inline-flex; gap: 6px; align-items: center; }
+#mdCmd { width: 170px; }
+#mdMsg { color: var(--accent); flex: 1 1 100%; min-height: 1em; }
+@media (max-width: 760px) { .mdBody { grid-template-columns: auto minmax(0, 1fr); } .mdSide { display: none; } .mdTools button { width: 44px; font-size: 0; } .mdTools button kbd { float: none; font-size: 11px; opacity: 1; } }
+/* save dialog (module 25) */
+.svList { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 3px 14px; margin: 6px 0; }
+.svList label { display: flex; gap: 6px; align-items: flex-start; font-size: 13.5px; }
+.svList label.off { opacity: .5; }
+.svList .note { font-size: 12px; }
+.pjList { display: flex; flex-direction: column; gap: 3px; max-height: 220px; overflow: auto; margin: 6px 0; }
+.pjRow { display: flex; gap: 8px; align-items: flex-start; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; font-size: 13.5px; }
+.pjRow.sel { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.pjRow .note { font-size: 12px; }
+.pjCur { font-size: 11px; padding: 0 5px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); }
 </style>
 </head>
 <body>
@@ -377,7 +467,7 @@ canvas.measuring { cursor: crosshair !important; }
     <button data-w="100" aria-pressed="true" title="(100) wafer: the usual MEMS wafer; pits have {111} walls at 54.74°">(100)</button><button data-w="110" aria-pressed="false" title="(110) wafer: vertical {111} walls along ⟨112⟩">(110)</button><button data-w="111" aria-pressed="false" title="(111) wafer: the surface itself is a slow {111} plane">(111)</button></span></div>
   <div><span class="lbl">Scene</span><span class="seg" id="segM">
     <button data-m="model" aria-pressed="true" title="How to hold the HW2 paper octahedron over the wafer; click a face for its plane">Model on wafer</button><button data-m="pit" aria-pressed="false" title="Fast analytic pit: openings in a mask, {111}-bounded walls, any time">Etched pit</button><button data-m="sim" aria-pressed="false" title="Full 3D etch of any mask with 12 measured plane rates: undercut, corners, release">Etch simulator</button><button data-m="corner" aria-pressed="false" title="Convex-corner attack and compensation patterns, side by side">Corner lab</button><button data-m="find" aria-pressed="false" title="Read the flat error δ from etched alignment marks on the whole wafer">Find orientation</button></span></div>
-  <div class="tools"><button class="btn" id="bHelp" title="Quick start, mouse and keys (key ?)">? Help</button><button class="btn" id="bSettings" title="Layout, theme, editor and simulator settings">⚙ Settings</button><button class="btn" id="bExplain" aria-pressed="false" title="Show the explanations and source notes under the controls (key I)">ⓘ Explanations</button><span class="tsep" aria-hidden="true"></span><button class="btn" id="bSplit" aria-pressed="false" title="3D view and controls side by side, each scrolling on its own; drag the divider to resize (key S)">Split view</button><button class="btn hidden" id="bSwap" title="Put the controls on the other side">Swap sides</button><button class="btn" id="bTheater" aria-pressed="false" title="Wide stage with the panel below (key T)">Theater view</button><button class="btn" id="bFull" title="Full screen 3D view (Esc to leave)">Full screen</button></div>
+  <div class="tools"><button class="btn" id="bHelp" title="Quick start, mouse and keys (key ?)">? Help</button><button class="btn" id="bProject" title="Projects">📁 Projects</button><button class="btn" id="bSave" title="Save the open project in this browser now (Ctrl+S); the first save creates a project">💾 Save</button><button class="btn" id="bSettings" title="Layout, theme, editor and simulator settings">⚙ Settings</button><button class="btn" id="bExplain" aria-pressed="false" title="Show the explanations and source notes under the controls (key I)">ⓘ Explanations</button><span class="tsep" aria-hidden="true"></span><button class="btn" id="bSplit" aria-pressed="false" title="3D view and controls side by side, each scrolling on its own; drag the divider to resize (key S)">Split view</button><button class="btn hidden" id="bSwap" title="Put the controls on the other side">Swap sides</button><button class="btn" id="bTheater" aria-pressed="false" title="Wide stage with the panel below (key T)">Theater view</button><button class="btn" id="bFull" title="Full screen 3D view (Esc to leave)">Full screen</button></div>
 </div>
 <div class="guide hidden" id="guide" role="note"><span class="gico" aria-hidden="true">i</span><div id="guideTxt"></div><button class="x" id="guideX" title="Hide this tip (Settings can show the tips again)" aria-label="hide this tip">×</button></div>
 
@@ -439,15 +529,15 @@ canvas.measuring { cursor: crosshair !important; }
     <div class="psBox" data-ps="pit"><div class="row"><input type="text" data-ps-name maxlength="60" placeholder="name for your preset" aria-label="name for your preset" style="flex:1;min-width:0"><button class="btn" data-ps-save title="Keep the current mask, etchant and flat error in this browser">☆ Save as my preset</button></div>
     <div class="row psMore"><button class="btn" data-ps-del disabled title="Delete the selected preset of yours">Delete preset</button><button class="btn" data-ps-exp title="Download all your presets as a .json file">Export</button><label class="btn" title="Add presets from a .json file">Import<input type="file" accept=".json,application/json" data-ps-imp hidden></label></div>
     <p class="note hidden" data-ps-msg></p></div>
-    <div class="enl" data-title="Mask editor: Etched pit">
+    <div class="enl edl" data-title="Mask editor: Etched pit">
     <p class="note" style="margin:4px 0 6px"><b>Drag</b> a shape to move it (<b>Alt</b>-drag moves a copy), <b>click</b> to select it, <b>double-click</b> an empty spot to add the chosen shape there. With the editor focused, the <span class="kbd">←</span><span class="kbd">→</span><span class="kbd">↑</span><span class="kbd">↓</span> keys move the selected shape by one snap step (with Shift, five), <span class="kbd">Ctrl</span>+<span class="kbd">D</span> duplicates it and <span class="kbd">Delete</span> removes it. <b>Draw</b> lets you draw your own outline. The 3D view updates when you let go.</p>
     <p class="drawhelp hidden" id="pcDrawHelp"></p>
-    <canvas id="pitCanvas" class="maskcv" tabindex="0" aria-label="Mask editor for the etched pit"></canvas>
+    <div class="edTools"><span class="gridHere"></span></div><canvas id="pitCanvas" class="maskcv" tabindex="0" aria-label="Mask editor for the etched pit"></canvas>
     <div class="legend" style="margin-top:4px"><span><i class="sw" style="background:var(--mask)"></i>mask</span><span><i class="sw" style="background:var(--scene-bg);border:1px solid var(--s-ink)"></i>opening</span><span><i class="sw" style="background:var(--ghost)"></i>cavity edge at the surface now</span><span><i class="sw" style="background:var(--ghost);height:2px"></i>section line A → B</span></div>
-    <div class="addrow"><select id="pcType" aria-label="shape to add"></select><button class="btn primary" id="pcAdd">Add shape</button><button class="btn" id="pcDraw" title="Click to place corners or drag to draw freely">✎ Draw</button><button class="btn" id="pcDup">Duplicate</button><button class="btn" id="pcDel">Delete</button><button class="btn" id="pcClear">Clear all</button></div>
+    <div class="edSide"><div class="addrow"><select id="pcType" aria-label="shape to add"></select><button class="btn primary" id="pcAdd">Add shape</button><button class="btn" id="pcDraw" title="Click to place corners or drag to draw freely">✎ Draw</button><button class="btn" id="pcDesign" title="Open the full-screen mask designer: CAD-style drawing, snapping, typed coordinates, undo, DXF/SVG">⛶ Designer</button><button class="btn" id="pcDup">Duplicate</button><button class="btn" id="pcDel">Delete</button><button class="btn" id="pcClear">Clear all</button></div>
     <div id="pcList" class="cards"></div>
     <p class="warn hidden" id="pcWarn"></p>
-    <div class="row" style="margin-top:6px"><button class="btn" id="pcToSim">Open this mask in the etch simulator</button></div>
+    <div class="row" style="margin-top:6px"><button class="btn" id="pcToSim">Open this mask in the etch simulator</button></div></div>
     </div>
     <details class="srcs"><summary>How this scene etches a shape</summary>
       <p class="note">Each wall is a crystal plane that moves out from the opening at its own rate (n·x ≤ h + R·t). A non-convex shape (L, U, cross, frame, ring, star) is split into overlapping convex pieces; each piece etches as a convex opening and the cavity shown is their union. Concave corners therefore stop at {111} as they should. A drawn outline is split into convex pieces by triangulation (a design choice); where two pieces meet along a ⟨110⟩ line, a thin ridge can stay between their cavities. Convex mask corners (the inside corner of an L or U, the tips of a star) are <b>not</b> undercut here, although they are in real KOH etching (Kovacs et al. 1998, Fig. 1(c); Pal et al. 2007, Sec. 2). Openings that grow into each other are overlaid, not merged. The etch simulator handles both.</p>
@@ -484,8 +574,9 @@ canvas.measuring { cursor: crosshair !important; }
         <label id="clL1">size 1 <span><input type="number" id="clS1" min="0" step="5"> µm</span></label>
         <label id="clL2">size 2 <span><input type="number" id="clS2" min="0" step="5"> µm</span></label>
       </div>
-      <div class="row"><button class="btn" id="clAuto">Size from the design rule</button><button class="btn primary" id="clRun">Build and run</button></div>
+      <div class="row"><button class="btn" id="clAuto">Size from the design rule</button><button class="btn primary" id="clRun" title="Build the mask from these settings and run (replaces hand edits)">Build and run</button><button class="btn" id="clDesign" title="Draw your own compensation in the full-screen designer; the mesas stay locked">⛶ Draw compensation</button><button class="btn" id="clRunMask" title="Run the mask as it is now, with your edits">▶ Run my edited mask</button></div>
       <p class="note src" id="clRule"></p>
+      <p class="note hidden" id="clEdited">This corner lab mask has your own edits; they are kept in the project. <b>Build and run</b> replaces them by the mask built from the settings.</p>
       <h3>Corner result</h3>
       <dl class="kv" id="clReadout"></dl>
       <p class="note">The mask, time and grid below can still be edited by hand; “Build and run” rebuilds them from these settings.</p>
@@ -504,14 +595,14 @@ canvas.measuring { cursor: crosshair !important; }
       <select id="simFrame"><option value="110f">Flat along ⟨110⟩ (Lec 4-1 p. 6)</option><option value="110a">⟨111⟩ arrow = flat normal (Lec 4-1 p. 11, HW2 P5)</option><option value="100" hidden>(100)</option><option value="111" hidden>(111)</option></select></div>
     <p class="note src" id="simFrameSrc"></p>
     <h3><span class="stepn">2</span>Edit or draw the mask</h3>
-    <div class="enl" data-title="Mask editor: etch simulator">
-    <p class="note" style="margin:0 0 4px">Shapes are applied top to bottom: “open” removes the mask, “mask” puts it back (solid outline: open; dashed: mask). <b>Drag</b> a shape to move it (<b>Alt</b>-drag moves a copy), <b>double-click</b> an empty spot to add the chosen shape there; with the editor focused, the arrow keys move the selected shape by one snap step (Shift: five), <span class="kbd">Ctrl</span>+<span class="kbd">D</span> duplicates it and <span class="kbd">Delete</span> removes it. <b>Draw</b> lets you draw your own outline. Press Run to etch the new mask.</p>
+    <div class="enl edl" data-title="Mask editor: etch simulator">
+    <p class="note" style="margin:0 0 4px">Shapes are applied top to bottom: “open” removes the mask, “mask” puts it back (solid outline: open; dashed: mask). <b>Drag</b> a shape to move it (<b>Alt</b>-drag moves a copy), <b>double-click</b> an empty spot to add the chosen shape there; with the editor focused, the arrow keys move the selected shape by one snap step (Shift: five), <span class="kbd">Ctrl</span>+<span class="kbd">D</span> duplicates it and <span class="kbd">Delete</span> removes it. <b>Draw</b> lets you draw your own outline; <b>⛶ Designer</b> opens a full-screen drawing tool with snapping, typed coordinates, undo and DXF/SVG. Press Run to etch the new mask.</p>
     <p class="drawhelp hidden" id="simDrawHelp"></p>
-    <canvas id="maskCanvas" class="maskcv"></canvas>
+    <div class="edTools"><span class="gridHere"></span></div><canvas id="maskCanvas" class="maskcv"></canvas>
     <div class="legend"><span><i class="sw" style="background:var(--ghost);height:2px"></i>section line A → B</span></div>
-    <div class="addrow"><select id="addType"></select><select id="addOp"><option value="open">as opening</option><option value="mask">as mask</option></select><button class="btn" id="bAddShape">Add shape</button><button class="btn" id="bDraw" title="Click to place corners or drag to draw freely">✎ Draw</button><button class="btn" id="bDupShape">Duplicate selected</button></div>
+    <div class="edSide"><div class="addrow"><select id="addType"></select><select id="addOp"><option value="open">as opening</option><option value="mask">as mask</option></select><button class="btn" id="bAddShape">Add shape</button><button class="btn" id="bDraw" title="Click to place corners or drag to draw freely">✎ Draw</button><button class="btn" id="bDesign" title="Open the full-screen mask designer: CAD-style drawing, snapping, typed coordinates, undo, DXF/SVG">⛶ Designer</button><button class="btn" id="bDupShape">Duplicate selected</button></div>
     <p class="note" style="margin:4px 0 0">Columns: w, h = size; t = arm width (L, U, cross, frame) or inner size (ring, star); n = sides or points; array = copies nx × ny at pitch px, py (µm).</p>
-    <div class="tblwrap"><table class="shapes" id="shapeList"></table></div>
+    <div class="tblwrap"><table class="shapes" id="shapeList"></table></div></div>
     </div>
     <h3><span class="stepn">3</span>Process, then run</h3>
     <div class="row"><select id="simRate" style="flex:1;min-width:0"></select><button class="btn" data-etch-open="sim">Custom etchant…</button></div>
@@ -545,7 +636,9 @@ canvas.measuring { cursor: crosshair !important; }
         <li><b>Corner rules</b> (sourced, not imposed): concave corners show the slowest plane and convex corners the fastest (Lec 4-1 p. 8). The simulator does not apply these rules; they come out of the rate map.</li>
         <li><b>Front motion</b> (method): every surface element moves along its normal at R(hkl); this is solved as a 3D level set (Lax-Friedrichs scheme with second-order differences and Heun time steps, fast-marching re-initialisation) on a cubic grid. Accuracy is about one cell; sharp edges are rounded over about two cells. Check: 200 µm square window on (100), 60 min in 30 wt%: depth 47.32 µm (4 µm grid) and 47.56 µm (2 µm grid) against 0.797 × 60 = 47.82 µm; {111} wall 54.73° (4 µm grid) and 54.69° (2 µm grid) against 54.74°.</li>
         <li><b>Mask edge</b> (assumption): no etchant reaches silicon through the mask, so silicon under the mask is only removed from the side. At the top row under the mask the level set has no downward slope; where the wall there is near-vertical (slope below 0.35), the vertical gradient is set to zero. Check: a 100 &micro;m square window at 45&deg; on (100), 40 min in 30 wt% KOH, gives 26.5 &micro;m sideways undercut at a 2 &micro;m grid (29.3 &micro;m at 1 &micro;m) against 0.797 &times; 40 = 31.9 &micro;m (Pal &amp; Sato Table 4.1, p. 87); a ⟨110⟩-aligned pit keeps 0 &micro;m. Use a fine grid when {100} undercut matters.</li>
-        <li><b>Known numerical limits</b>: silicon walls and beams narrower than about 8 grid cells thin slowly (numerical dissipation, not physics), most when they are oblique to the grid; windows narrower than about 5 cells etch too slowly. Use the “fine” or “very fine” resolution or wider features when this matters. Undercut values are good to about one to two cells.</li>
+        <li><b>Known numerical limits</b>: silicon walls and beams narrower than about 8 grid cells thin slowly (numerical dissipation, not physics), most when they are oblique to the grid; windows narrower than about 5 cells etch too slowly. Use the “fine” or “very fine” resolution or wider features when this matters. Undercut values are good to about one to two cells. The sideways undercut of vertical {100} walls starts a few minutes late and then keeps a constant lag of about two cells (4.0 µm at a 2 µm grid, 2.3 µm at 1 µm, the same after 20, 40 and 60 min), so its relative error falls for longer etches.</li>
+        <li><b>Convex corners</b> (check, known limit): a (100) mesa corner is bevelled at 24° in 34 wt% KOH here, against 30 ± 1° measured (Pal &amp; Sato p. 231; Mayer et al. 1990, p. 3948: 30.96°). The simulator agrees within 1.5° with the bevel its own rate map predicts (minimum envelope, Pal &amp; Sato p. 228); the difference comes from the 12-orientation rate map, which has no {411} data (How it works, part 6).</li>
+        <li><b>Shallow {111} walls on (110)</b> (check): a groove with ⟨110⟩ edges on (110) has {111} side walls at 35.26° to the surface (Pal &amp; Sato p. 213, Fig. 6.2); the simulator gives 33.9° (4 µm grid) and 34.7° (2 µm grid) after 30 min in 30 wt% KOH, with the floor at 43.61 µm against 1.455 × 30 = 43.65 µm.</li>
         <li><b>Mask</b> (assumption): inert for the etch; etchant reaches the silicon only through openings and under released mask. The film is drawn at its true thickness (default 1 µm thermal SiO₂, a design choice inside the 1–2 µm of Pal &amp; Sato p. 348; or 0.15 µm LPCVD Si₃N₄, Pal &amp; Sato p. 54) and a SiO₂ film thins at the oxide rate below; when it is used up the readout says so, but the model still keeps the mask. Pal &amp; Sato p. 83: a 2–3 µm thermal oxide is not enough to etch through a 500 µm wafer in KOH (Si : SiO₂ selectivity about 150); Si₃N₄ is used instead. For KOH etchants with no oxide rate in the course files the rate is estimated as R(100)/150 (estimate). The SiO₂ loss shown uses 0.34 µm/h for KOH 42 wt% (thermal oxide, Lec 4-1 p. 7; Lec 10 p. 11) and the Lec 10 p. 11 values for KOH 57 wt% and EDP Type S; for the other KOH etchants it is the R(100)/150 estimate above, and for EDP F&amp;K it is not in the course files.</li>
         <li><b>Rates from Lec 10 and EDP</b>: KOH 57 wt% at 75 °C: {100} 25, {110} 39, {111} 0.5 µm/h (Lec 10 p. 11); its other orientations are the Pal &amp; Sato 50 wt% values scaled by R(100) (assumption). EDP Type S at 110 °C: {100} 51, {110} 57, {111} 1.25 µm/h (Lec 10 p. 11). EDP F&amp;K: ratio 50:30:3 (Finne and Klein 1967, Berkeley lab manual ch. 1.10) scaled to R(100) = 51 µm/h (assumption). For EDP only three orientations are given, so all other planes use the three-rate interpolation of Radjenović et al. (2010, eq. 1) (assumption). Lec 10 p. 16 orders EDP as (100) &gt; (110) &gt; (111), which the Type S values of p. 11 do not follow; F&amp;K does.</li>
         <li><b>Wafer</b>: 525 µm thick by default (100 mm wafer, Pal &amp; Sato Table 2.1, p. 30); only the depth that the etch can reach is simulated, and the back side is protected (assumption). Frames: (100) x = [1̄10] along the flat (origami tutorial, Rev. 1); (110) two conventions, see above; (111) flat along [11̄0] (assumption).</li>
@@ -643,13 +736,24 @@ canvas.measuring { cursor: crosshair !important; }
     <tr><td>📏 Measure, <span class="kbd">M</span></td><td>drag to measure a distance and its angle to x; <span class="kbd">Esc</span> clears</td></tr>
     <tr><td>✎ Draw</td><td>click corners or drag a free outline; <span class="kbd">Enter</span> or double-click finishes, <span class="kbd">Backspace</span> undoes a corner, <span class="kbd">Esc</span> cancels</td></tr>
   </table>
+  <table class="keys">
+    <tr><td colspan="2"><b>⛶ Mask designer</b> (full screen; every edit goes back to the editor)</td></tr>
+    <tr><td><span class="kbd">V</span> <span class="kbd">A</span> <span class="kbd">R</span> <span class="kbd">E</span> <span class="kbd">P</span> <span class="kbd">S</span> <span class="kbd">M</span> <span class="kbd">H</span></td><td>select, corners, rectangle, ellipse, polygon, catalogue shape, measure, pan</td></tr>
+    <tr><td>typing</td><td><code>x,y</code> a point, <code>@dx,dy</code> relative, <code>@L&lt;A</code> length and angle; <code>move</code>, <code>copy</code>, <code>rotate</code>, <code>scale</code>, <code>array</code>, <code>grid</code>, <code>fit</code></td></tr>
+    <tr><td><span class="kbd">Shift</span></td><td>square, circle, keep proportions, 15° steps</td></tr>
+    <tr><td><span class="kbd">Ctrl</span> + <span class="kbd">Z</span> / <span class="kbd">Y</span> <span class="kbd">C</span> <span class="kbd">V</span> <span class="kbd">D</span> <span class="kbd">A</span></td><td>undo / redo, copy, paste, duplicate, select all</td></tr>
+    <tr><td><span class="kbd">F</span> <span class="kbd">G</span> <span class="kbd">O</span></td><td>fit, grid snap on or off, turn into an editable outline</td></tr>
+    <tr><td>wheel, <span class="kbd">Space</span> + drag</td><td>zoom at the pointer, pan</td></tr>
+  </table>
   </div>
   <h3>Good to know</h3>
   <ul class="note" style="margin:0;padding-left:18px">
     <li><b>Sections</b>: click a heading in the right-hand panel (or press <span class="kbd">Enter</span> on it) to open or close that section. Only the first section of each panel is open at first; “open all” and “close all” sit at the top of the panel.</li>
     <li><b>Switches</b> that are on (Explanations, Split view, Theater view, Full screen, Draw, Play, Enlarge) are filled in the accent colour; open sections and open source lists have an accent heading.</li>
-    <li><b>⤢ Enlarge</b> opens an editor or a graph panel in a large window; <span class="kbd">Esc</span> closes it.</li>
+    <li><b>⤢ Enlarge</b> opens an editor or a graph panel in a large window and <b>⛶ Full screen</b> fills the whole screen; <span class="kbd">Esc</span> closes them. In a large mask editor the shape list sits beside the drawing (<b>⇆ List left / right</b>), and the <b>grid</b> list switches between square lines, dots, lines along the {111} traces, or none.</li>
+    <li><b>🔒 Lock</b> (in the shape lists and the designer, <span class="kbd">Ctrl</span>+<span class="kbd">L</span>; unlock all: <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">L</span>) keeps a shape in the mask but stops it being picked, moved or edited. The corner lab locks its two mesas, so <b>⛶ Draw compensation</b> changes only the compensation.</li>
     <li><b>ⓘ Explanations</b> shows the source notes under the controls and what each setting of the custom etchant means; they are off at first. <b>How it works</b>, below the page, explains the chemistry, the rate model and the simulation step by step.</li>
+    <li><b>💾 Save</b> (<span class="kbd">Ctrl</span> + <span class="kbd">S</span>) writes one project file with the parts you tick and opens it again; it also exports masks as SVG or DXF, pictures as PNG and the etched surface as STL.</li>
     <li><b>⚙ Settings</b> sets the layout, panel width, theme, label size, snap step and simulator resolution. They are kept in this browser.</li>
     <li><b>☆ Save as my preset</b> (Etched pit and Etch simulator) keeps the mask and process under a name; your presets appear in the example list under <i>My presets</i>.</li>
     <li><b>Custom etchant…</b> (next to each etchant list) makes a listed etchant at another temperature or KOH concentration, or one from your own rates.</li>
@@ -697,7 +801,7 @@ canvas.measuring { cursor: crosshair !important; }
   <p class="note">Both engines solve the same level-set scheme and give the same result to rounding; the JavaScript one is used automatically where WebAssembly is not allowed.</p>
   <h3>Saved data</h3>
   <div class="row"><button class="btn" id="stTips">Show the scene tips again</button><button class="btn" id="stReset">Reset all settings</button><button class="btn" id="stClearEtch">Delete my custom etchants</button><button class="btn" id="stClearPs">Delete my presets</button></div>
-  <p class="note">Settings, custom etchants and your presets are kept in this browser only. Use Export in the etchant dialog and next to each preset list to keep a copy or share it.</p>
+  <p class="note">Settings, custom etchants and your presets are kept in this browser only. Use <b>💾 Save</b> in the toolbar to keep all of it, with the masks and process, in one project file, or Export in the etchant dialog and next to each preset list.</p>
 </dialog>
 <dialog id="dlgEtch" class="dlg panel" aria-labelledby="ceTitle">
   <div class="dlghead"><h2 id="ceTitle">Custom etchant</h2><button class="x" data-close aria-label="close">×</button></div>
@@ -720,15 +824,15 @@ canvas.measuring { cursor: crosshair !important; }
       <label id="ceConcRow">KOH concentration (30 to 50) <span><input type="number" id="ceConc" min="30" max="50" step="1"> wt%</span></label>
       <p class="fhelp xinfo">Only for the Pal &amp; Sato KOH data (Table 4.1, p. 87: 30, 40 and 50 wt% at 70 °C). Values between the columns are linear interpolations (assumption); values outside 30–50 are clamped. Above about 25 wt% the rate falls as KOH rises, because water is a reactant (Pal &amp; Sato p. 88).</p>
       <label>activation energy Q of {100} <span><input type="number" id="ceQ100" min="0" step="0.01"> eV</span></label>
-      <p class="fhelp xinfo">How strongly the {100} rate depends on temperature: a larger Q gives a steeper change. About 0.60 eV for 40 % KOH (Pal &amp; Sato p. 90). It is also used for the nine higher-index planes (assumption).</p>
+      <p class="fhelp xinfo">How strongly the {100} rate depends on temperature: a larger Q gives a steeper change. About 0.60 eV for 40 % KOH (Pal &amp; Sato p. 90); Seidel et al. (1990, Fig. 12, p. 3618) measured 0.57, 0.59 and 0.61 eV in 20, 42 and 57 % KOH, and 0.40 eV in EDP Type S. The default is the value stored with the listed etchant. It is also used for the nine higher-index planes (assumption).</p>
       <label>Q of {110} <span><input type="number" id="ceQ110" min="0" step="0.01"> eV</span></label>
-      <p class="fhelp xinfo">No value in the course files; 0.60 eV is the default (assumption). If you have a measured value, enter it.</p>
+      <p class="fhelp xinfo">Default from the listed etchant: 0.59 eV for KOH (Seidel et al. 1990, Fig. 17, p. 3620, 20 % KOH, where (100) gave 0.57 eV in the same run) and 0.33 eV for EDP (Fig. 13, p. 3619, Type S). If you have a measured value, enter it.</p>
       <label>Q of {111} <span><input type="number" id="ceQ111" min="0" step="0.01"> eV</span></label>
-      <p class="fhelp xinfo">Pal &amp; Sato (p. 90) report that {111} has the smallest Q of the orientations they measured, but give no number; 0.60 eV is the default (assumption). A smaller Q makes the {111} rate change less with temperature than the other planes.</p>
+      <p class="fhelp xinfo">The sources disagree. Pal &amp; Sato (p. 90) report that {111} has the smallest Q of the orientations they measured in 40 % KOH, but give no number; Seidel et al. (1990, abstract, p. 3612) found the opposite trend, slowly etching planes having the higher Q, and give 0.52 eV for {111} against 0.40 eV for {100} in EDP Type S (Fig. 13, p. 3619). Defaults: 0.60 eV for KOH (assumption, same as {100}) and 0.52 eV for EDP. A smaller Q makes the {111} rate change less with temperature than the other planes.</p>
       <label>extra factor on all rates <span><input type="number" id="ceF" min="0" step="0.05"> ×</span></label>
       <p class="fhelp xinfo">Multiplies every rate by the same number, for example to match the R(100) you measured in your own lab. It changes the speed, not the shape, because all ratios between planes stay the same.</p>
     </div>
-    <p class="note src">Temperature: Arrhenius law R = R₀ exp(−Q/kT); Q(100) ≈ 0.60 eV for 40 % KOH, and {111} has the smallest Q (Pal &amp; Sato p. 90). Using 0.60 eV for {110} and {111} too, and for EDP, is an assumption: enter better values if you have them. Concentration: linear between the 30, 40 and 50 wt% columns of Pal &amp; Sato Table 4.1, p. 87 (assumption between the columns). k = 8.617 × 10⁻⁵ eV/K (standard constant, not in the course files).</p>
+    <p class="note src">Temperature: Arrhenius law R = R₀ exp(−Q/kT) (Pal &amp; Sato p. 90). Defaults by etchant (data/etchants.json): KOH Q(100) 0.60 eV (Pal &amp; Sato p. 90), Q(110) 0.59 eV (Seidel et al. 1990, Fig. 17), Q(111) 0.60 eV (assumption; the sources disagree, see the {111} help); EDP Q(100) 0.40, Q(110) 0.33, Q(111) 0.52 eV (Seidel et al. 1990, Fig. 13, Type S; also used for F&amp;K, assumption). The thermal-oxide rate is moved with Q(SiO₂) = 0.85 eV in KOH and 0.80 eV in EDP (Seidel et al. 1990, Fig. 18, p. 3620). Concentration: linear between the 30, 40 and 50 wt% columns of Pal &amp; Sato Table 4.1, p. 87 (assumption between the columns). k = 8.617 × 10⁻⁵ eV/K (standard constant, not in the course files).</p>
   </div>
   <div id="ceOwnBox" class="hidden">
     <p class="note">Etch rates in µm/h at your process. {100}, {110} and {111} are needed; the other planes are optional. Planes left empty are interpolated linearly over the orientation triangle from the given ones (method of this page; How it works, part 7).</p>
@@ -736,7 +840,7 @@ canvas.measuring { cursor: crosshair !important; }
     <p class="fhelp xinfo">Type rates in µm/h at your process. {100}, {110} and {111} are needed because they are the three corners of the orientation triangle from which every other rate is interpolated (How it works, part 7). {111} sets how fast the {111} walls move back under the mask, {100} how fast the floor of a (100) pit goes down. The other nine planes refine convex corners and curved walls; empty ones are interpolated.</p>
   </div>
   <div class="fields"><label>SiO₂ mask etch rate (optional) <span><input type="number" id="ceOx" min="0" step="0.001"> µm/h</span></label>
-      <p class="fhelp xinfo">Rate at which the etchant removes thermal oxide. Used for the “mask film” readout and for how fast the drawn SiO₂ film thins; the etch model itself keeps the mask. Empty: the listed value is kept if temperature, concentration and factor are unchanged, otherwise it is unknown. KOH removes SiO₂ about 150 times slower than Si (Pal &amp; Sato p. 83).</p></div>
+      <p class="fhelp xinfo">Rate at which the etchant removes thermal oxide. Used for the “mask film” readout and for how fast the drawn SiO₂ film thins; the etch model itself keeps the mask. Empty: the listed value (for KOH without one, R(100)/150 from the selectivity of about 150, Pal &amp; Sato p. 83) is moved to your temperature with its own activation energy, 0.85 eV in KOH (Seidel et al. 1990, Fig. 18, p. 3620). Oxide has a larger Q than silicon (about 0.60 eV), so the Si : SiO₂ selectivity falls as the temperature rises, as Pal &amp; Sato report for hot KOH (p. 92). The extra factor is not applied to the oxide.</p></div>
   <h3>Result</h3>
   <table class="walls" id="cePrev"></table>
   <p class="fhelp xinfo">R(100)/R(111) is the anisotropy: the larger it is, the less a {111} wall is undercut while the pit deepens. “Time for 100 µm” is 100 µm divided by R(100).</p>
@@ -770,22 +874,27 @@ canvas.measuring { cursor: crosshair !important; }
     <p class="eq">R = R₀ exp(−Q / kT)</p>
     <p>with T the absolute temperature, Q the activation energy and k Boltzmann’s constant (8.617 × 10⁻⁵ eV/K, standard constant, not in the course files). Q(100) ≈ 0.60 eV in 40 % KOH, each orientation has a slightly different Q, and {111} has the smallest, so the anisotropy changes with temperature (p. 90). The custom-etchant dialog uses the ratio form, which removes the unknown R₀:</p>
     <p class="eq">R(T) = R(T₀) · exp[ −(Q/k) · (1/T − 1/T₀) ]</p>
-    <p><b>Check it:</b> with Q = 0.60 eV, going from 40 °C to 80 °C multiplies the rate by 12.4; Pal &amp; Sato (p. 90) report about 10 times for 40 % KOH. Moving 30 wt% KOH from 70 °C to 80 °C multiplies by 1.78, so R(100) goes from 0.797 to 1.42 µm/min. Lec 4-1 p. 7 summarises the trend: temperature up, rate up, selectivity down, roughness up.</p>
+    <p><b>Other measurements.</b> Seidel et al. (1990) measured Q(100) = 0.57, 0.59 and 0.61 eV in 20, 42 and 57 % KOH (Fig. 12, p. 3618) and Q(110) = 0.59 eV against Q(100) = 0.57 eV in 20 % KOH (Fig. 17, p. 3620), so in KOH (100) and (110) change almost alike. In EDP Type S the spread is larger: 0.33 eV for (110), 0.40 eV for (100) and 0.52 eV for (111) (Fig. 13, p. 3619). <b>The sources disagree on (111):</b> Pal &amp; Sato (p. 90) find the smallest Q for (111) in 40 % KOH, Seidel et al. (abstract, p. 3612) find that slowly etching planes have the higher Q. The page uses these values as defaults in the custom-etchant dialog and 0.60 eV for (111) in KOH <i>(assumption)</i>. Pal et al. (2021, section “Etching at boiling point of the etchant”) report that the Arrhenius plots of (100) and (110) stay nearly straight from 80 °C up to near the boiling point.</p>
+    <p><b>Check it:</b> with Q = 0.60 eV, going from 40 °C to 80 °C multiplies the rate by 12.4 (10.9 with Seidel’s 0.57 eV); Pal &amp; Sato (p. 90) report about 10 times for 40 % KOH. Moving 30 wt% KOH from 70 °C to 80 °C multiplies by 1.78, so R(100) goes from 0.797 to 1.42 µm/min. Lec 4-1 p. 7 summarises the trend: temperature up, rate up, selectivity down, roughness up.</p>
   </details>
 
   <details class="learn"><summary>4. Concentration</summary>
     <p>Above about 25 wt% KOH the rate <b>falls</b> as the concentration rises (Pal &amp; Sato p. 88). The reason is in the reaction: water is a reactant and KOH acts as a catalyst, so a more concentrated solution has less water to react (p. 88). Not all planes change alike: (100) and (221) stay almost constant from 17 to 51 wt%, while (110), (210) and (320) change more (p. 88), so the anisotropy, and with it the etched shape, depends on the concentration (p. 89). Lec 4-1 p. 7: concentration up, rate down, selectivity up, roughness down.</p>
-    <p><b>Check it:</b> Table 4.1 (p. 87) gives R(100) = 0.797, 0.599 and 0.539 µm/min at 30, 40 and 50 wt%. The custom-etchant dialog interpolates linearly between these columns <i>(assumption)</i>; at 35 wt% it gives R(100) = 0.698 µm/min.</p>
+    <p><b>Check it:</b> Table 4.1 (p. 87) gives R(100) = 0.797, 0.599 and 0.539 µm/min at 30, 40 and 50 wt%. The custom-etchant dialog interpolates linearly between these columns <i>(assumption)</i>; at 35 wt% it gives R(100) = 0.698 µm/min. Seidel et al. (1990, Fig. 16, p. 3620) found that above about 20 % KOH the (100) rate follows R ∝ [H₂O]⁴[KOH]^¼, the water dependence named in Pal &amp; Sato p. 88.</p>
+    <p><b>Where the sources do not agree.</b> (1) The text of p. 88 says (100) stays almost constant from 17 to 51 wt%, but Table 4.1 (p. 87) has R(100) fall from 0.797 to 0.539 µm/min, by 32 %, from 30 to 50 wt%. (2) Table 4.1 interpolated to 42 wt% and moved from 70 °C to 75 °C with Q = 0.60 eV gives {100} 47, {110} 97 and {111} 0.72 µm/h, while Lec 4-1 p. 7 gives 42, 66 and 0.5 µm/h for KOH 42 wt% at 75 °C: {100} agrees within 12 %, {110} and {111} are about 1.5 times lower in the lecture. Different solutions, stirring and wafers give different rates, so the page keeps each source’s own numbers (the two etchants “KOH 40 wt%, 70 °C” and “KOH 42 wt%, 75 °C”) rather than mixing them.</p>
   </details>
 
   <details class="learn"><summary>5. The mask and selectivity</summary>
     <p>The <b>selectivity</b> of a mask is the etch rate of silicon divided by the etch rate of the mask material in the same etchant; the higher it is, the better the mask (Hsu p. 327). KOH dissolves thermal SiO₂ noticeably: the Si to SiO₂ selectivity is about 150 under normal conditions, so 2–3 µm of oxide is not enough to etch through a 500 µm wafer, and Si₃N₄ is used instead (Pal &amp; Sato p. 83; Hsu p. 327). Hot, concentrated KOH lowers it further: 40 at 110 °C and 25 at 135 °C in 45 wt% KOH (Pal &amp; Sato p. 92).</p>
     <p><b>Check it:</b> KOH 42 wt% etches (100) at 42 µm/h and thermal oxide at 0.34 µm/h (Lec 4-1 p. 7), a selectivity of 124. Through 500 µm takes 500/42 = 11.9 h and removes 4.0 µm of oxide, in line with Pal &amp; Sato’s warning. <b>See it:</b> the Etched pit and the simulator draw the mask film at its true thickness (Show and Time sections: thermal SiO₂, 1 µm by default, or Si₃N₄). A SiO₂ film thins at the oxide rate of the etchant, and the “mask film” readout gives what is left or when it is used up. For KOH 30 wt% at 70 °C no oxide rate is in the course files, so the page estimates it as R(100)/150 = 0.797/150 µm/min = 0.32 µm/h: 1 µm lasts about 190 min. Try it: KOH 57 wt% (0.62 µm/h, Lec 10 p. 11) uses up 1 µm of oxide in 97 min, long before a 525 µm wafer is etched through.</p>
+    <p><b>Selectivity and temperature.</b> Oxide dissolves with a larger activation energy than silicon: Q(SiO₂) = 0.85 eV in 20 % and 0.86 eV in 42 % KOH (Seidel et al. 1990, Fig. 18, p. 3620) against about 0.60 eV for Si(100). The selectivity S = R(Si)/R(SiO₂) therefore falls with temperature as S(T) = S(T₀) · exp[(Q(SiO₂) − Q(Si))/k · (1/T − 1/T₀)]. <b>Check it:</b> from 110 °C to 135 °C this gives a factor exp[0.25 eV/k · (1/408 − 1/383) K⁻¹] = 0.629; Pal &amp; Sato (p. 92) report 40 → 25 for 45 wt% KOH, a factor 0.625. Starting from the lecture’s 124 at 75 °C (42 wt%) it predicts 58 at 110 °C and 36 at 135 °C, against 40 and 25 in 45 wt% (p. 92): the same trend, about 1.4 times higher, in line with Seidel et al. (p. 3619), who find the ratio lower in more concentrated KOH. Seidel et al. (p. 3619) give 100–200 for concentrated KOH at usual temperatures and about 1000 for 20 % KOH at a lower temperature. <b>See it:</b> make a custom etchant from KOH 30 wt% at 90 °C: the dialog shows Si(100) : SiO₂ = 94 instead of 150, and the mask-film readout uses the faster oxide rate.</p>
   </details>
 
   <details class="learn"><summary>6. The shapes that follow: 54.74°, V-grooves and corners</summary>
     <p>Because {111} is almost not etched, a pit in a (100) wafer ends up bounded by {111} planes, which meet the surface at 54.74° (Hsu p. 325). The angle is arccos(1/√3) = 54.74°, and tan 54.74° = √2 (geometry). A square opening of side W with edges along ⟨110⟩ therefore stops at a depth of W/√2 = 0.707 W, when the four {111} walls meet in a point.</p>
     <p><b>Corners.</b> At a concave corner the slowest plane shows and nothing is undercut; at a convex corner the fastest plane shows and the corner is cut back under the mask (Lec 4-1 p. 8; Lec 10 p. 14; Pal &amp; Sato p. 180). Undercut is useful for releasing cantilevers and bridges, and a problem for mesas and proof masses, which need corner compensation (Pal &amp; Sato p. 180; Lec 10 pp. 15–16).</p>
+    <p><b>How a convex corner is cut back.</b> The undercut front leaves the ⟨110⟩ mask edges along the direction of the largest lateral etch rate near them, at the bevel angle α to the edge (Pal &amp; Sato pp. 226–236). Measured: α = 30 ± 1° in 35 wt% KOH at 76 °C (p. 231), so a 90° mesa corner becomes a 150 ± 2° corner (p. 235); Mayer et al. (1990, p. 3948) give 30.96° (the ⟨410⟩ trace of {411} planes) and a 151.9° corner (Fig. 2). The undercut ratio U = l/d (l along ⟨110⟩, d the depth) sets the size of a compensation structure (p. 237).</p>
+    <p><b>Check it on this page:</b> a 320 µm square mesa on (100) etched 40 min gives in the simulator α = 23.6°, 24.4°, 25.7° and 27.3° for 30, 34 (interpolated), 40 and 50 wt% KOH at 70 °C (2 µm grid; 24.2° at 1 µm and 4 µm, so it does not depend on the grid). The largest lateral rate of the same rate map, found by the minimum-envelope construction of p. 228, lies at 25.0°, 25.4°, 26.3° and 28.4°. The simulator therefore follows its rate map, and the gap of about 5° to the measured 30° comes from the rate map: Table 4.1 has no orientation between (100) and (311)/(310), so the {411} planes that bound the corner in KOH (Mayer et al. 1990) get interpolated rates <i>(known limit)</i>. The undercut length l is not yet grid-converged (78, 97 and 109 µm at 4, 2 and 1 µm grids for 34 wt%), so compare corner sizes at one resolution only.</p>
     <p><b>See it:</b> Etched pit with a 100 µm square: the final depth is 70.7 µm. Corner lab: compare an uncompensated mesa with a compensated one.</p>
   </details>
 
@@ -825,7 +934,7 @@ canvas.measuring { cursor: crosshair !important; }
     <ul>
       <li>Depths and undercuts are good to about one or two grid cells; corners are rounded over about two cells (numerical smoothing).</li>
       <li>Silicon walls and beams thinner than about 8 cells, and windows narrower than about 5 cells, are not resolved well. Use the fine or very fine resolution, or wider features, when this matters. Example: the Corner lab default (KOH, H = 40 µm, no compensation on the left) gives a corner shift U/H of 1.47 at dx = 2.5 µm (normal) and 1.58 at dx = 1.75 µm (fine), a difference of about two cells over H; when such a number matters, compare two resolutions.</li>
-      <li>Rates between measured orientations, the use of one Q for planes without data, and the concentration interpolation are assumptions (see 3, 4 and 7).</li>
+      <li>Rates between measured orientations, the use of one Q for planes without data, and the concentration interpolation are assumptions (see 3, 4 and 7). The convex-corner bevel in KOH comes out about 5° smaller than measured because the rate map has no {411} data (see 6).</li>
       <li>Not modelled: hydrogen bubbles, stirring, surface roughness and hillocks, etch stops, mask etching except as a readout, and real KOH with additives (IPA, surfactants), which changes the anisotropy (Pal &amp; Sato pp. 82, 112–117).</li>
     </ul>
   </details>
@@ -867,12 +976,75 @@ canvas.measuring { cursor: crosshair !important; }
     <li>P. Pal and K. Sato (above), Ch. 7, pp. 287–320. Used for: eq. 7.1 (p. 289), flat accuracy (p. 294), pre-etched patterns (p. 296), Ensell’s circles (pp. 297–299), mask-writer limits (p. 304).</li>
     <li>Topline Corp., “Wafer dimensions: 100 mm standard,” drawing A 174004 A, <a href="https://www.topline.tv/drawings/pdf/wafers/wafer_flats_thickness.pdf" target="_blank" rel="noopener">topline.tv/drawings/pdf/wafers/wafer_flats_thickness.pdf</a>. Used for the flat lengths 32.5 mm and 18 mm.</li>
     <li>H. Q. A. Nguyen, “Origami tutorial: the {111} octahedron on (100), (110) and (111) wafers,” ESS5850 study notes, Rev. 1, Oct. 2026 (frames, sliding-plane construction).</li>
+    <li>H. Seidel, L. Csepregi, A. Heuberger, and H. Baumgärtel, “Anisotropic etching of crystalline silicon in alkaline solutions: I. Orientation dependence and behavior of passivation layers,” <i>Journal of the Electrochemical Society</i>, vol. 137, no. 11, pp. 3612–3626, 1990, doi: <a href="https://doi.org/10.1149/1.2086277" target="_blank" rel="noopener">10.1149/1.2086277</a>. Used for: activation energies of Si in KOH (Fig. 12, p. 3618; Fig. 17, p. 3620) and EDP (Fig. 13, p. 3619); SiO₂ activation energies (Fig. 18, p. 3620) and Si : SiO₂ ratios (p. 3619); R(100) ∝ [H₂O]⁴[KOH]^¼ (Fig. 16, p. 3620); trend of Q with etch rate (abstract, p. 3612).</li>
+    <li>G. K. Mayer, H. L. Offereins, H. Sandmaier, and K. Kühl, “Fabrication of non-underetched convex corners in anisotropic etching of (100)-silicon in aqueous KOH with respect to novel micromechanic elements,” <i>Journal of the Electrochemical Society</i>, vol. 137, no. 12, pp. 3947–3951, 1990, doi: <a href="https://doi.org/10.1149/1.2086334" target="_blank" rel="noopener">10.1149/1.2086334</a>. Used for: {411} planes at convex corners, the 30.96° ⟨410⟩ bevel and the 151.9° corner (p. 3948, Fig. 2).</li>
+    <li>P. Pal, V. Swarnalatha, A. V. N. Rao, A. K. Pandey, H. Tanaka, and K. Sato, “High speed silicon wet anisotropic etching for applications in bulk micromachining: a review,” <i>Micro and Nano Systems Letters</i>, vol. 9, art. 4, 2021, doi: <a href="https://doi.org/10.1186/s40486-021-00129-0" target="_blank" rel="noopener">10.1186/s40486-021-00129-0</a>. Used for: Arrhenius plots of KOH nearly straight from 80 °C to near the boiling point (section “Etching at boiling point of the etchant”).</li>
     <li>Source code: <a href="https://github.com/SalmonQuoc/origami-koh-etch-viewer" target="_blank" rel="noopener">github.com/SalmonQuoc/origami-koh-etch-viewer</a>. 3D rendering: three.js r128.</li>
   </ol>
 </section>
 </div>
 
 <!-- controls of the 3D view, set from the 👁 Show tab (module 22); kept here so their handlers still run -->
+<div id="mdRoot" class="md hidden" role="dialog" aria-modal="true" aria-labelledby="mdTitle">
+  <div class="mdTop"><span><b id="mdTitle">Mask designer</b> <span class="note" id="mdSub"></span></span>
+    <span class="mdGrp"><button class="btn" data-md="undo" title="Undo (Ctrl+Z)">↶ Undo</button><button class="btn" data-md="redo" title="Redo (Ctrl+Shift+Z or Ctrl+Y)">↷ Redo</button></span>
+    <span class="mdGrp"><button class="btn" data-md="copy" title="Copy (Ctrl+C)">Copy</button><button class="btn" data-md="paste" title="Paste (Ctrl+V)">Paste</button><button class="btn" data-md="dup" title="Duplicate (Ctrl+D)">Duplicate</button><button class="btn" data-md="del" title="Delete (Del); in the corner tool: the picked corner">Delete</button></span>
+    <span class="mdGrp"><button class="btn" data-md="rot" data-a="90" title="Turn the selection 90° counter-clockwise">⟲ 90°</button><button class="btn" data-md="rot" data-a="-90" title="Turn the selection 90° clockwise">⟳ 90°</button><button class="btn" data-md="fliph" title="Mirror left to right">⇋ Mirror</button><button class="btn" data-md="flipv" title="Mirror top to bottom">⇵ Mirror</button></span>
+    <span class="mdGrp"><button class="btn" data-md="up" title="One step later in the list (applied later)">↓ Later</button><button class="btn" data-md="down" title="One step earlier in the list">↑ Earlier</button><button class="btn" data-md="front" title="Last in the list: applied last">To last</button><button class="btn" data-md="back" title="First in the list">To first</button></span>
+    <span class="mdGrp"><button class="btn" data-md="outline" title="Turn the selection into editable outlines (key O)">To outline</button><button class="btn" data-md="explode" title="Turn an array into separate shapes">Explode array</button></span>
+    <span class="mdGrp"><button class="btn" data-md="fit" title="Zoom to fit (F)">Fit</button><button class="btn" data-md="side" id="mdSideBtn" title="Put the layer list on the other side of the drawing">⇆ List left</button><button class="btn" data-md="full" id="mdFull" title="Full screen on or off">Full screen</button><button class="btn primary" data-md="done" title="Back to the page; every edit is already in the editor">Done</button></span>
+  </div>
+  <div class="mdSnap">
+    <span class="lbl">snap</span>
+    <label title="Points and lengths on the grid (G)"><input type="checkbox" id="mdSnapGrid"> grid</label><label title="Grid and snap step">step <input type="number" id="mdStep" min="0.01" step="any"> µm</label><span class="gridHere"></span>
+    <label title="Corners, midpoints and centres of the shapes, the origin and the domain edges"><input type="checkbox" id="mdSnapObj"> shape points</label>
+    <label title="Lines along the in-plane crystal directions of the wafer (the compass), with the flat error included"><input type="checkbox" id="mdSnapDir"> crystal directions</label>
+    <label title="Lines in 15° steps (or hold Shift)"><input type="checkbox" id="mdSnapOrtho"> 15° steps</label>
+    <span class="lbl">new shapes</span>
+    <label id="mdOpRow">as <select id="mdOp"><option value="open">opening</option><option value="mask">mask</option></select></label>
+    <label title="Rectangles, ellipses and catalogue shapes are drawn with their edges along this direction">along <select id="mdAx"></select></label>
+    <label title="Shape placed by the Catalogue tool (S)">catalogue <select id="mdType"></select></label>
+    <span class="mdGrp"><label class="btn" title="Add closed outlines from a DXF (POLYLINE, LWPOLYLINE, CIRCLE; layer MASK = mask) or an SVG file; 1 unit = 1 µm">Import DXF/SVG<input type="file" id="mdImport" accept=".dxf,.svg,image/svg+xml" hidden></label><button class="btn" id="mdExpSvg" title="Save this mask as an SVG drawing (1 unit = 1 µm)">Export SVG</button><button class="btn" id="mdExpDxf" title="Save this mask as an AutoCAD R12 DXF (µm; layers OPEN, MASK, DOMAIN)">Export DXF</button></span>
+  </div>
+  <div class="mdBody">
+    <div class="mdTools" id="mdTools">
+      <button class="btn" data-tool="select" title="Select, move, scale, rotate (V)">Select <kbd>V</kbd></button>
+      <button class="btn" data-tool="node" title="Edit the corners of an outline (A)">Corners <kbd>A</kbd></button>
+      <button class="btn" data-tool="rect" title="Rectangle (R)">Rect <kbd>R</kbd></button>
+      <button class="btn" data-tool="ellipse" title="Ellipse or circle (E)">Ellipse <kbd>E</kbd></button>
+      <button class="btn" data-tool="pen" title="Polygon or freehand outline (P)">Polygon <kbd>P</kbd></button>
+      <button class="btn" data-tool="shape" title="Place a catalogue shape (S)">Shape <kbd>S</kbd></button>
+      <button class="btn" data-tool="measure" title="Measure distance and angle (M)">Measure <kbd>M</kbd></button>
+      <button class="btn" data-tool="hand" title="Pan the view (H; or Space + drag)">Pan <kbd>H</kbd></button>
+    </div>
+    <div class="mdCanvasBox" id="mdCanvasBox"><canvas id="mdCanvas" tabindex="0" aria-label="Mask drawing area"></canvas></div>
+    <div class="mdSide"><div id="mdProps"></div><h4>Layers <span class="note" id="mdLayInfo"></span></h4><p class="note">Applied from top to bottom: a lower shape wins where shapes overlap. Drag a row to reorder.</p><div class="mdLayBar"><button class="btn" data-md="lock" title="Lock the selected shapes (Ctrl+L)">🔒 Lock</button><button class="btn" data-md="unlock" title="Unlock the selected shapes">🔓 Unlock</button><button class="btn" data-md="unlockall" title="Unlock every shape (Ctrl+Shift+L)">Unlock all</button><button class="btn" data-md="up" title="One place later (applied later)">▼</button><button class="btn" data-md="down" title="One place earlier">▲</button></div><div id="mdList"></div></div>
+  </div>
+  <div class="mdBar"><span id="mdPos">x — y — µm</span><span id="mdHint"></span><label title="Type a point (x,y), a relative point (@dx,dy), a length and angle (@L&lt;A), a length along the pointer, or a command: move dx,dy · copy dx,dy · rotate a · scale f · array nx,ny,px,py · grid step · fit · undo">command <input id="mdCmd" type="text" autocomplete="off" spellcheck="false" placeholder="x,y  @dx,dy  @L<A"></label><span id="mdMsg"></span></div>
+</div>
+<dialog id="dlgSave" class="dlg panel" aria-labelledby="svTitle">
+  <div class="dlghead"><h2 id="svTitle">Projects, files and export</h2><button class="x" data-close aria-label="close">×</button></div>
+  <h3>My projects</h3>
+  <p class="note">Each project keeps the masks, the corner lab, the orientation finder, custom etchants and the view, in this browser only. <span id="pjCurTxt"></span></p>
+  <div class="row"><input type="text" id="pjName" maxlength="80" placeholder="project name" aria-label="project name" style="flex:1;min-width:120px"><button class="btn" id="pjNew" title="Start a new project from the examples (with the typed name it is saved at once)">＋ New</button><button class="btn primary" id="pjSave" title="Save what is on the page into the open project (or a new one with the typed name)">💾 Save</button></div>
+  <div class="pjList" id="pjList" role="radiogroup" aria-label="saved projects"></div>
+  <div class="row"><button class="btn" id="pjOpen" title="Load the selected project onto the page">Open</button><button class="btn" id="pjDup" title="Copy the selected project">⧉ Duplicate</button><button class="btn" id="pjRen" title="Rename the selected project to the typed name">Rename</button><button class="btn" id="pjDel" title="Delete the selected project from this browser">🗑 Delete</button></div>
+  <p class="note hidden" id="pjMsg" role="status"></p>
+  <h3>Project file</h3>
+  <p class="note">One .json file that this page can open again, here or in another browser. Tick what it should hold.</p>
+  <div class="svList" id="svParts"></div>
+  <div class="row"><input type="text" id="svName" value="etch-project" aria-label="file name" style="flex:1;min-width:120px"><button class="btn primary" id="svSave">Save project file</button><label class="btn">Open project file…<input type="file" id="svOpen" accept=".json,application/json" hidden></label></div>
+  <div id="svOpenBox" class="hidden">
+    <p class="note" id="svOpenInfo"></p>
+    <div class="svList" id="svOpenParts"></div>
+    <div class="row"><button class="btn primary" id="svLoad">Load the ticked parts</button><button class="btn" id="svOpenCancel">Cancel</button></div>
+  </div>
+  <h3>Export for other programs</h3>
+  <p class="note">Masks as SVG (drawing programs) or DXF (CAD; AutoCAD R12, µm, layers OPEN, MASK, DOMAIN); pictures as PNG; the etched surface as STL (µm). Several files are packed into one .zip.</p>
+  <div class="svList" id="svExp"></div>
+  <div class="row"><button class="btn primary" id="svExport">Export the ticked files</button></div>
+  <p class="note hidden" id="svMsg" role="status"></p>
+</dialog>
 <div id="ctlStore" hidden><label><input type="checkbox" id="cCorners" checked> corner directions</label><label><input type="checkbox" id="cFaces"> face indices</label><label><input type="checkbox" id="cUpper" checked> upper half (above the wafer)</label><label><input type="checkbox" id="cCut"> cut open at the section line</label><label><input type="checkbox" id="cBlock" checked> silicon block (off: cast of the pit)</label><label><input type="checkbox" id="cGhost" checked> final {111} shape (wire)</label><label><input type="checkbox" id="cMask" checked> mask layer</label><select id="pitColor"><option value="plane">crystal plane family</option><option value="depth">depth below the surface</option><option value="rate">etch rate of the wall</option></select><label><input type="checkbox" class="cCompass" checked> crystal compass</label><div id="pitLegend"><span><i class="sw" style="background:var(--mask)"></i>mask film (true thickness)</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span><span><i class="sw" style="background:var(--s-cut)"></i>cut face</span></div><label><input type="checkbox" id="cSimMask" checked> mask layer</label><label><input type="checkbox" id="cSimCut"> cut open at the section line</label><div id="simLegend"><span><i class="sw" style="background:var(--mask)"></i>mask film (true thickness)</span><span><i class="sw" style="background:var(--mask);filter:brightness(.55)"></i>mask with no silicon under it</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span></div><select id="simColor"><option value="plane">crystal plane family</option><option value="depth">depth below the surface</option><option value="rate">local etch rate R(n)</option><option value="time">time the etch front reached the surface</option></select><div id="simPlaneLegend" style="margin-top:6px"><span><i class="sw" style="background:var(--f111)"></i>{111}</span><span><i class="sw" style="background:var(--f100)"></i>{100}</span><span><i class="sw" style="background:var(--f110)"></i>{110}</span><span><i class="sw" style="background:var(--fhi)"></i>higher index ({311}, {211}, {411} …)</span><span><i class="sw" style="background:var(--s-side)"></i>no plane within 4°</span><span><i class="sw" style="background:var(--s-cut)"></i>cut face</span></div></div>
 
 <!-- three.js r128 from the npm package three@0.128.0; the integrity hashes are SHA-384 of the files in that package (checked against the npm registry) -->

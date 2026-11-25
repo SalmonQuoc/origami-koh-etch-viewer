@@ -14,7 +14,9 @@ interface EtchantRates {
 interface EtchantEntry {
   key: string; name: string; T_C: number; conc_wt?: number; rates: EtchantRates; source: string;
   pitKey?: string; pitName?: string; sio2: null | { value: number; unit: "um/min" | "um/h"; source: string };
+  Q?: ActEnergies;                                   // activation energies, eV, for moving the rates to another temperature
 }
+interface ActEnergies { "100": number; "110": number; "111": number; sio2: number; source: string }
 interface EtchantDb { format: "origami-etchants-db"; version: number; tables: Record<string, RateTable>; etchants: EtchantEntry[] }
 
 interface SimRate { name: string; r: RateMap; src: string; sio2: number | null; sio2src?: string; custom?: boolean }
@@ -35,7 +37,7 @@ function loadEtchants(db: EtchantDb) {
     const out: RateMap = {}; for (const [k, v] of Object.entries(T.columns[c])) out[k as PlaneKey] = perMin(v as number, T.unit); return out;
   };
   const SR: Record<string, SimRate> = {}, PR: Record<string, PitRate> = {}, PIT2SIM: Record<string, string> = {};
-  const TBASE: Record<string, number> = {}, PALC: Record<string, number> = {}, TABLES: Record<string, RateMap> = {};
+  const TBASE: Record<string, number> = {}, PALC: Record<string, number> = {}, TABLES: Record<string, RateMap> = {}, QACT: Record<string, ActEnergies> = {};
   for (const e of db.etchants) {
     let r: RateMap = {};
     const R = e.rates;
@@ -54,10 +56,11 @@ function loadEtchants(db: EtchantDb) {
       PIT2SIM[e.pitKey] = e.key;
     }
     TBASE[e.key] = e.T_C;
+    if (e.Q) QACT[e.key] = e.Q;
     if (R.table && e.conc_wt != null) PALC[e.key] = e.conc_wt;   // concentration can be changed in the custom-etchant dialog
   }
   for (const [name, T] of Object.entries(db.tables)) for (const c of Object.keys(T.columns)) TABLES[`${name}:${c}`] = tableCol(name, c);
-  return { SR, PR, PIT2SIM, TBASE, PALC, TABLES };
+  return { SR, PR, PIT2SIM, TBASE, PALC, TABLES, QACT };
 }
 
 // sim-examples.json -> SPRESETS[wafer] (shapes get the defaults of their type)

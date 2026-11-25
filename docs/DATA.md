@@ -37,6 +37,7 @@ Every number needs a source. Write it in the `source` or `note` text as in the e
 - `T_C`: the temperature of the data, used as the start point when someone makes a custom etchant at another temperature (Arrhenius).
 - `conc_wt`: for etchants taken from a table with concentration columns: the custom-etchant dialog can then interpolate between columns.
 - `sio2`: mask (thermal oxide) etch rate with its source, or `null`.
+- `Q` (optional): activation energies in eV, `{ "100", "110", "111", "sio2", "source" }`. They are the defaults of the custom-etchant dialog when the etchant is moved to another temperature (R = R₀ exp(−Q/kT)); `sio2` moves the thermal-oxide rate. Cite the figure or page for each value and mark assumptions.
 
 **To add an etchant**: add a table if the source gives one, then an entry in `etchants`. The new etchant appears in every etchant list after `npm run build`.
 

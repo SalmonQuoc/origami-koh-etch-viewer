@@ -39,6 +39,10 @@ export function validateEtchants(db, err) {
     for (const p of ["100", "110", "111"]) if (!has(p)) err(`${at}: needs a {${p}} rate`);
     if (!(has("100") && ((R.given?.["100"] ?? 1) > 0))) err(`${at}: {100} rate must be above zero`);
     if (e.sio2 && (!isNum(e.sio2.value) || !e.sio2.source)) err(`${at}: sio2 needs value, unit and source`);
+    if (e.Q != null) {   // activation energies (eV) for the custom-etchant dialog
+      if (!e.Q.source) err(`${at}: Q needs a source`);
+      for (const p of ["100", "110", "111", "sio2"]) if (!isNum(e.Q[p]) || e.Q[p] <= 0 || e.Q[p] > 2) err(`${at}: Q.${p} must be a number between 0 and 2 eV`);
+    }
   }
   return { keys, pitKeys };
 }

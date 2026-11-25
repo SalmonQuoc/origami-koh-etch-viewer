@@ -9,7 +9,7 @@ try { ({ chromium } = await import("playwright")); } catch (e) {}
 const PAGE = "file://" + fileURLToPath(new URL("../../index.html", import.meta.url));
 const skip = !chromium && "playwright is not installed";
 
-test("page: scenes, simulator kernel, drawing, settings, custom etchant, presets, phone width", { skip, timeout: 240000 }, async t => {
+test("page: scenes, simulator kernel, drawing, mask designer, save and export, settings, custom etchant, presets, phone width", { skip, timeout: 240000 }, async t => {
   const browser = await chromium.launch({ ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}), args: ["--use-gl=swiftshader", "--enable-webgl", "--ignore-gpu-blocklist"] });
   const p = await browser.newPage({ viewport: { width: 1300, height: 950 } });
   const errors = []; p.on("pageerror", e => errors.push(String(e))); p.on("console", m => { if (m.type() === "error" && !/fonts\.googleapis/.test(m.text())) errors.push(m.text()); });
@@ -220,6 +220,103 @@ test("page: scenes, simulator kernel, drawing, settings, custom etchant, presets
     const [csp, sri] = await ev(() => [document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.content || "", [...document.querySelectorAll("script[src]")].map(s => s.integrity)]);
     assert.match(csp, /connect-src 'none'/); assert.match(csp, /default-src 'none'/);
     assert.ok(sri.length >= 2 && sri.every(h => /^sha384-/.test(h)), JSON.stringify(sri));
+  });
+
+  await t.test("mask designer: full screen, typed rectangle and polygon, undo and redo, written back to the simulator", async () => {
+    await p.click('#segM button[data-m="sim"]'); await p.waitForTimeout(400);
+    await ev(() => document.getElementById("bDesign").click()); await p.waitForTimeout(300);
+    assert.ok(await ev(() => !document.getElementById("mdRoot").classList.contains("hidden")));
+    const n0 = await ev(() => window.__o3d.SIM.shapes.length);
+    await p.locator("#mdCanvas").focus();
+    await p.keyboard.press("r"); await p.keyboard.type("10,-60"); await p.keyboard.press("Enter"); await p.keyboard.type("@40,20"); await p.keyboard.press("Enter");
+    const r = await ev(() => window.__o3d.SIM.shapes.at(-1));
+    assert.equal(r.type, "rect"); assert.deepEqual([r.cx, r.cy, r.w, r.h], [30, -50, 40, 20]);
+    await p.keyboard.press("p"); for (const q of ["0,0", "@60,0", "@30<90"]) { await p.keyboard.type(q); await p.keyboard.press("Enter"); }
+    await p.keyboard.press("Enter");
+    assert.equal(await ev(() => window.__o3d.SIM.shapes.length), n0 + 2);
+    assert.equal(await ev(() => window.__o3d.SIM.shapes.at(-1).pts.length), 3);
+    await p.keyboard.press("Control+z"); assert.equal(await ev(() => window.__o3d.SIM.shapes.length), n0 + 1);
+    await p.keyboard.press("Control+Shift+z"); assert.equal(await ev(() => window.__o3d.SIM.shapes.length), n0 + 2);
+    await p.click('#mdRoot [data-md="done"]'); await p.waitForTimeout(200);
+    assert.ok(await ev(() => document.getElementById("mdRoot").classList.contains("hidden")));
+  });
+
+  await t.test("mask export: DXF and SVG read back to the same outlines", async () => {
+    const [a, b] = await ev(() => { const o = window.__o3d, sh = o.SIM.shapes, d = o.mdParseDXF(o.maskDXF(sh, { domain: [o.SIM.hx, o.SIM.hy] })), v = o.mdParseSVG(o.maskSVG(sh, { domain: [o.SIM.hx, o.SIM.hy] }));
+      return [d.loops.length, v.loops.length]; });
+    const n = await ev(() => window.__o3d.SIM.shapes.length);
+    assert.ok(a >= n && b === a, `${a} DXF and ${b} SVG loops for ${n} shapes`);
+  });
+
+  await t.test("project file: save the ticked parts and open them again", async () => {
+    const proj = await ev(() => window.__o3d.svProject(["view", "sim", "settings"]));
+    assert.equal(proj.format, "origami-project"); assert.deepEqual(Object.keys(proj.parts), ["view", "sim", "settings"]);
+    const n = proj.parts.sim.shapes.length;
+    await ev(() => { window.__o3d.SIM.shapes = []; });
+    const done = await p.evaluate(p0 => window.__o3d.svApply(p0, ["sim"]), proj);
+    assert.deepEqual(done, ["etch simulator"]); assert.equal(await ev(() => window.__o3d.SIM.shapes.length), n);
+    await p.click("#bProject"); assert.ok(await ev(() => document.getElementById("dlgSave").open));
+    assert.ok(await ev(() => document.querySelectorAll("#svParts input").length >= 8)); await ev(() => document.getElementById("dlgSave").close());
+  });
+
+  await t.test("my projects: quick save, new, duplicate, rename, open and delete", async () => {
+    const n0 = await ev(() => window.__o3d.SIM.shapes.length);
+    await p.click("#bSave"); assert.ok(await ev(() => !document.getElementById("dlgSave").open));   // first save makes "Project 1"
+    const rows = () => ev(() => [...document.querySelectorAll("#pjList .pjRow b")].map(b => b.textContent));
+    await p.click("#bProject"); assert.deepEqual(await rows(), ["Project 1"]);
+    assert.match(await ev(() => document.getElementById("bProject").textContent), /Project 1/);
+    await p.click("#pjDup"); assert.deepEqual((await rows()).sort(), ["Project 1", "Project 1 (copy)"]);
+    await p.fill("#pjName", "Copy <b>x</b>"); await p.click("#pjRen");
+    assert.ok((await rows()).includes("Copy <b>x</b>"));   // names are shown as text
+    await p.fill("#pjName", "Empty"); await p.click("#pjNew");
+    assert.ok((await rows()).includes("Empty")); assert.match(await ev(() => document.getElementById("bProject").textContent), /Empty/);
+    await p.click('#pjList .pjRow:has-text("Project 1") input'); await p.click("#pjOpen");
+    assert.equal(await ev(() => window.__o3d.SIM.shapes.length), n0);
+    await p.click('#pjList .pjRow:has-text("Empty") input'); await p.click("#pjDel");
+    assert.equal((await rows()).length, 3);   // the first click only asks
+    await p.click("#pjDel"); assert.deepEqual((await rows()).sort(), ["Copy <b>x</b>", "Project 1"]);
+    assert.equal(await ev(() => JSON.parse(localStorage.getItem("o3d-projects")).length), 2);
+    await ev(() => { localStorage.removeItem("o3d-projects"); localStorage.removeItem("o3d-project-cur"); document.getElementById("dlgSave").close(); });
+  });
+
+  await t.test("lock and layers: locked shapes are not picked or changed; grid types; list beside an enlarged editor", async () => {
+    await p.click('#segM button[data-m="sim"]');
+    await ev(() => document.getElementById("bDesign").click());
+    const n = await ev(() => window.__o3d.MD.shapes.length); assert.ok(n >= 2);
+    await ev(() => { window.__o3d.MD.sel = [0]; });
+    await p.keyboard.press("Control+l");
+    assert.equal(await ev(() => window.__o3d.SIM.shapes[0].lock), true);
+    await ev(() => { window.__o3d.MD.sel = [0, 1]; });
+    const x1 = await ev(() => window.__o3d.SIM.shapes[1].cx), x0 = await ev(() => window.__o3d.SIM.shapes[0].cx);
+    await ev(() => window.__o3d.mdCommand("move 10,0"));
+    assert.equal(await ev(() => window.__o3d.SIM.shapes[0].cx), x0);   // locked: stays
+    assert.equal(await ev(() => window.__o3d.SIM.shapes[1].cx), x1 + 10);
+    await p.keyboard.press("Control+a"); assert.ok(!(await ev(() => window.__o3d.MD.sel.includes(0))));
+    await p.keyboard.press("Control+Shift+L"); assert.ok(!(await ev(() => window.__o3d.SIM.shapes[0].lock)));
+    await ev(() => window.__o3d.mdCommand("undo")); await ev(() => window.__o3d.mdCommand("undo"));
+    await p.click('#mdRoot [data-md="done"]');
+    await ev(() => { const s = document.querySelector("#panelSim .gridSel"); s.value = "crystal"; s.dispatchEvent(new Event("change", { bubbles: true })); });
+    assert.ok(await ev(() => [...document.querySelectorAll(".gridSel")].every(s => s.value === "crystal")));
+    await ev(() => { const s = document.querySelector("#panelSim .gridSel"); s.value = "lines"; s.dispatchEvent(new Event("change", { bubbles: true })); });
+    await ev(() => document.querySelector('#panelSim .enl.edl .enlBtn').click());
+    const side = await ev(() => { const a = document.querySelector(".enlarged .edSide").getBoundingClientRect(), c = document.getElementById("maskCanvas").getBoundingClientRect(); return a.left > c.right - 1; });
+    assert.ok(side, "the shape list sits right of the drawing");
+    assert.ok(await ev(() => !!document.querySelector(".enlarged .enlBar .enlFs")));
+    await ev(() => document.querySelector(".enlarged .enlBtn").click());
+  });
+
+  await t.test("corner lab: a hand-edited mask is kept in the project and restored", async () => {
+    await p.click('#segM button[data-m="corner"]'); await p.waitForTimeout(400);
+    assert.ok(await ev(() => window.__o3d.SIM.shapes.slice(0, 3).every(s => s.lock)));   // domain and mesas locked
+    await ev(() => { const o = window.__o3d; o.mdOpen("corner"); o.MD.sel = [o.MD.shapes.length - 1]; o.mdCommand("move 5,0"); document.querySelector('#mdRoot [data-md="done"]').click(); });
+    const proj = await ev(() => window.__o3d.svProject(["corner"]));
+    assert.ok(Array.isArray(proj.parts.corner.mask) && proj.parts.corner.mask.length >= 3);
+    await ev(() => document.getElementById("clRun").click()); assert.equal(await ev(() => window.__o3d.svProject(["corner"]).parts.corner.mask), undefined);
+    await p.click('#segM button[data-m="sim"]');
+    await p.evaluate(p0 => window.__o3d.svApply(p0, ["corner"]), proj);
+    await p.click('#segM button[data-m="corner"]'); await p.waitForTimeout(300);
+    assert.deepEqual(await ev(() => window.__o3d.SIM.shapes.map(s => s.cx)), proj.parts.corner.mask.map(s => s.cx));
+    assert.ok(await ev(() => !document.getElementById("clEdited").classList.contains("hidden")));
   });
 
   await t.test("no sideways scroll at phone width", async () => {
