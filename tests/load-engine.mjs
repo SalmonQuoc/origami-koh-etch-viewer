@@ -21,5 +21,6 @@ export const CASES = [
   ["(100) square pit", { frame: F100, rates: PAL30, shapes: [{ pts: sq(0, 0, 200, 200), op: "open" }], X0: -160, X1: 160, Y0: -160, Y1: 160, depth: 80, dx: 4 }, 60],
   ["(100) mesa", { frame: F100, rates: PAL30, shapes: [{ pts: sq(0, 0, 1000, 1000), op: "open" }, { pts: sq(0, 0, 200, 200), op: "mask" }], X0: -180, X1: 180, Y0: -180, Y1: 180, depth: 70, dx: 4 }, 40],
   ["(100) cantilever along <110>", { frame: F100, rates: PAL30, shapes: [{ pts: sq(0, 0, 300, 180), op: "open" }, { pts: sq(-57.5, 0, 185, 50), op: "mask" }], X0: -200, X1: 200, Y0: -130, Y1: 130, depth: 90, dx: 5 }, 60],
+  ["(100) square pit onto a p++ layer", { frame: F100, rates: PAL30, shapes: [{ pts: sq(0, 0, 200, 200), op: "open" }], X0: -160, X1: 160, Y0: -160, Y1: 160, depth: 80, dx: 4, boron: { z0: 30, z1: 42, f: 0.022 } }, 60],
   ["(100) square at 45°", { frame: F100, rates: PAL30, shapes: [{ pts: rot(sq(0, 0, 140, 140), 45), op: "open" }], X0: -160, X1: 160, Y0: -160, Y1: 160, depth: 90, dx: 4 }, 60],
 ];

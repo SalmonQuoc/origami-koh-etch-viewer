@@ -14,7 +14,7 @@ function psSel(kind) { const v = $(kind === "sim" ? "simPreset" : "selOpen").val
 function psSyncButtons() { for (const k of ["sim", "pit"]) psBox(k).querySelector("[data-ps-del]").disabled = !psSel(k); }
 function psEtch(key) { const c = CUSTOM.find(x => x.key === key); return c ? JSON.parse(JSON.stringify(c)) : null; }
 function psCapture(kind) {
-  if (kind === "sim") return { fk: SIM.fk, rate: SIM.rate, t: SIM.t, thick: SIM.thick, pre: SIM.pre, rot: SIM.rot || 0, hx: SIM.hx, hy: SIM.hy, dxMax: SIM.dxMax || 0,
+  if (kind === "sim") return { fk: SIM.fk, rate: SIM.rate, t: SIM.t, thick: SIM.thick, pre: SIM.pre, rot: SIM.rot || 0, hx: SIM.hx, hy: SIM.hy, dxMax: SIM.dxMax || 0, boron: Object.assign({}, SIM.boron || BORON_DEF),
     cutAxis: SIM.cutAxis, cutPos: SIM.cutPos, cutLine: SIM.cutLine || null, shapes: JSON.parse(JSON.stringify(SIM.shapes)) };
   return { rate: S.rate, rot: S.rot || 0, shapes: JSON.parse(JSON.stringify(pitShapesNow())) };
 }
@@ -33,7 +33,7 @@ function psLoad(id) {
   const d = q.data, kind = q.kind;
   if (S.wf !== q.wf) setWafer(q.wf);
   if (kind === "sim") {
-    Object.assign(SIM, { fk: d.fk, rate: psRate(q, SRATES), t: d.t, thick: d.thick || SIM.thick, pre: d.pre || 0, rot: d.rot || 0, hx: d.hx, hy: d.hy, dxMax: d.dxMax || 0,
+    Object.assign(SIM, { fk: d.fk, rate: psRate(q, SRATES), t: d.t, thick: d.thick || SIM.thick, pre: d.pre || 0, rot: d.rot || 0, hx: d.hx, hy: d.hy, dxMax: d.dxMax || 0, boron: boronIn(d.boron),
       cutAxis: d.cutAxis || "y", cutPos: d.cutPos || 0, cutLine: d.cutLine && d.cutLine.a && d.cutLine.b ? d.cutLine : null, shapes: JSON.parse(JSON.stringify(d.shapes)), sel: -1, probes: null, cl: null, owner: "sim", wfLoaded: S.wf, preset: `u:${q.id}` });
     $("simNote").innerHTML = `Your preset <b>${esc(q.name)}</b>, saved ${esc(q.saved || "")}.`;
     fillSimPresets(); syncSimInputs(); renderShapeList(); simRun(); buildSim(true);

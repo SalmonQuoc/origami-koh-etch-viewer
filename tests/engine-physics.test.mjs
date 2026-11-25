@@ -81,3 +81,23 @@ test("undercut convex corner of a (100) mesa follows the bevel of the rate map (
   assert.ok(m.length >= 1, "the rate map has a lateral-rate maximum between 0° and 45°");
   assert.ok(b.n >= 5 && Math.abs(b.alpha - m[0][0]) < 2.5, `bevel ${b.alpha.toFixed(1)}° against ${m[0][0].toFixed(1)}° of the rate map`);
 });
+
+test("p++ boron layer: the (100) floor stops at the layer and then moves at f·R(100) (Pal & Sato p. 93, Fig. 4.11)", () => {
+  // layer 30–42 µm, rate factor 0.022 (Fig. 4.11, 24 wt% KOH at 1×10^20 cm^-3, read from the figure); 60 min in 30 wt% KOH
+  const [, cfg, t] = CASES.find(c => c[0] === "(100) square pit onto a p++ layer");
+  const S = E.create(structuredClone(cfg)); E.step(S, t, 1e9);
+  const R = PAL30["100"], f = cfg.boron.f, tIn = cfg.boron.z0/R, want = cfg.boron.z0 + f*R*(t - tIn);   // 30.39 µm
+  const d = E.stats(S, t).depth;
+  assert.ok(Math.abs(d - want) <= 0.5*cfg.dx, `depth ${d.toFixed(2)} µm, expected ${want.toFixed(2)} ± ${0.5*cfg.dx}`);
+  assert.ok(R*t - d > 10, "without the layer the floor would be 17 µm deeper");
+});
+
+test("a rate factor of 1 or no layer leaves the engine unchanged (bit for bit)", () => {
+  const [, cfg, t] = CASES.find(c => c[0] === "(100) square pit");
+  const A = E.create(structuredClone(cfg)); E.step(A, t, 1e9);
+  const a = Float32Array.from(A.phi);   // copy: the WebAssembly memory may grow (and move) for the second run
+  const B = E.create(Object.assign(structuredClone(cfg), { boron: { z0: 10, z1: 20, f: 1 } })); E.step(B, t, 1e9);
+  assert.ok(Array.from(B.kz).every(v => v === 1));
+  let same = true; for (let q = 0; q < a.length; q++) if (a[q] !== B.phi[q]) { same = false; break; }
+  assert.ok(same);
+});

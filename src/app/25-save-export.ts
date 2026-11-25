@@ -63,7 +63,7 @@ function svApply(proj, parts) {
   if (["100", "110", "111"].includes(wf) && wf !== S.wf) setWafer(wf);
   if (has("sim") && Array.isArray(P.sim.shapes) && P.sim.shapes.every(s => s && SHAPE_TYPES[s.type]) && SFR[P.sim.fk]) {
     const d = P.sim;
-    Object.assign(SIM, { fk: d.fk, rate: rate(d.rate, SRATES), t: d.t > 0 ? d.t : SIM.t, thick: d.thick || SIM.thick, pre: d.pre || 0, rot: d.rot || 0, hx: d.hx > 0 ? d.hx : SIM.hx, hy: d.hy > 0 ? d.hy : SIM.hy, dxMax: d.dxMax || 0,
+    Object.assign(SIM, { fk: d.fk, rate: rate(d.rate, SRATES), t: d.t > 0 ? d.t : SIM.t, thick: d.thick || SIM.thick, pre: d.pre || 0, rot: d.rot || 0, hx: d.hx > 0 ? d.hx : SIM.hx, hy: d.hy > 0 ? d.hy : SIM.hy, dxMax: d.dxMax || 0, boron: boronIn(d.boron),
       quality: d.quality || SIM.quality, cutAxis: d.cutAxis || "y", cutPos: d.cutPos || 0, cutLine: d.cutLine && d.cutLine.a && d.cutLine.b ? d.cutLine : null, shapes: mdClone(d.shapes),
       sel: -1, probes: null, cl: null, owner: "sim", wfLoaded: S.wf, preset: -1 });
     $("simNote").innerHTML = `Opened from a project file saved ${esc(String(proj.saved || "").slice(0, 10))}.`;

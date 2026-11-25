@@ -67,6 +67,24 @@ test("page: scenes, simulator kernel, drawing, mask designer, save and export, s
     assert.match(await p.textContent("#simStatus"), /Rust\/WebAssembly kernel/);
   });
 
+  await t.test("p++ boron layer: the example stops the floor on the layer (Pal & Sato p. 93)", async () => {
+    const i = await ev(() => window.__o3d.SPRESETS["100"].findIndex(q => q.boron));
+    assert.ok(i >= 0, "a (100) example with a boron layer");
+    await p.selectOption("#simPreset", String(i));
+    await p.waitForFunction(() => !window.__o3d.SIM.running && window.__o3d.SIM.res && window.__o3d.SIM.tSim >= 59.9, null, { timeout: 90000 });
+    assert.equal(await p.inputValue("#simBoron"), "1e20");
+    assert.ok(await p.isVisible("#simBzRow"));
+    assert.match(await p.textContent("#simBoronSrc"), /Fig\. 4\.11.*p\. 93/);
+    const d = await ev(() => window.__o3d.SIM.res.st.depth);
+    assert.ok(d > 29 && d < 33.5, `floor depth ${d} µm, expected about 30.4 µm (stopped on the layer at 30 µm)`);
+    await p.selectOption("#simBoron", "off"); await p.waitForTimeout(100);
+    assert.ok(!(await p.isVisible("#simBzRow")));
+    assert.equal(await ev(() => window.__o3d.simConfig().boron), null);
+    await p.selectOption("#simPreset", "0");   // back to the first example for the tests below
+    await p.waitForFunction(() => !window.__o3d.SIM.running && window.__o3d.SIM.res, null, { timeout: 90000 });
+    assert.equal(await p.inputValue("#simBoron"), "off");
+  });
+
   await t.test("drawing an outline adds a shape", async () => {
     const n0 = await ev(() => window.__o3d.SIM.shapes.length);
     await p.locator("#maskCanvas").scrollIntoViewIfNeeded(); await p.click("#bDraw");

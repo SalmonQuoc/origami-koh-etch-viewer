@@ -58,6 +58,7 @@ ptr_fn!(sim_gopen_ptr, gopen, f32);
 ptr_fn!(sim_open_ptr, open, u8);
 ptr_fn!(sim_tab_ptr, tab, f32);
 ptr_fn!(sim_e_ptr, e, f64);
+ptr_fn!(sim_kz_ptr, kz, f32);
 
 /// Scheme order: 2 (second-order differences, Heun stepping; default) or 1 (first order, forward Euler).
 /// # Safety

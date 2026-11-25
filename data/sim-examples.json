@@ -550,6 +550,32 @@
       "ang": 0
      }
     ]
+   },
+   {
+    "name": "p++ boron etch stop: the pit floor stops on a buried layer (Pal & Sato p. 93)",
+    "fk": "100",
+    "rate": "PAL30",
+    "t": 60,
+    "hx": 160,
+    "hy": 160,
+    "dxMax": 2,
+    "boron": {
+     "c": "1e20",
+     "z0": 30,
+     "z1": 33
+    },
+    "note": "A 200 µm window with edges along ⟨110⟩ over a p++ layer with 1 × 10²⁰ cm⁻³ boron, 30 to 33 µm below the surface (3 µm: the depth thermal diffusion reaches in practice, Pal & Sato p. 93). Above the layer the floor moves at R(100) = 0.797 µm/min (Table 4.1, p. 87) and reaches it after 37.6 min; inside it the rate is × 0.022, read from Fig. 4.11 (p. 93), so after 60 min the floor stands at 30.4 µm instead of 47.8 µm, while the {111} walls are unchanged. The layer depth and the use of the Si(100) factor for every plane are assumptions; see “Doping and the p++ etch stop”.",
+    "shapes": [
+     {
+      "type": "rect",
+      "op": "open",
+      "cx": 0,
+      "cy": 0,
+      "w": 200,
+      "h": 200,
+      "ang": 0
+     }
+    ]
    }
   ],
   "110": [
