@@ -178,9 +178,9 @@ function mdSetTool(t) {
   if (!MD_TOOLS[t]) return;
   MD.tool = t; MD.pen = null; MD.rc = null; MD.drag = null; if (t !== "measure") MD.meas = null; if (t !== "node") MD.vsel = -1;
   for (const b of document.querySelectorAll("#mdTools [data-tool]")) b.setAttribute("aria-pressed", String((b as HTMLElement).dataset.tool === t));
-  $("mdHint").textContent = MD_TOOLS[t].hint; $("mdCanvas").dataset.mode = t; mdRequest();
+  $("mdHint").textContent = $("mdHint").title = MD_TOOLS[t].hint; $("mdCanvas").dataset.mode = t; mdRequest();
 }
-function mdMsg(txt) { $("mdMsg").textContent = txt || ""; }
+function mdMsg(txt) { $("mdMsg").textContent = $("mdMsg").title = txt || ""; }
 
 // ---- view
 function mdResize() {

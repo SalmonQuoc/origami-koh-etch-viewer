@@ -319,6 +319,19 @@ test("page: scenes, simulator kernel, drawing, mask designer, save and export, s
     assert.ok(await ev(() => !document.getElementById("clEdited").classList.contains("hidden")));
   });
 
+  await t.test("designer: moving the pointer over shapes never resizes the drawing (no flicker)", async () => {
+    await p.setViewportSize({ width: 1024, height: 700 });
+    await p.click('#segM button[data-m="corner"]'); await p.waitForTimeout(300);
+    await ev(() => document.getElementById("clDesign").click()); await p.waitForTimeout(400);
+    await ev(() => { window.__mdH = []; new ResizeObserver(e => window.__mdH.push(Math.round(e[0].contentRect.height))).observe(document.getElementById("mdCanvasBox")); });
+    const b = await ev(() => { const r = document.getElementById("mdCanvas").getBoundingClientRect(); return [r.x, r.y, r.width, r.height]; });
+    for (let i = 0; i <= 40; i++) { await p.mouse.move(b[0] + b[2]*i/40, b[1] + b[3]*i/40); await p.waitForTimeout(15); }
+    for (let i = 0; i <= 40; i++) { await p.mouse.move(b[0] + b[2]/2, b[1] + b[3]*i/40); await p.waitForTimeout(15); }
+    assert.equal(new Set(await ev(() => window.__mdH)).size, 1);
+    await ev(() => document.querySelector('#mdRoot [data-md="done"]').click());
+    await p.setViewportSize({ width: 1300, height: 950 });
+  });
+
   await t.test("no sideways scroll at phone width", async () => {
     await p.setViewportSize({ width: 390, height: 844 });
     for (const m of ["model", "pit", "sim", "find"]) {

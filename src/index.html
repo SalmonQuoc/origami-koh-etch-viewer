@@ -431,12 +431,14 @@ body.md-open { overflow: hidden; }
 .mdRow.sel { background: color-mix(in srgb, var(--accent) 22%, transparent); }
 .mdOp { font: 11px "IBM Plex Mono", monospace; color: var(--muted); }
 .mdOp.mask { color: var(--mask); }
-.mdBar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 5px 10px; border-top: 1px solid var(--line); background: var(--panel); font-size: 12px; }
-#mdPos { font: 12px "IBM Plex Mono", monospace; min-width: 260px; }
-#mdHint { color: var(--muted); flex: 1 1 300px; }
+/* status bar: a fixed height, so text that changes while the pointer moves never resizes the drawing (that made the whole designer flicker) */
+.mdBar { display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr) auto; grid-template-rows: 24px 18px; align-items: center; column-gap: 14px; padding: 4px 10px; border-top: 1px solid var(--line); background: var(--panel); font-size: 12px; overflow: hidden; }
+.mdBar > * { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#mdPos { font: 12px "IBM Plex Mono", monospace; min-width: 0; max-width: 48vw; }
+#mdHint { color: var(--muted); }
 .mdBar label { display: inline-flex; gap: 6px; align-items: center; }
 #mdCmd { width: 170px; }
-#mdMsg { color: var(--accent); flex: 1 1 100%; min-height: 1em; }
+#mdMsg { color: var(--accent); grid-column: 1 / -1; line-height: 18px; }
 @media (max-width: 760px) { .mdBody { grid-template-columns: auto minmax(0, 1fr); } .mdSide { display: none; } .mdTools button { width: 44px; font-size: 0; } .mdTools button kbd { float: none; font-size: 11px; opacity: 1; } }
 /* save dialog (module 25) */
 .svList { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 3px 14px; margin: 6px 0; }
