@@ -9,6 +9,18 @@ let layoutBusy = false;   // true while applyLayout() switches split/theater, so
 const snapV = v => { const st = Number(SET.snap) || 1; return Math.round(v/st)*st; };
 const EDC: Record<string, number[]> = {};   // cursor position in each 2D editor (world µm), set in 19-coordinates.ts
 const edGrid = (W: number) => niceStep(W/8);
+// editor speed: pointer moves redraw an editor at most once per frame, and the off-screen mask layers are reused
+var ED_LATER: Record<string, any> = {};
+function edLater(key: string, f: () => void) {
+  if (ED_LATER[key]) { ED_LATER[key].f = f; return; }
+  ED_LATER[key] = { f }; requestAnimationFrame(() => { const q = ED_LATER[key]; delete ED_LATER[key]; if (q) q.f(); });
+}
+var ED_TMP: Record<string, HTMLCanvasElement> = {};
+function edTmp(key: string, w: number, h: number) {   // a cleared off-screen canvas of this size
+  const c = ED_TMP[key] || (ED_TMP[key] = document.createElement("canvas"));
+  if (c.width !== w || c.height !== h) { c.width = w; c.height = h; } else { const x = c.getContext("2d"); x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = "source-over"; x.globalAlpha = 1; x.clearRect(0, 0, w, h); }
+  return c;
+}
 const EDZ: Record<string, { z: number; cx: number; cy: number }> = {};
 const EDM: Record<string, { on: boolean; a: number[] | null; b: number[] | null }> = {};   // measuring tool in the 2D editors (module 19)
 const fmtLen = (v: number) => { const a = Math.abs(v); return a >= 1000 ? `${+(v/1000).toPrecision(4)} mm` : a >= 10 ? `${+v.toFixed(1)} µm` : `${+v.toFixed(2)} µm`; };   // zoom and centre of each 2D editor (19-coordinates.ts)  // grid and tick step of an editor W µm wide

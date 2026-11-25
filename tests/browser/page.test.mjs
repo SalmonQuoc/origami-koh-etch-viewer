@@ -9,7 +9,7 @@ try { ({ chromium } = await import("playwright")); } catch (e) {}
 const PAGE = "file://" + fileURLToPath(new URL("../../index.html", import.meta.url));
 const skip = !chromium && "playwright is not installed";
 
-test("page: scenes, simulator kernel, drawing, settings, custom etchant, presets, phone width", { skip, timeout: 240000 }, async t => {
+test("page: scenes, simulator kernel, drawing, mask designer, save and export, settings, custom etchant, presets, phone width", { skip, timeout: 240000 }, async t => {
   const browser = await chromium.launch({ ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}), args: ["--use-gl=swiftshader", "--enable-webgl", "--ignore-gpu-blocklist"] });
   const p = await browser.newPage({ viewport: { width: 1300, height: 950 } });
   const errors = []; p.on("pageerror", e => errors.push(String(e))); p.on("console", m => { if (m.type() === "error" && !/fonts\.googleapis/.test(m.text())) errors.push(m.text()); });
@@ -205,6 +205,43 @@ test("page: scenes, simulator kernel, drawing, settings, custom etchant, presets
     await p.click("#bSettings"); await p.selectOption("#stLayout", "theater"); await p.waitForTimeout(200);
     assert.ok(await ev(() => document.body.classList.contains("theater")));
     await p.selectOption("#stLayout", "standard"); await ev(() => document.getElementById("dlgSet").close());
+  });
+
+  await t.test("mask designer: full screen, typed rectangle and polygon, undo and redo, written back to the simulator", async () => {
+    await p.click('#segM button[data-m="sim"]'); await p.waitForTimeout(400);
+    await ev(() => document.getElementById("bDesign").click()); await p.waitForTimeout(300);
+    assert.ok(await ev(() => !document.getElementById("mdRoot").classList.contains("hidden")));
+    const n0 = await ev(() => window.__o3d.SIM.shapes.length);
+    await p.locator("#mdCanvas").focus();
+    await p.keyboard.press("r"); await p.keyboard.type("10,-60"); await p.keyboard.press("Enter"); await p.keyboard.type("@40,20"); await p.keyboard.press("Enter");
+    const r = await ev(() => window.__o3d.SIM.shapes.at(-1));
+    assert.equal(r.type, "rect"); assert.deepEqual([r.cx, r.cy, r.w, r.h], [30, -50, 40, 20]);
+    await p.keyboard.press("p"); for (const q of ["0,0", "@60,0", "@30<90"]) { await p.keyboard.type(q); await p.keyboard.press("Enter"); }
+    await p.keyboard.press("Enter");
+    assert.equal(await ev(() => window.__o3d.SIM.shapes.length), n0 + 2);
+    assert.equal(await ev(() => window.__o3d.SIM.shapes.at(-1).pts.length), 3);
+    await p.keyboard.press("Control+z"); assert.equal(await ev(() => window.__o3d.SIM.shapes.length), n0 + 1);
+    await p.keyboard.press("Control+Shift+z"); assert.equal(await ev(() => window.__o3d.SIM.shapes.length), n0 + 2);
+    await p.click('#mdRoot [data-md="done"]'); await p.waitForTimeout(200);
+    assert.ok(await ev(() => document.getElementById("mdRoot").classList.contains("hidden")));
+  });
+
+  await t.test("mask export: DXF and SVG read back to the same outlines", async () => {
+    const [a, b] = await ev(() => { const o = window.__o3d, sh = o.SIM.shapes, d = o.mdParseDXF(o.maskDXF(sh, { domain: [o.SIM.hx, o.SIM.hy] })), v = o.mdParseSVG(o.maskSVG(sh, { domain: [o.SIM.hx, o.SIM.hy] }));
+      return [d.loops.length, v.loops.length]; });
+    const n = await ev(() => window.__o3d.SIM.shapes.length);
+    assert.ok(a >= n && b === a, `${a} DXF and ${b} SVG loops for ${n} shapes`);
+  });
+
+  await t.test("project file: save the ticked parts and open them again", async () => {
+    const proj = await ev(() => window.__o3d.svProject(["view", "sim", "settings"]));
+    assert.equal(proj.format, "origami-project"); assert.deepEqual(Object.keys(proj.parts), ["view", "sim", "settings"]);
+    const n = proj.parts.sim.shapes.length;
+    await ev(() => { window.__o3d.SIM.shapes = []; });
+    const done = await p.evaluate(p0 => window.__o3d.svApply(p0, ["sim"]), proj);
+    assert.deepEqual(done, ["etch simulator"]); assert.equal(await ev(() => window.__o3d.SIM.shapes.length), n);
+    await p.click("#bSave"); assert.ok(await ev(() => document.getElementById("dlgSave").open));
+    assert.ok(await ev(() => document.querySelectorAll("#svParts input").length >= 8)); await ev(() => document.getElementById("dlgSave").close());
   });
 
   await t.test("no sideways scroll at phone width", async () => {

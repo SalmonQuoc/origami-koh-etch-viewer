@@ -16,7 +16,7 @@ src/
   core/geometry.ts          analytic {111}-plane model used by Model on wafer, Etched pit and Find orientation
   engine/etch-engine.js     the etch engine: grid set-up, JavaScript time step (reference and fallback), mesh,
                             sections, statistics, worker message handler; loads the Rust kernel when it can
-  app/00-data.ts ... 22-show-tab.ts  the user interface, one file per part (see below)
+  app/00-data.ts ... 25-save-export.ts  the user interface, one file per part (see below)
   types/*.d.ts              shared types: page state objects, globals from the other scripts
 tools/validate-data.mjs   checks data/*.json (run by the build and the tests)
 build.mjs                 makes index.html
@@ -77,7 +77,10 @@ The two time steps are the same algorithm with the same arithmetic (f64, stored 
 | `20-sections.ts` | collapsible panel sections (wraps the panel markup that the earlier modules have filled) |
 | `21-stage-tools.ts` | tools on the 3D view: zoom buttons, axis gizmo, scale bar, measuring tool; drawn after each render (`stageOverlay`) |
 | `22-show-tab.ts` | the 👁 Show tab on the 3D view (key V): every visibility and colour option of the scene; each entry sets the panel or Settings control it stands for |
+| `23-section-line.ts` | section line A → B in the 2D editors: drag its ends or the line, draw a new one, type its ends |
+| `24-mask-designer.ts` | full-screen mask designer: vector tools, snapping (grid, shape points, crystal directions), typed coordinates, undo, DXF/SVG import and export (`maskSVG`, `maskDXF`, shared with module 25) |
+| `25-save-export.ts` | 💾 Save dialog: project file with chosen parts (save and open), export bundle (SVG, DXF, PNG, STL; .zip) |
 
 ## Browser storage
 
-Settings (`o3d-settings`), custom etchants (`o3d-etchants`), presets (`o3d-presets`), hidden tips (`o3d-tips-hidden`) and the split width (`o3d-splitW`) live in the visitor's browser only. Exports are JSON files; on claude.ai they go through the viewer's save prompt (the `downloads` capability).
+Settings (`o3d-settings`), custom etchants (`o3d-etchants`), presets (`o3d-presets`), hidden tips (`o3d-tips-hidden`) and the split width (`o3d-splitW`) live in the visitor's browser only. Exports are JSON files (and, from 💾 Save, SVG, DXF, PNG, STL or a .zip of them); on claude.ai they go through the viewer's save prompt (the `downloads` capability).

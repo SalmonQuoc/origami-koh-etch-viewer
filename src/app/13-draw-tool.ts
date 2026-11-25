@@ -72,7 +72,7 @@ for (const id of Object.keys(DRAW_ED)) {
       if (!DRAW.stroke && Math.hypot(ev.clientX - DRAW.down.x, ev.clientY - DRAW.down.y) > 6) DRAW.stroke = [DRAW.down.w];
       if (DRAW.stroke) { const l = DRAW.stroke[DRAW.stroke.length - 1], s = DRAW_ED[id].ed().s; if (Math.hypot(w[0] - l[0], w[1] - l[1])*s > 2.5) DRAW.stroke.push(w); }
     }
-    DRAW_ED[id].redraw();
+    edLater(id, DRAW_ED[id].redraw);
   }, true);
   host.addEventListener("pointerup", ev => {
     if (!mine(ev)) return; ev.stopPropagation();

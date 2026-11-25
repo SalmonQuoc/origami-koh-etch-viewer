@@ -354,6 +354,52 @@ canvas.measuring { cursor: crosshair !important; }
 @media (min-width: 901px) { .bar { position: sticky; top: 0; } }   /* the bar stays in reach while the panel scrolls */
 @media (max-width: 700px) { .tsep { display: none; } }
 .byline a, .apphead a { color: var(--accent); }
+/* ---- mask designer (module 24): full-screen vector editor over the page ---- */
+body.md-open { overflow: hidden; }
+.md { position: fixed; inset: 0; z-index: 60; background: var(--bg); color: var(--ink); display: flex; flex-direction: column; font: 13px "IBM Plex Sans", sans-serif; }
+.md.hidden { display: none; }
+.md .btn { font-size: 12.5px; padding: 4px 9px; }
+.md .btn:disabled { opacity: .45; cursor: default; }
+.mdTop, .mdSnap { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 6px 10px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.mdTop b { font-size: 15px; }
+.mdGrp { display: inline-flex; gap: 3px; flex-wrap: wrap; }
+.mdSnap label { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.mdSnap select, .mdSnap input[type=number], .mdSide select, .mdSide input[type=number], .mdBar input { font: 12.5px "IBM Plex Mono", monospace; padding: 2px 4px; border: 1px solid var(--line); border-radius: 5px; background: var(--bg); color: var(--ink); max-width: 230px; }
+.mdSnap input[type=number] { width: 60px; }
+.mdBody { flex: 1; display: grid; grid-template-columns: auto minmax(0, 1fr) 290px; min-height: 0; }
+.mdTools { display: flex; flex-direction: column; gap: 4px; padding: 8px 6px; border-right: 1px solid var(--line); background: var(--panel); }
+.mdTools button { width: 86px; text-align: left; padding: 5px 7px; font-size: 12px; }
+.mdTools button kbd { float: right; opacity: .6; font: 11px "IBM Plex Mono", monospace; }
+.mdCanvasBox { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+#mdCanvas { position: absolute; inset: 0; display: block; touch-action: none; outline: none; }
+.mdSide { border-left: 1px solid var(--line); background: var(--panel); padding: 8px 10px; overflow: auto; }
+.mdSide h4 { margin: 4px 0 6px; font-size: 13.5px; }
+.mdSide > label, .mdSide .dsel { display: flex; justify-content: space-between; gap: 6px; align-items: center; margin: 3px 0; }
+.mdF { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; margin: 4px 0; }
+.mdF label { display: flex; flex-direction: column; font-size: 11.5px; color: var(--muted); }
+.mdF input { width: 100%; box-sizing: border-box; }
+.mdAlign { display: flex; flex-wrap: wrap; gap: 3px; margin: 6px 0; }
+.mdCorners div { display: grid; grid-template-columns: 1fr; gap: 2px; max-height: 220px; overflow: auto; }
+.mdV { display: grid; grid-template-columns: 22px 1fr 1fr; gap: 3px; align-items: center; font-size: 11px; }
+.mdV input { width: 100%; box-sizing: border-box; }
+#mdList { display: flex; flex-direction: column; gap: 1px; }
+.mdRow { display: flex; justify-content: space-between; padding: 3px 6px; border-radius: 5px; cursor: pointer; font-size: 12.5px; }
+.mdRow:hover { background: var(--chip); }
+.mdRow.sel { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.mdOp { font: 11px "IBM Plex Mono", monospace; color: var(--muted); }
+.mdOp.mask { color: var(--mask); }
+.mdBar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 5px 10px; border-top: 1px solid var(--line); background: var(--panel); font-size: 12px; }
+#mdPos { font: 12px "IBM Plex Mono", monospace; min-width: 260px; }
+#mdHint { color: var(--muted); flex: 1 1 300px; }
+.mdBar label { display: inline-flex; gap: 6px; align-items: center; }
+#mdCmd { width: 170px; }
+#mdMsg { color: var(--accent); flex: 1 1 100%; min-height: 1em; }
+@media (max-width: 760px) { .mdBody { grid-template-columns: auto minmax(0, 1fr); } .mdSide { display: none; } .mdTools button { width: 44px; font-size: 0; } .mdTools button kbd { float: none; font-size: 11px; opacity: 1; } }
+/* save dialog (module 25) */
+.svList { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 3px 14px; margin: 6px 0; }
+.svList label { display: flex; gap: 6px; align-items: flex-start; font-size: 13.5px; }
+.svList label.off { opacity: .5; }
+.svList .note { font-size: 12px; }
 </style>
 </head>
 <body>
@@ -373,7 +419,7 @@ canvas.measuring { cursor: crosshair !important; }
     <button data-w="100" aria-pressed="true" title="(100) wafer: the usual MEMS wafer; pits have {111} walls at 54.74°">(100)</button><button data-w="110" aria-pressed="false" title="(110) wafer: vertical {111} walls along ⟨112⟩">(110)</button><button data-w="111" aria-pressed="false" title="(111) wafer: the surface itself is a slow {111} plane">(111)</button></span></div>
   <div><span class="lbl">Scene</span><span class="seg" id="segM">
     <button data-m="model" aria-pressed="true" title="How to hold the HW2 paper octahedron over the wafer; click a face for its plane">Model on wafer</button><button data-m="pit" aria-pressed="false" title="Fast analytic pit: openings in a mask, {111}-bounded walls, any time">Etched pit</button><button data-m="sim" aria-pressed="false" title="Full 3D etch of any mask with 12 measured plane rates: undercut, corners, release">Etch simulator</button><button data-m="corner" aria-pressed="false" title="Convex-corner attack and compensation patterns, side by side">Corner lab</button><button data-m="find" aria-pressed="false" title="Read the flat error δ from etched alignment marks on the whole wafer">Find orientation</button></span></div>
-  <div class="tools"><button class="btn" id="bHelp" title="Quick start, mouse and keys (key ?)">? Help</button><button class="btn" id="bSettings" title="Layout, theme, editor and simulator settings">⚙ Settings</button><button class="btn" id="bExplain" aria-pressed="false" title="Show the explanations and source notes under the controls (key I)">ⓘ Explanations</button><span class="tsep" aria-hidden="true"></span><button class="btn" id="bSplit" aria-pressed="false" title="3D view and controls side by side, each scrolling on its own; drag the divider to resize (key S)">Split view</button><button class="btn hidden" id="bSwap" title="Put the controls on the other side">Swap sides</button><button class="btn" id="bTheater" aria-pressed="false" title="Wide stage with the panel below (key T)">Theater view</button><button class="btn" id="bFull" title="Full screen 3D view (Esc to leave)">Full screen</button></div>
+  <div class="tools"><button class="btn" id="bHelp" title="Quick start, mouse and keys (key ?)">? Help</button><button class="btn" id="bSave" title="Save the project, open a saved one, or export masks (SVG, DXF), pictures (PNG) and the etched surface (STL) (Ctrl+S)">💾 Save</button><button class="btn" id="bSettings" title="Layout, theme, editor and simulator settings">⚙ Settings</button><button class="btn" id="bExplain" aria-pressed="false" title="Show the explanations and source notes under the controls (key I)">ⓘ Explanations</button><span class="tsep" aria-hidden="true"></span><button class="btn" id="bSplit" aria-pressed="false" title="3D view and controls side by side, each scrolling on its own; drag the divider to resize (key S)">Split view</button><button class="btn hidden" id="bSwap" title="Put the controls on the other side">Swap sides</button><button class="btn" id="bTheater" aria-pressed="false" title="Wide stage with the panel below (key T)">Theater view</button><button class="btn" id="bFull" title="Full screen 3D view (Esc to leave)">Full screen</button></div>
 </div>
 <div class="guide hidden" id="guide" role="note"><span class="gico" aria-hidden="true">i</span><div id="guideTxt"></div><button class="x" id="guideX" title="Hide this tip (Settings can show the tips again)" aria-label="hide this tip">×</button></div>
 
@@ -440,7 +486,7 @@ canvas.measuring { cursor: crosshair !important; }
     <p class="drawhelp hidden" id="pcDrawHelp"></p>
     <canvas id="pitCanvas" class="maskcv" tabindex="0" aria-label="Mask editor for the etched pit"></canvas>
     <div class="legend" style="margin-top:4px"><span><i class="sw" style="background:var(--mask)"></i>mask</span><span><i class="sw" style="background:var(--scene-bg);border:1px solid var(--s-ink)"></i>opening</span><span><i class="sw" style="background:var(--ghost)"></i>cavity edge at the surface now</span><span><i class="sw" style="background:var(--ghost);height:2px"></i>section line A → B</span></div>
-    <div class="addrow"><select id="pcType" aria-label="shape to add"></select><button class="btn primary" id="pcAdd">Add shape</button><button class="btn" id="pcDraw" title="Click to place corners or drag to draw freely">✎ Draw</button><button class="btn" id="pcDup">Duplicate</button><button class="btn" id="pcDel">Delete</button><button class="btn" id="pcClear">Clear all</button></div>
+    <div class="addrow"><select id="pcType" aria-label="shape to add"></select><button class="btn primary" id="pcAdd">Add shape</button><button class="btn" id="pcDraw" title="Click to place corners or drag to draw freely">✎ Draw</button><button class="btn" id="pcDesign" title="Open the full-screen mask designer: CAD-style drawing, snapping, typed coordinates, undo, DXF/SVG">⛶ Designer</button><button class="btn" id="pcDup">Duplicate</button><button class="btn" id="pcDel">Delete</button><button class="btn" id="pcClear">Clear all</button></div>
     <div id="pcList" class="cards"></div>
     <p class="warn hidden" id="pcWarn"></p>
     <div class="row" style="margin-top:6px"><button class="btn" id="pcToSim">Open this mask in the etch simulator</button></div>
@@ -501,11 +547,11 @@ canvas.measuring { cursor: crosshair !important; }
     <p class="note src" id="simFrameSrc"></p>
     <h3><span class="stepn">2</span>Edit or draw the mask</h3>
     <div class="enl" data-title="Mask editor: etch simulator">
-    <p class="note" style="margin:0 0 4px">Shapes are applied top to bottom: “open” removes the mask, “mask” puts it back (solid outline: open; dashed: mask). <b>Drag</b> a shape to move it (<b>Alt</b>-drag moves a copy), <b>double-click</b> an empty spot to add the chosen shape there; with the editor focused, the arrow keys move the selected shape by one snap step (Shift: five), <span class="kbd">Ctrl</span>+<span class="kbd">D</span> duplicates it and <span class="kbd">Delete</span> removes it. <b>Draw</b> lets you draw your own outline. Press Run to etch the new mask.</p>
+    <p class="note" style="margin:0 0 4px">Shapes are applied top to bottom: “open” removes the mask, “mask” puts it back (solid outline: open; dashed: mask). <b>Drag</b> a shape to move it (<b>Alt</b>-drag moves a copy), <b>double-click</b> an empty spot to add the chosen shape there; with the editor focused, the arrow keys move the selected shape by one snap step (Shift: five), <span class="kbd">Ctrl</span>+<span class="kbd">D</span> duplicates it and <span class="kbd">Delete</span> removes it. <b>Draw</b> lets you draw your own outline; <b>⛶ Designer</b> opens a full-screen drawing tool with snapping, typed coordinates, undo and DXF/SVG. Press Run to etch the new mask.</p>
     <p class="drawhelp hidden" id="simDrawHelp"></p>
     <canvas id="maskCanvas" class="maskcv"></canvas>
     <div class="legend"><span><i class="sw" style="background:var(--ghost);height:2px"></i>section line A → B</span></div>
-    <div class="addrow"><select id="addType"></select><select id="addOp"><option value="open">as opening</option><option value="mask">as mask</option></select><button class="btn" id="bAddShape">Add shape</button><button class="btn" id="bDraw" title="Click to place corners or drag to draw freely">✎ Draw</button><button class="btn" id="bDupShape">Duplicate selected</button></div>
+    <div class="addrow"><select id="addType"></select><select id="addOp"><option value="open">as opening</option><option value="mask">as mask</option></select><button class="btn" id="bAddShape">Add shape</button><button class="btn" id="bDraw" title="Click to place corners or drag to draw freely">✎ Draw</button><button class="btn" id="bDesign" title="Open the full-screen mask designer: CAD-style drawing, snapping, typed coordinates, undo, DXF/SVG">⛶ Designer</button><button class="btn" id="bDupShape">Duplicate selected</button></div>
     <p class="note" style="margin:4px 0 0">Columns: w, h = size; t = arm width (L, U, cross, frame) or inner size (ring, star); n = sides or points; array = copies nx × ny at pitch px, py (µm).</p>
     <div class="tblwrap"><table class="shapes" id="shapeList"></table></div>
     </div>
@@ -641,6 +687,15 @@ canvas.measuring { cursor: crosshair !important; }
     <tr><td>📏 Measure, <span class="kbd">M</span></td><td>drag to measure a distance and its angle to x; <span class="kbd">Esc</span> clears</td></tr>
     <tr><td>✎ Draw</td><td>click corners or drag a free outline; <span class="kbd">Enter</span> or double-click finishes, <span class="kbd">Backspace</span> undoes a corner, <span class="kbd">Esc</span> cancels</td></tr>
   </table>
+  <table class="keys">
+    <tr><td colspan="2"><b>⛶ Mask designer</b> (full screen; every edit goes back to the editor)</td></tr>
+    <tr><td><span class="kbd">V</span> <span class="kbd">A</span> <span class="kbd">R</span> <span class="kbd">E</span> <span class="kbd">P</span> <span class="kbd">S</span> <span class="kbd">M</span> <span class="kbd">H</span></td><td>select, corners, rectangle, ellipse, polygon, catalogue shape, measure, pan</td></tr>
+    <tr><td>typing</td><td><code>x,y</code> a point, <code>@dx,dy</code> relative, <code>@L&lt;A</code> length and angle; <code>move</code>, <code>copy</code>, <code>rotate</code>, <code>scale</code>, <code>array</code>, <code>grid</code>, <code>fit</code></td></tr>
+    <tr><td><span class="kbd">Shift</span></td><td>square, circle, keep proportions, 15° steps</td></tr>
+    <tr><td><span class="kbd">Ctrl</span> + <span class="kbd">Z</span> / <span class="kbd">Y</span> <span class="kbd">C</span> <span class="kbd">V</span> <span class="kbd">D</span> <span class="kbd">A</span></td><td>undo / redo, copy, paste, duplicate, select all</td></tr>
+    <tr><td><span class="kbd">F</span> <span class="kbd">G</span> <span class="kbd">O</span></td><td>fit, grid snap on or off, turn into an editable outline</td></tr>
+    <tr><td>wheel, <span class="kbd">Space</span> + drag</td><td>zoom at the pointer, pan</td></tr>
+  </table>
   </div>
   <h3>Good to know</h3>
   <ul class="note" style="margin:0;padding-left:18px">
@@ -648,6 +703,7 @@ canvas.measuring { cursor: crosshair !important; }
     <li><b>Switches</b> that are on (Explanations, Split view, Theater view, Full screen, Draw, Play, Enlarge) are filled in the accent colour; open sections and open source lists have an accent heading.</li>
     <li><b>⤢ Enlarge</b> opens an editor or a graph panel in a large window; <span class="kbd">Esc</span> closes it.</li>
     <li><b>ⓘ Explanations</b> shows the source notes under the controls and what each setting of the custom etchant means; they are off at first. <b>How it works</b>, below the page, explains the chemistry, the rate model and the simulation step by step.</li>
+    <li><b>💾 Save</b> (<span class="kbd">Ctrl</span> + <span class="kbd">S</span>) writes one project file with the parts you tick and opens it again; it also exports masks as SVG or DXF, pictures as PNG and the etched surface as STL.</li>
     <li><b>⚙ Settings</b> sets the layout, panel width, theme, label size, snap step and simulator resolution. They are kept in this browser.</li>
     <li><b>☆ Save as my preset</b> (Etched pit and Etch simulator) keeps the mask and process under a name; your presets appear in the example list under <i>My presets</i>.</li>
     <li><b>Custom etchant…</b> (next to each etchant list) makes a listed etchant at another temperature or KOH concentration, or one from your own rates.</li>
@@ -695,7 +751,7 @@ canvas.measuring { cursor: crosshair !important; }
   <p class="note">Both engines solve the same level-set scheme and give the same result to rounding; the JavaScript one is used automatically where WebAssembly is not allowed.</p>
   <h3>Saved data</h3>
   <div class="row"><button class="btn" id="stTips">Show the scene tips again</button><button class="btn" id="stReset">Reset all settings</button><button class="btn" id="stClearEtch">Delete my custom etchants</button><button class="btn" id="stClearPs">Delete my presets</button></div>
-  <p class="note">Settings, custom etchants and your presets are kept in this browser only. Use Export in the etchant dialog and next to each preset list to keep a copy or share it.</p>
+  <p class="note">Settings, custom etchants and your presets are kept in this browser only. Use <b>💾 Save</b> in the toolbar to keep all of it, with the masks and process, in one project file, or Export in the etchant dialog and next to each preset list.</p>
 </dialog>
 <dialog id="dlgEtch" class="dlg panel" aria-labelledby="ceTitle">
   <div class="dlghead"><h2 id="ceTitle">Custom etchant</h2><button class="x" data-close aria-label="close">×</button></div>
@@ -879,6 +935,60 @@ canvas.measuring { cursor: crosshair !important; }
 </div>
 
 <!-- controls of the 3D view, set from the 👁 Show tab (module 22); kept here so their handlers still run -->
+<div id="mdRoot" class="md hidden" role="dialog" aria-modal="true" aria-labelledby="mdTitle">
+  <div class="mdTop"><span><b id="mdTitle">Mask designer</b> <span class="note" id="mdSub"></span></span>
+    <span class="mdGrp"><button class="btn" data-md="undo" title="Undo (Ctrl+Z)">↶ Undo</button><button class="btn" data-md="redo" title="Redo (Ctrl+Shift+Z or Ctrl+Y)">↷ Redo</button></span>
+    <span class="mdGrp"><button class="btn" data-md="copy" title="Copy (Ctrl+C)">Copy</button><button class="btn" data-md="paste" title="Paste (Ctrl+V)">Paste</button><button class="btn" data-md="dup" title="Duplicate (Ctrl+D)">Duplicate</button><button class="btn" data-md="del" title="Delete (Del); in the corner tool: the picked corner">Delete</button></span>
+    <span class="mdGrp"><button class="btn" data-md="rot" data-a="90" title="Turn the selection 90° counter-clockwise">⟲ 90°</button><button class="btn" data-md="rot" data-a="-90" title="Turn the selection 90° clockwise">⟳ 90°</button><button class="btn" data-md="fliph" title="Mirror left to right">⇋ Mirror</button><button class="btn" data-md="flipv" title="Mirror top to bottom">⇵ Mirror</button></span>
+    <span class="mdGrp"><button class="btn" data-md="up" title="One step later in the list (applied later)">↓ Later</button><button class="btn" data-md="down" title="One step earlier in the list">↑ Earlier</button><button class="btn" data-md="front" title="Last in the list: applied last">To last</button><button class="btn" data-md="back" title="First in the list">To first</button></span>
+    <span class="mdGrp"><button class="btn" data-md="outline" title="Turn the selection into editable outlines (key O)">To outline</button><button class="btn" data-md="explode" title="Turn an array into separate shapes">Explode array</button></span>
+    <span class="mdGrp"><button class="btn" data-md="fit" title="Zoom to fit (F)">Fit</button><button class="btn" data-md="full" id="mdFull" title="Full screen on or off">Full screen</button><button class="btn primary" data-md="done" title="Back to the page; every edit is already in the editor">Done</button></span>
+  </div>
+  <div class="mdSnap">
+    <span class="lbl">snap</span>
+    <label title="Points and lengths on the grid (G)"><input type="checkbox" id="mdSnapGrid"> grid</label><label title="Grid and snap step">step <input type="number" id="mdStep" min="0.01" step="any"> µm</label>
+    <label title="Corners, midpoints and centres of the shapes, the origin and the domain edges"><input type="checkbox" id="mdSnapObj"> shape points</label>
+    <label title="Lines along the in-plane crystal directions of the wafer (the compass), with the flat error included"><input type="checkbox" id="mdSnapDir"> crystal directions</label>
+    <label title="Lines in 15° steps (or hold Shift)"><input type="checkbox" id="mdSnapOrtho"> 15° steps</label>
+    <span class="lbl">new shapes</span>
+    <label id="mdOpRow">as <select id="mdOp"><option value="open">opening</option><option value="mask">mask</option></select></label>
+    <label title="Rectangles, ellipses and catalogue shapes are drawn with their edges along this direction">along <select id="mdAx"></select></label>
+    <label title="Shape placed by the Catalogue tool (S)">catalogue <select id="mdType"></select></label>
+    <span class="mdGrp"><label class="btn" title="Add closed outlines from a DXF (POLYLINE, LWPOLYLINE, CIRCLE; layer MASK = mask) or an SVG file; 1 unit = 1 µm">Import DXF/SVG<input type="file" id="mdImport" accept=".dxf,.svg,image/svg+xml" hidden></label><button class="btn" id="mdExpSvg" title="Save this mask as an SVG drawing (1 unit = 1 µm)">Export SVG</button><button class="btn" id="mdExpDxf" title="Save this mask as an AutoCAD R12 DXF (µm; layers OPEN, MASK, DOMAIN)">Export DXF</button></span>
+  </div>
+  <div class="mdBody">
+    <div class="mdTools" id="mdTools">
+      <button class="btn" data-tool="select" title="Select, move, scale, rotate (V)">Select <kbd>V</kbd></button>
+      <button class="btn" data-tool="node" title="Edit the corners of an outline (A)">Corners <kbd>A</kbd></button>
+      <button class="btn" data-tool="rect" title="Rectangle (R)">Rect <kbd>R</kbd></button>
+      <button class="btn" data-tool="ellipse" title="Ellipse or circle (E)">Ellipse <kbd>E</kbd></button>
+      <button class="btn" data-tool="pen" title="Polygon or freehand outline (P)">Polygon <kbd>P</kbd></button>
+      <button class="btn" data-tool="shape" title="Place a catalogue shape (S)">Shape <kbd>S</kbd></button>
+      <button class="btn" data-tool="measure" title="Measure distance and angle (M)">Measure <kbd>M</kbd></button>
+      <button class="btn" data-tool="hand" title="Pan the view (H; or Space + drag)">Pan <kbd>H</kbd></button>
+    </div>
+    <div class="mdCanvasBox" id="mdCanvasBox"><canvas id="mdCanvas" tabindex="0" aria-label="Mask drawing area"></canvas></div>
+    <div class="mdSide"><div id="mdProps"></div><h4>Shapes, in the order they are applied</h4><div id="mdList"></div></div>
+  </div>
+  <div class="mdBar"><span id="mdPos">x — y — µm</span><span id="mdHint"></span><label title="Type a point (x,y), a relative point (@dx,dy), a length and angle (@L&lt;A), a length along the pointer, or a command: move dx,dy · copy dx,dy · rotate a · scale f · array nx,ny,px,py · grid step · fit · undo">command <input id="mdCmd" type="text" autocomplete="off" spellcheck="false" placeholder="x,y  @dx,dy  @L<A"></label><span id="mdMsg"></span></div>
+</div>
+<dialog id="dlgSave" class="dlg panel" aria-labelledby="svTitle">
+  <div class="dlghead"><h2 id="svTitle">Save, open and export</h2><button class="x" data-close aria-label="close">×</button></div>
+  <h3>Project file</h3>
+  <p class="note">One .json file that this page can open again, here or in another browser. Tick what it should hold.</p>
+  <div class="svList" id="svParts"></div>
+  <div class="row"><input type="text" id="svName" value="etch-project" aria-label="file name" style="flex:1;min-width:120px"><button class="btn primary" id="svSave">Save project file</button><label class="btn">Open project file…<input type="file" id="svOpen" accept=".json,application/json" hidden></label></div>
+  <div id="svOpenBox" class="hidden">
+    <p class="note" id="svOpenInfo"></p>
+    <div class="svList" id="svOpenParts"></div>
+    <div class="row"><button class="btn primary" id="svLoad">Load the ticked parts</button><button class="btn" id="svOpenCancel">Cancel</button></div>
+  </div>
+  <h3>Export for other programs</h3>
+  <p class="note">Masks as SVG (drawing programs) or DXF (CAD; AutoCAD R12, µm, layers OPEN, MASK, DOMAIN); pictures as PNG; the etched surface as STL (µm). Several files are packed into one .zip.</p>
+  <div class="svList" id="svExp"></div>
+  <div class="row"><button class="btn primary" id="svExport">Export the ticked files</button></div>
+  <p class="note hidden" id="svMsg" role="status"></p>
+</dialog>
 <div id="ctlStore" hidden><label><input type="checkbox" id="cCorners" checked> corner directions</label><label><input type="checkbox" id="cFaces"> face indices</label><label><input type="checkbox" id="cUpper" checked> upper half (above the wafer)</label><label><input type="checkbox" id="cCut"> cut open at the section line</label><label><input type="checkbox" id="cBlock" checked> silicon block (off: cast of the pit)</label><label><input type="checkbox" id="cGhost" checked> final {111} shape (wire)</label><label><input type="checkbox" id="cMask" checked> mask layer</label><select id="pitColor"><option value="plane">crystal plane family</option><option value="depth">depth below the surface</option><option value="rate">etch rate of the wall</option></select><label><input type="checkbox" class="cCompass" checked> crystal compass</label><div id="pitLegend"><span><i class="sw" style="background:var(--mask)"></i>mask film (true thickness)</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span><span><i class="sw" style="background:var(--s-cut)"></i>cut face</span></div><label><input type="checkbox" id="cSimMask" checked> mask layer</label><label><input type="checkbox" id="cSimCut"> cut open at the section line</label><div id="simLegend"><span><i class="sw" style="background:var(--mask)"></i>mask film (true thickness)</span><span><i class="sw" style="background:var(--mask);filter:brightness(.55)"></i>mask with no silicon under it</span><span><i class="sw" style="background:var(--s-top)"></i>silicon</span></div><select id="simColor"><option value="plane">crystal plane family</option><option value="depth">depth below the surface</option><option value="rate">local etch rate R(n)</option><option value="time">time the etch front reached the surface</option></select><div id="simPlaneLegend" style="margin-top:6px"><span><i class="sw" style="background:var(--f111)"></i>{111}</span><span><i class="sw" style="background:var(--f100)"></i>{100}</span><span><i class="sw" style="background:var(--f110)"></i>{110}</span><span><i class="sw" style="background:var(--fhi)"></i>higher index ({311}, {211}, {411} …)</span><span><i class="sw" style="background:var(--s-side)"></i>no plane within 4°</span><span><i class="sw" style="background:var(--s-cut)"></i>cut face</span></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>

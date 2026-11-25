@@ -73,7 +73,7 @@ function drawPitEditor(keepExtent?: boolean) {
   for (let y = Math.ceil(V.Y0/g)*g; y <= V.Y1; y += g) { const [, b] = toC([0, y]); ctx.moveTo(10, b); ctx.lineTo(10 + 2*hx*s, b); }
   ctx.stroke(); ctx.globalAlpha = 1;
   // mask with the openings cut out
-  const tmp = document.createElement("canvas"); tmp.width = cv.width; tmp.height = cv.height;
+  const tmp = edTmp("pitCanvas", cv.width, cv.height);
   const t = tmp.getContext("2d"); t.setTransform(dpr, 0, 0, dpr, 0, 0);
   t.globalAlpha = 0.6; t.fillStyle = col("mask"); t.fillRect(10, 10, 2*hx*s, 2*hy*s); t.globalAlpha = 1;
   t.globalCompositeOperation = "destination-out"; t.beginPath();
@@ -122,7 +122,7 @@ function drawPitEditor(keepExtent?: boolean) {
     if (!drag.moved) { toCustom(); drag.moved = true; }
     if (!S.pitShapes[drag.i]) return;
     const sh = S.pitShapes[drag.i]; sh.cx = snapV(drag.cx + x - drag.x0); sh.cy = snapV(drag.cy + y - drag.y0);
-    drawPitEditor(true); $("hint").textContent = `Moving to (${sh.cx}, ${sh.cy}) µm; let go to update the 3D view`;
+    edLater("pitCanvas", () => drawPitEditor(true)); $("hint").textContent = `Moving to (${sh.cx}, ${sh.cy}) µm; let go to update the 3D view`;
   });
   const end = () => { cv.style.cursor = ""; if (drag && drag.moved) pitChanged(false); else drawPitEditor(); drag = null; };
   cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);

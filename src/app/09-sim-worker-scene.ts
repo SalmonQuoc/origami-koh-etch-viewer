@@ -390,7 +390,7 @@ function drawMaskEditor() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, wcss, hcss);
   const V = edView("maskCanvas", s, 10, 10, W*s, H*s, 0, 0, 40);
   SIM.ed = { s: V.s, ox: V.ox, oy: V.oy, view: V };
-  const tmp = document.createElement("canvas"); tmp.width = Math.round(W*s*dpr); tmp.height = Math.round(H*s*dpr);
+  const tmp = edTmp("maskCanvas", Math.max(1, Math.round(W*s*dpr)), Math.max(1, Math.round(H*s*dpr)));
   paintMask(tmp.getContext("2d"), V.s*dpr, V.X0, V.Y0, V.Y1 - V.Y0, "#" + COL.mask.getHexString(), 0.55);
   ctx.fillStyle = "#" + COL["scene-bg"].getHexString(); ctx.fillRect(10, 10, W*s, H*s);
   ctx.drawImage(tmp, 10, 10, W*s, H*s);
@@ -522,7 +522,7 @@ $("bDupShape").addEventListener("click", () => {
   });
   cv.addEventListener("pointermove", ev => {
     if (!drag) return; const [x, y] = world(ev);
-    const sh = SIM.shapes[drag.i]; sh.cx = snapV(drag.cx + x - drag.x0); sh.cy = snapV(drag.cy + y - drag.y0); drag.moved = true; drawMaskEditor();
+    const sh = SIM.shapes[drag.i]; sh.cx = snapV(drag.cx + x - drag.x0); sh.cy = snapV(drag.cy + y - drag.y0); drag.moved = true; edLater("maskCanvas", drawMaskEditor);
   });
   cv.addEventListener("pointerup", () => { if (drag && drag.moved) { $("simPreset").value = "-1"; markDirty(); } drag = null; });
   cv.setAttribute("tabindex", "0");
