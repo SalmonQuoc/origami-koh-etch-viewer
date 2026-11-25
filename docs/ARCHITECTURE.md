@@ -20,7 +20,10 @@ src/
   types/*.d.ts              shared types: page state objects, globals from the other scripts
 tools/validate-data.mjs   checks data/*.json (run by the build and the tests)
 build.mjs                 makes index.html
-tests/                    node tests (engine parity, physics checks, data) and tests/browser (Chromium)
+tests/                    node tests (engine parity, physics checks, data) and tests/browser (Chromium);
+                            tests/measure.mjs: wall-angle, corner-bevel and lateral-rate measurements shared with tools/
+tools/accuracy.mjs        engine against cases with a known answer; tools/source-checks.mjs: rate model against the sources;
+                            tools/undercut-lag.mjs: {100} undercut lag; tools/check-log-*.md: results of each check
 .github/workflows/        ci.yml: all checks on every push, then publishes index.html to Pages on main; pages.yml: publish by hand
 ```
 

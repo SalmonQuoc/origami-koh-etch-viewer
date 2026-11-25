@@ -68,7 +68,14 @@
         "column": "30"
       },
       "source": "Pal & Sato Table 4.1, p. 87 (12 orientations)",
-      "sio2": null
+      "sio2": null,
+      "Q": {
+        "100": 0.6,
+        "110": 0.59,
+        "111": 0.6,
+        "sio2": 0.85,
+        "source": "Q(100) 0.60 eV: Pal & Sato p. 90 (40 % KOH); Seidel et al. 1990 give 0.57, 0.59 and 0.61 eV for 20, 42 and 57 % KOH (Fig. 12, p. 3618). Q(110) 0.59 eV: Seidel et al. 1990, Fig. 17, p. 3620 (20 % KOH; 0.57 eV for (100) in the same run). Q(111): no number in the sources, 0.60 eV (assumption); the sources disagree on its direction: Pal & Sato p. 90 say {111} has the smallest Q, Seidel et al. 1990 (abstract, p. 3612) find higher Q for slowly etching planes. Q(SiO₂) 0.85 eV: Seidel et al. 1990, Fig. 18, p. 3620 (0.85 eV in 20 % and 0.86 eV in 42 % KOH)."
+      }
     },
     {
       "key": "PAL40",
@@ -82,7 +89,14 @@
         "column": "40"
       },
       "source": "Pal & Sato Table 4.1, p. 87 (12 orientations)",
-      "sio2": null
+      "sio2": null,
+      "Q": {
+        "100": 0.6,
+        "110": 0.59,
+        "111": 0.6,
+        "sio2": 0.85,
+        "source": "Q(100) 0.60 eV: Pal & Sato p. 90 (40 % KOH); Seidel et al. 1990 give 0.57, 0.59 and 0.61 eV for 20, 42 and 57 % KOH (Fig. 12, p. 3618). Q(110) 0.59 eV: Seidel et al. 1990, Fig. 17, p. 3620 (20 % KOH; 0.57 eV for (100) in the same run). Q(111): no number in the sources, 0.60 eV (assumption); the sources disagree on its direction: Pal & Sato p. 90 say {111} has the smallest Q, Seidel et al. 1990 (abstract, p. 3612) find higher Q for slowly etching planes. Q(SiO₂) 0.85 eV: Seidel et al. 1990, Fig. 18, p. 3620 (0.85 eV in 20 % and 0.86 eV in 42 % KOH)."
+      }
     },
     {
       "key": "PAL50",
@@ -94,7 +108,14 @@
         "column": "50"
       },
       "source": "Pal & Sato Table 4.1, p. 87 (12 orientations)",
-      "sio2": null
+      "sio2": null,
+      "Q": {
+        "100": 0.6,
+        "110": 0.59,
+        "111": 0.6,
+        "sio2": 0.85,
+        "source": "Q(100) 0.60 eV: Pal & Sato p. 90 (40 % KOH); Seidel et al. 1990 give 0.57, 0.59 and 0.61 eV for 20, 42 and 57 % KOH (Fig. 12, p. 3618). Q(110) 0.59 eV: Seidel et al. 1990, Fig. 17, p. 3620 (20 % KOH; 0.57 eV for (100) in the same run). Q(111): no number in the sources, 0.60 eV (assumption); the sources disagree on its direction: Pal & Sato p. 90 say {111} has the smallest Q, Seidel et al. 1990 (abstract, p. 3612) find higher Q for slowly etching planes. Q(SiO₂) 0.85 eV: Seidel et al. 1990, Fig. 18, p. 3620 (0.85 eV in 20 % and 0.86 eV in 42 % KOH)."
+      }
     },
     {
       "key": "LEC42",
@@ -120,6 +141,13 @@
         "value": 0.34,
         "unit": "um/h",
         "source": "Lec 10 p. 11"
+      },
+      "Q": {
+        "100": 0.6,
+        "110": 0.59,
+        "111": 0.6,
+        "sio2": 0.85,
+        "source": "Q(100) 0.60 eV: Pal & Sato p. 90 (40 % KOH); Seidel et al. 1990 give 0.57, 0.59 and 0.61 eV for 20, 42 and 57 % KOH (Fig. 12, p. 3618). Q(110) 0.59 eV: Seidel et al. 1990, Fig. 17, p. 3620 (20 % KOH; 0.57 eV for (100) in the same run). Q(111): no number in the sources, 0.60 eV (assumption); the sources disagree on its direction: Pal & Sato p. 90 say {111} has the smallest Q, Seidel et al. 1990 (abstract, p. 3612) find higher Q for slowly etching planes. Q(SiO₂) 0.85 eV: Seidel et al. 1990, Fig. 18, p. 3620 (0.85 eV in 20 % and 0.86 eV in 42 % KOH)."
       }
     },
     {
@@ -146,6 +174,13 @@
         "value": 0.62,
         "unit": "um/h",
         "source": "Lec 10 p. 11"
+      },
+      "Q": {
+        "100": 0.6,
+        "110": 0.59,
+        "111": 0.6,
+        "sio2": 0.85,
+        "source": "Q(100) 0.60 eV: Pal & Sato p. 90 (40 % KOH); Seidel et al. 1990 give 0.57, 0.59 and 0.61 eV for 20, 42 and 57 % KOH (Fig. 12, p. 3618). Q(110) 0.59 eV: Seidel et al. 1990, Fig. 17, p. 3620 (20 % KOH; 0.57 eV for (100) in the same run). Q(111): no number in the sources, 0.60 eV (assumption); the sources disagree on its direction: Pal & Sato p. 90 say {111} has the smallest Q, Seidel et al. 1990 (abstract, p. 3612) find higher Q for slowly etching planes. Q(SiO₂) 0.85 eV: Seidel et al. 1990, Fig. 18, p. 3620 (0.85 eV in 20 % and 0.86 eV in 42 % KOH)."
       }
     },
     {
@@ -167,6 +202,13 @@
         "value": 0.004,
         "unit": "um/h",
         "source": "Lec 10 p. 11"
+      },
+      "Q": {
+        "100": 0.4,
+        "110": 0.33,
+        "111": 0.52,
+        "sio2": 0.8,
+        "source": "EDP type S: Q(100) 0.40, Q(110) 0.33, Q(111) 0.52 eV (Seidel et al. 1990, Fig. 13, p. 3619); Q(SiO₂) 0.80 eV (Fig. 18, p. 3620)."
       }
     },
     {
@@ -184,7 +226,14 @@
         }
       },
       "source": "Ratio R(100):R(110):R(111) = 50:30:3 for EDP 'F&K' at 110 °C (Finne & Klein 1967, as listed in the Berkeley Microlab manual ch. 1.10); scaled so that R(100) = 51 µm/h as in Lec 10 p. 11 (assumption). Matches the order (100) > (110) > (111) of Lec 10 p. 16. Other planes: linear three-rate interpolation (assumption).",
-      "sio2": null
+      "sio2": null,
+      "Q": {
+        "100": 0.4,
+        "110": 0.33,
+        "111": 0.52,
+        "sio2": 0.8,
+        "source": "EDP type S: Q(100) 0.40, Q(110) 0.33, Q(111) 0.52 eV (Seidel et al. 1990, Fig. 13, p. 3619); Q(SiO₂) 0.80 eV (Fig. 18, p. 3620). Used for the F&K composition too (assumption)."
+      }
     }
   ]
 }
