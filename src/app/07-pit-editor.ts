@@ -28,6 +28,9 @@ function dirSelects(sh, i, dirs) {
   if (sh.type === "para") return dirSelect(dirs, sh.a1, `data-i="${i}" data-k="a1"`, "side 1 along") + dirSelect(dirs, sh.a2, `data-i="${i}" data-k="a2"`, "side 2 along");
   return dirSelect(dirs, sh.ang, `data-i="${i}" data-k="ang"`, sh.type === "circle" || sh.type === "ring" || sh.type === "free" ? "turned to" : "edges along");
 }
+// lock of a shape (shared by the pit, simulator and corner lab editors and the designer): a locked shape stays in the mask but is not picked, moved or edited
+const lockBtn = (attr, i, on) => `<button class="x lockB${on ? " on" : ""}" ${attr}="${i}" aria-pressed="${!!on}" title="${on ? "Locked: click to allow changes again" : "Lock: keep this shape as it is (no dragging, keys or typing)"}" aria-label="${on ? "unlock" : "lock"}">${on ? "🔒" : "🔓"}</button>`;
+function lockInputs(root) { for (const c of root.querySelectorAll(".locked")) for (const el of c.querySelectorAll("input, select")) (el as HTMLInputElement).disabled = true; }
 function renderCustomList() {
   const list = pitShapesNow(), dirs = inPlaneDirs(C.FRAMES[S.wf]);
   const f = (i, k, v, lbl, st = 5) => `<label>${lbl}<input type="number" step="${st}" data-i="${i}" data-k="${k}" aria-label="${lbl}" value="${+(+(v == null ? 0 : v)).toFixed(1)}"></label>`;
@@ -35,13 +38,15 @@ function renderCustomList() {
     const T = SHAPE_TYPES[sh.type] || SHAPE_TYPES.rect;
     const lab = { w: "w", h: "h", t: sh.type === "ring" || sh.type === "star" ? "inner" : "arm t", n: sh.type === "star" ? "points" : "sides", k: "scale %" };
     const dims = T.f.map(k => f(i, k, sh[k] == null ? 100 : sh[k], lab[k], k === "n" ? 1 : 5)).join("");
-    return `<div class="card${i === S.pitSel ? " sel" : ""}" data-row="${i}">
-      <div class="top"><span><b>${i + 1}. ${T.name}</b>${S.open === "custom" ? "" : ' <span class="note">(the example; editing it makes it your own mask)</span>'}</span><span><button class="x" data-pcdup="${i}" title="duplicate (Ctrl+D)" aria-label="duplicate">⧉</button><button class="x" data-pcdel="${i}" title="remove" aria-label="remove">×</button></span></div>
+    return `<div class="card${i === S.pitSel ? " sel" : ""}${sh.lock ? " locked" : ""}" data-row="${i}">
+      <div class="top"><span><b>${i + 1}. ${T.name}</b>${S.open === "custom" ? "" : ' <span class="note">(the example; editing it makes it your own mask)</span>'}</span><span>${lockBtn("data-pclock", i, sh.lock)}<button class="x" data-pcdup="${i}" title="duplicate (Ctrl+D)" aria-label="duplicate">⧉</button><button class="x" data-pcdel="${i}" title="${sh.lock ? "locked" : "remove"}" aria-label="remove"${sh.lock ? " disabled" : ""}>×</button></span></div>
       <div class="fl">${f(i, "cx", sh.cx, "x")}${f(i, "cy", sh.cy, "y")}${sh.type === "para" ? f(i, "a1", sh.a1, "side 1°", 1) + f(i, "a2", sh.a2, "side 2°", 1) : sh.type === "pts" ? "" : f(i, "ang", sh.ang, "angle°", 1)}${f(i, "pre", sh.pre || 0, "pre-etch")}</div>
       ${dims ? `<div class="fl">${dims}<span class="note">${sh.type === "free" ? sh.pts.length + " corners" : "µm"}</span></div>` : ""}${dirSelects(sh, i, dirs)}</div>`;
   }).join("");
   $("pcList").innerHTML = list.length ? cards : `<p class="note">No openings. Pick a shape and press “Add shape”, or double-click in the editor.</p>`;
-  $("pcDup").disabled = $("pcDel").disabled = !(S.pitSel >= 0 && S.pitSel < list.length);
+  lockInputs($("pcList"));
+  const ok = S.pitSel >= 0 && S.pitSel < list.length;
+  $("pcDup").disabled = !ok; $("pcDel").disabled = !ok || !!list[S.pitSel].lock;
 }
 // 2D editor of the pit mask: openings over the mask, with the cavity edge at the surface at the current time
 function drawPitEditor(keepExtent?: boolean) {
@@ -68,12 +73,10 @@ function drawPitEditor(keepExtent?: boolean) {
   ctx.fillStyle = col("scene-bg"); ctx.fillRect(10, 10, 2*hx*s, 2*hy*s);
   ctx.save(); ctx.beginPath(); ctx.rect(10, 10, 2*hx*s, 2*hy*s); ctx.clip();   // zoomed content stays in the plot
   // grid
-  const g = edGrid(V.X1 - V.X0); ctx.strokeStyle = col("s-ink"); ctx.globalAlpha = 0.08; ctx.lineWidth = 1; ctx.beginPath();
-  for (let x = Math.ceil(V.X0/g)*g; x <= V.X1; x += g) { const [a] = toC([x, 0]); ctx.moveTo(a, 10); ctx.lineTo(a, 10 + 2*hy*s); }
-  for (let y = Math.ceil(V.Y0/g)*g; y <= V.Y1; y += g) { const [, b] = toC([0, y]); ctx.moveTo(10, b); ctx.lineTo(10 + 2*hx*s, b); }
-  ctx.stroke(); ctx.globalAlpha = 1;
+  const g = edGrid(V.X1 - V.X0);
+  edGridDraw(ctx, { toC, X0: V.X0, X1: V.X1, Y0: V.Y0, Y1: V.Y1, g, px: V.s, ink: col("s-ink"), angs: gridAngles(inPlaneDirs(C.FRAMES[S.wf]), S.rot) });
   // mask with the openings cut out
-  const tmp = document.createElement("canvas"); tmp.width = cv.width; tmp.height = cv.height;
+  const tmp = edTmp("pitCanvas", cv.width, cv.height);
   const t = tmp.getContext("2d"); t.setTransform(dpr, 0, 0, dpr, 0, 0);
   t.globalAlpha = 0.6; t.fillStyle = col("mask"); t.fillRect(10, 10, 2*hx*s, 2*hy*s); t.globalAlpha = 1;
   t.globalCompositeOperation = "destination-out"; t.beginPath();
@@ -90,14 +93,15 @@ function drawPitEditor(keepExtent?: boolean) {
   // shape outlines
   list.forEach((sh, i) => {
     ctx.beginPath(); for (const P of shapeLoops(sh)) path(ctx, P);
-    ctx.lineWidth = i === S.pitSel ? 2.4 : 1.1; ctx.strokeStyle = i === S.pitSel ? col("accent") : col("s-ink"); ctx.stroke();
+    ctx.lineWidth = i === S.pitSel ? 2.4 : 1.1; ctx.strokeStyle = i === S.pitSel ? col("accent") : col("s-ink");
+    if (sh.lock) { ctx.globalAlpha = 0.55; ctx.setLineDash([2, 3]); } ctx.stroke(); ctx.globalAlpha = 1; ctx.setLineDash([]);
     if (i === S.pitSel) { const [a, b] = toC([sh.cx, sh.cy]); ctx.fillStyle = col("accent"); ctx.fillRect(a - 3, b - 3, 6, 6); }
   });
   ctx.restore();
   ctx.strokeStyle = col("s-ink"); ctx.lineWidth = 1; ctx.strokeRect(10, 10, 2*hx*s, 2*hy*s);
   ctx.fillStyle = col("accent"); ctx.fillRect(10, 10 + 2*hy*s + 2, 2*hx*s, 3);
   ctx.font = "11px IBM Plex Sans, sans-serif";
-  ctx.fillText(`primary flat side; x along ${plainIdx(C.FRAME_IDX[S.wf][0])}; grid ${g} µm`, 12, 10 + 2*hy*s + 18);
+  ctx.fillText(`primary flat side; x along ${plainIdx(C.FRAME_IDX[S.wf][0])}${SET.gridType === "off" ? "" : `; grid ${g} µm${SET.gridType === "crystal" ? " along the {111} traces" : ""}`}`, 12, 10 + 2*hy*s + 18);
   if (S.compass) drawCompass(ctx, 10 + 2*hx*s - 44, 54, 30, inPlaneDirs(C.FRAMES[S.wf]), S.rot || 0);
   const sel = list[S.pitSel];
   drawCoords(ctx, "pitCanvas", { X0: V.X0, X1: V.X1, Y0: V.Y0, Y1: V.Y1, toC, g, grid: false, sel: sel ? [sel.cx, sel.cy] : null });
@@ -106,7 +110,7 @@ function drawPitEditor(keepExtent?: boolean) {
 (() => {
   const cv = $("pitCanvas"); let drag = null;
   const world = ev => { const r = cv.getBoundingClientRect(); return [(ev.clientX - r.left - S.pitEd.ox)/S.pitEd.s, -(ev.clientY - r.top - S.pitEd.oy)/S.pitEd.s]; };
-  const hit = (x, y) => { const list = pitShapesNow(); for (let i = list.length - 1; i >= 0; i--) if (shapePieces(list[i]).some(P => EE.isOpen([{ pts: P, op: "open" }], x, y))) return i; return -1; };
+  const hit = (x, y) => { const list = pitShapesNow(); for (let i = list.length - 1; i >= 0; i--) if (!list[i].lock && shapePieces(list[i]).some(P => EE.isOpen([{ pts: P, op: "open" }], x, y))) return i; return -1; };
   cv.addEventListener("pointerdown", ev => {
     if (!S.pitEd) return;
     const [x, y] = world(ev), i = hit(x, y);
@@ -121,8 +125,8 @@ function drawPitEditor(keepExtent?: boolean) {
     if (!drag || !S.pitEd) return; const [x, y] = world(ev);
     if (!drag.moved) { toCustom(); drag.moved = true; }
     if (!S.pitShapes[drag.i]) return;
-    const sh = S.pitShapes[drag.i]; sh.cx = snapV(drag.cx + x - drag.x0); sh.cy = snapV(drag.cy + y - drag.y0);
-    drawPitEditor(true); $("hint").textContent = `Moving to (${sh.cx}, ${sh.cy}) µm; let go to update the 3D view`;
+    const sh = S.pitShapes[drag.i]; [sh.cx, sh.cy] = snapP(drag.cx + x - drag.x0, drag.cy + y - drag.y0, gridAngles(inPlaneDirs(C.FRAMES[S.wf]), S.rot));
+    edLater("pitCanvas", () => drawPitEditor(true)); $("hint").textContent = `Moving to (${sh.cx}, ${sh.cy}) µm; let go to update the 3D view`;
   });
   const end = () => { cv.style.cursor = ""; if (drag && drag.moved) pitChanged(false); else drawPitEditor(); drag = null; };
   cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);
@@ -132,7 +136,7 @@ function drawPitEditor(keepExtent?: boolean) {
   });
   cv.addEventListener("keydown", ev => {
     if ((ev.ctrlKey || ev.metaKey) && (ev.key === "d" || ev.key === "D")) { ev.preventDefault(); $("pcDup").click(); return; }
-    if (!(S.pitSel >= 0)) return;
+    if (!(S.pitSel >= 0) || !pitShapesNow()[S.pitSel] || pitShapesNow()[S.pitSel].lock) return;
     const st = (ev.shiftKey ? 5 : 1)*(Number(SET.snap) || 1), mv = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, st], ArrowDown: [0, -st] }[ev.key];
     if (mv) { ev.preventDefault(); toCustom(); const sh = S.pitShapes[S.pitSel]; sh.cx += mv[0]; sh.cy += mv[1]; pitChanged(false); }
     else if (ev.key === "Delete" || ev.key === "Backspace") { ev.preventDefault(); $("pcDel").click(); }
@@ -146,20 +150,21 @@ $("pcAdd").addEventListener("click", () => {
 });
 $("pcDup").addEventListener("click", () => {
   if (!(S.pitSel >= 0)) return; toCustom();
-  const c = JSON.parse(JSON.stringify(S.pitShapes[S.pitSel])); c.cx += 40; c.cy -= 40;
+  const c = JSON.parse(JSON.stringify(S.pitShapes[S.pitSel])); c.cx += 40; c.cy -= 40; delete c.lock;
   S.pitShapes.push(c); S.pitSel = S.pitShapes.length - 1; pitChanged(false);
 });
 $("pcDel").addEventListener("click", () => {
-  if (!(S.pitSel >= 0)) return; toCustom();
+  if (!(S.pitSel >= 0) || (pitShapesNow()[S.pitSel] || {}).lock) return; toCustom();
   S.pitShapes.splice(S.pitSel, 1); S.pitSel = -1; pitChanged(false);
 });
-$("pcClear").addEventListener("click", () => { S.open = "custom"; S.pitShapes = []; S.pitSel = -1; pitChanged(false); });
+$("pcClear").addEventListener("click", () => { const keep = S.open === "custom" ? S.pitShapes.filter(x => x.lock) : []; S.open = "custom"; S.pitShapes = keep; S.pitSel = -1; pitChanged(false); if (keep.length) $("hint").textContent = `Cleared; ${keep.length} locked shape${keep.length === 1 ? " stays" : "s stay"}.`; });
 $("pcList").addEventListener("change", e => {
   const el = e.target, i = Number(el.dataset.i), k = el.dataset.k; if (!(i >= 0) || !k) return;
   if (el.value === "") return;   // "custom angle" picked in a direction list: nothing to change
-  toCustom(); S.pitShapes[i][k] = Number(el.value); S.pitSel = i; pitChanged(false);
+  toCustom(); if (S.pitShapes[i].lock) { renderCustomList(); return; } S.pitShapes[i][k] = Number(el.value); S.pitSel = i; pitChanged(false);
 });
 $("pcList").addEventListener("click", e => {
+  const lk = e.target.closest("[data-pclock]"); if (lk) { const i = Number(lk.dataset.pclock); toCustom(); const sh = S.pitShapes[i]; if (sh.lock) delete sh.lock; else sh.lock = true; S.pitSel = i; fillOpenings(); renderCustomList(); drawPitEditor(true); return; }
   const d = e.target.closest("[data-pcdel]"); if (d) { S.pitSel = Number(d.dataset.pcdel); $("pcDel").click(); return; }
   const u = e.target.closest("[data-pcdup]"); if (u) { S.pitSel = Number(u.dataset.pcdup); $("pcDup").click(); return; }
   const r = e.target.closest("[data-row]"); if (r && e.target.tagName !== "INPUT" && e.target.tagName !== "LABEL") { S.pitSel = Number(r.dataset.row); renderCustomList(); drawPitEditor(); }

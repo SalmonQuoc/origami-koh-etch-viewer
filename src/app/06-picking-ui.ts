@@ -64,7 +64,7 @@ function rebuild(resetView) {
     $("cornerBox").classList.toggle("hidden", S.mode !== "corner"); $("simExBox").classList.toggle("hidden", S.mode === "corner"); $("simBelow").classList.remove("hidden"); $("panelPit").classList.add("hidden"); $("panelModel").classList.add("hidden"); $("pitBelow").classList.add("hidden");
     $("vAlong").classList.add("hidden");
     $("hint").textContent = "Hover a surface for its plane";
-    if (S.mode === "corner") { if (SIM.owner !== "corner") { clSync(); clBuild(false); simRun(); resetView = true; } }
+    if (S.mode === "corner") { if (SIM.owner !== "corner") { clSync(); clBuild(false, true); simRun(); resetView = true; } }
     else if (SIM.wfLoaded !== S.wf || SIM.owner !== "sim") { SIM.wfLoaded = S.wf; SIM.owner = "sim"; SIM.preset = 0; fillSimPresets(); loadPreset(S.wf, 0); simRun(); resetView = true; }
     buildSim(resetView);
   } else if (S.mode === "find") {

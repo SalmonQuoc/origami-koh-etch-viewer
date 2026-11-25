@@ -127,14 +127,16 @@ $("ceDel").addEventListener("click", () => {
   CUSTOM.splice(i, 1); saveCustom(); registerCustom(); prepPit(); if (S.mode === "pit") rebuild(false); ceCur = ceDefault(); ceFill();
 });
 // saving a file: inside the claude.ai artifact viewer through its downloads capability, elsewhere (GitHub Pages, a local copy) as a normal download
-async function saveFile(name, text) {
+async function saveFile(name, data, mime = "application/json") {   // data: text, or a Blob for binary files
   if (window.claude && typeof window.claude.use === "function") {
     let ns = null; try { ns = await window.claude.use("downloads"); } catch (e) {}
     if (!ns) return "This viewer cannot save files; open the GitHub page to export.";
-    try { await ns.save({ filename: name, data: text }); return ""; } catch (e) { return e && e.code === "declined" ? "Export cancelled." : "The file could not be saved here."; }
+    if (typeof data !== "string") return "Binary files (.zip, .png, .stl) cannot be saved in this viewer; open the GitHub page, or export one text file (.json, .svg, .dxf) at a time.";
+    try { await ns.save({ filename: name, data }); return ""; } catch (e) { return e && e.code === "declined" ? "Export cancelled." : "The file could not be saved here."; }
   }
-  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "application/json" })); a.download = name; document.body.append(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 2000); return "";
+  const blob = typeof data === "string" ? new Blob([data], { type: mime }) : data;
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000); return "";
 }
 $("ceExport").addEventListener("click", async () => {
   if (!CUSTOM.length) { $("ceWarn").textContent = "There are no saved etchants to export yet."; $("ceWarn").classList.remove("hidden"); return; }
