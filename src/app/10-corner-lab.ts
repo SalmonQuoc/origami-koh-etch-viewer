@@ -36,6 +36,7 @@ function clBuild(run = true, keepEdits = false) {
     shapes: keepEdits && Array.isArray(CL.mask) && CL.mask.length ? JSON.parse(JSON.stringify(CL.mask)) : sh, sel: -1, preset: -1, cutPos: Math.round(yc - 0.15*H), cutAxis: "y", cutLine: null, owner: "corner", wfLoaded: null });
   SIM.probes = [{ x: xL, y: yc, ux: SQ2, uy: SQ2, s0: -0.45*Math.min(A, 2*Ly1), s1: reach + m }, { x: xR, y: yc, ux: -SQ2, uy: SQ2, s0: -0.45*Math.min(A, 2*Ly1), s1: reach + m }];
   SIM.cl = { tT, H, xL, xR, yc, type: CL.type };
+  CL.built0 = JSON.stringify(sh);   // the mask as built from the settings, to tell whether the user changed it
   if (!keepEdits) CL.mask = null;
   CL.built = true; syncSimInputs(); renderShapeList(); clEditNote();
   if (run) { simRun(); buildSim(true); }
@@ -64,12 +65,28 @@ function clReadout() {
 }
 $("clRate").innerHTML = Object.entries(SRATES).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join("");
 $("clRate").addEventListener("change", e => { CL.rate = e.target.value; clSync(); });
-$("clType").addEventListener("change", e => { CL.type = e.target.value; Object.assign(CL, clRule(CL.type, CL.H)); clSync(); clBuild(); });
+$("clType").addEventListener("change", e => { CL.type = e.target.value; Object.assign(CL, clRule(CL.type, CL.H)); clSync(); clRebuild("the compensation type changed"); });
 for (const [id, k] of [["clH", "H"], ["clA", "A"], ["clS1", "s1"], ["clS2", "s2"]]) $(id).addEventListener("change", e => { const v = Number(e.target.value); if (v >= 0) CL[k] = v; clSync(); });
-$("clAuto").addEventListener("click", () => { const r = clRule(CL.type, CL.H); CL.s1 = r.s1; CL.s2 = r.s2; clSync(); clBuild(); });
-$("clRun").addEventListener("click", () => clBuild());
+$("clAuto").addEventListener("click", () => { const r = clRule(CL.type, CL.H); CL.s1 = r.s1; CL.s2 = r.s2; clSync(); clRebuild("the sizes come from the design rule"); });
+$("clRun").addEventListener("click", () => clRebuild(""));
+// a hand-drawn corner mask is not thrown away without asking; a replaced one can be brought back
+function clHasEdits() { return Array.isArray(CL.mask) && CL.mask.length > 0 && JSON.stringify(CL.mask.map(s => { const c = Object.assign({}, s); delete c.lock; delete c.name; return c; })) !== (CL.built0 ? JSON.stringify(JSON.parse(CL.built0).map(s => { const c = Object.assign({}, s); delete c.lock; delete c.name; return c; })) : ""); }
+let clPending = null;
+function clRebuild(why) {
+  if (!clHasEdits()) { clBuild(); return; }
+  clPending = why; $("clAskWhy").textContent = why ? ` (${why})` : "";
+  $("dlgClBuild").showModal(); $("clAskRun").focus();
+}
+$("dlgClBuild").addEventListener("click", ev => {
+  const b = ev.target.closest("button"); if (!b) { if (ev.target === $("dlgClBuild")) $("dlgClBuild").close(); return; }
+  $("dlgClBuild").close();
+  if (b.id === "clAskRun") { if (SIM.owner !== "corner") clBuild(true, true); else { simRun(); buildSim(false); } }
+  else if (b.id === "clAskBuild") { CL.maskBak = JSON.parse(JSON.stringify(CL.mask)); clBuild(); clEditNote(); }
+  clPending = null;
+});
+$("clRestore").addEventListener("click", () => { if (!Array.isArray(CL.maskBak)) return; CL.mask = CL.maskBak; CL.maskBak = null; clBuild(true, true); });
 $("clRunMask").addEventListener("click", () => { if (SIM.owner !== "corner") { clBuild(true, true); return; } simRun(); buildSim(false); });
-function clEditNote() { const e = $("clEdited"); if (e) e.classList.toggle("hidden", !(Array.isArray(CL.mask) && CL.mask.length)); }
+function clEditNote() { const e = $("clEdited"); if (e) e.classList.toggle("hidden", !clHasEdits()); const r = $("clRestore"); if (r) r.classList.toggle("hidden", !(Array.isArray(CL.maskBak) && !clHasEdits())); }
 // hover on the 3D surface
 function simHover(ev) {
   if (!simScene || !simScene.pick) { tip.style.display = "none"; return; }

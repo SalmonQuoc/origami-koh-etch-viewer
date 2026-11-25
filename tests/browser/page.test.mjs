@@ -311,7 +311,8 @@ test("page: scenes, simulator kernel, drawing, mask designer, save and export, s
     await ev(() => { const o = window.__o3d; o.mdOpen("corner"); o.MD.sel = [o.MD.shapes.length - 1]; o.mdCommand("move 5,0"); document.querySelector('#mdRoot [data-md="done"]').click(); });
     const proj = await ev(() => window.__o3d.svProject(["corner"]));
     assert.ok(Array.isArray(proj.parts.corner.mask) && proj.parts.corner.mask.length >= 3);
-    await ev(() => document.getElementById("clRun").click()); assert.equal(await ev(() => window.__o3d.svProject(["corner"]).parts.corner.mask), undefined);
+    await ev(() => document.getElementById("clRun").click()); await ev(() => document.getElementById("clAskBuild").click());   // replaces the drawing (asked first)
+    assert.equal(await ev(() => window.__o3d.svProject(["corner"]).parts.corner.mask), undefined);
     await p.click('#segM button[data-m="sim"]');
     await p.evaluate(p0 => window.__o3d.svApply(p0, ["corner"]), proj);
     await p.click('#segM button[data-m="corner"]'); await p.waitForTimeout(300);
@@ -330,6 +331,38 @@ test("page: scenes, simulator kernel, drawing, mask designer, save and export, s
     assert.equal(new Set(await ev(() => window.__mdH)).size, 1);
     await ev(() => document.querySelector('#mdRoot [data-md="done"]').click());
     await p.setViewportSize({ width: 1300, height: 950 });
+  });
+
+  await t.test("designer: the 90° buttons add 90°; an example pit outline can be turned and moved", async () => {
+    await p.click('#segM button[data-m="sim"]'); await p.waitForTimeout(300);
+    await ev(() => { const o = window.__o3d; o.SIM.shapes[0].ang = 15; o.mdOpen("sim"); o.MD.sel = [0]; });
+    await ev(() => document.querySelector('#mdRoot [data-md="rot"][data-a="90"]').click());
+    assert.equal(await ev(() => window.__o3d.SIM.shapes[0].ang), 105);
+    await ev(() => { window.__o3d.mdCommand("undo"); document.querySelector('#mdRoot [data-md="done"]').click(); window.__o3d.SIM.shapes[0].ang = 0; });
+    await p.click('#segM button[data-m="pit"]'); await p.waitForTimeout(300);
+    await ev(() => { const o = window.__o3d; o.mdOpen("pit"); o.MD.sel = [0]; });
+    const w0 = await ev(() => JSON.stringify(window.__o3d.shapePieces(window.__o3d.MD.shapes[0])));
+    await ev(() => window.__o3d.mdCommand("rotate 90")); await ev(() => window.__o3d.mdCommand("move 10,0"));
+    assert.notEqual(await ev(() => JSON.stringify(window.__o3d.shapePieces(window.__o3d.MD.shapes[0]))), w0);
+    await ev(() => { window.__o3d.mdCommand("undo"); window.__o3d.mdCommand("undo"); document.querySelector('#mdRoot [data-md="done"]').click(); });
+  });
+
+  await t.test("corner lab: Build and run asks before replacing a drawn mask, and the drawing can be restored", async () => {
+    await p.click('#segM button[data-m="corner"]'); await p.waitForTimeout(300);
+    await ev(() => { document.getElementById("clRun").click(); if (document.getElementById("dlgClBuild").open) document.getElementById("clAskBuild").click(); });   // start from the built mask
+    await ev(() => document.getElementById("clRun").click()); await p.waitForTimeout(200);
+    assert.ok(await ev(() => !document.getElementById("dlgClBuild").open));   // nothing drawn: no question
+    await ev(() => { const o = window.__o3d; o.mdOpen("corner"); o.MD.sel = [o.MD.shapes.length - 1]; o.mdCommand("move 7,0"); document.querySelector('#mdRoot [data-md="done"]').click(); });
+    const drawn = await ev(() => window.__o3d.SIM.shapes.map(s => s.cx));
+    await ev(() => document.getElementById("clRun").click());
+    assert.ok(await ev(() => document.getElementById("dlgClBuild").open));
+    await ev(() => document.getElementById("clAskCancel").click());
+    assert.deepEqual(await ev(() => window.__o3d.SIM.shapes.map(s => s.cx)), drawn);
+    await ev(() => document.getElementById("clRun").click()); await ev(() => document.getElementById("clAskBuild").click());
+    assert.notDeepEqual(await ev(() => window.__o3d.SIM.shapes.map(s => s.cx)), drawn);
+    assert.ok(await ev(() => !document.getElementById("clRestore").classList.contains("hidden")));
+    await ev(() => document.getElementById("clRestore").click());
+    assert.deepEqual(await ev(() => window.__o3d.SIM.shapes.map(s => s.cx)), drawn);
   });
 
   await t.test("no sideways scroll at phone width", async () => {
