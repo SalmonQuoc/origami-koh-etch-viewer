@@ -339,7 +339,7 @@ function updateSimReadout() {
     if (d > 0 && st.under > 0) rows.push(["undercut / depth", (st.under/d).toFixed(2)]);
     rows.push(["mask with no Si under it", `${(st.susp/1e3).toFixed(1)}×10³ µm²`]);
     if (st.through > 0) rows.push(SIM.cfg && SIM.cfg.depth >= SIM.thick - 1e-6 ? ["etched through the wafer", `${(st.through/1e3).toFixed(1)}×10³ µm²`] : ["reached the simulated depth", `${SIM.cfg.depth.toFixed(0)} µm (raise it only by a longer time)`]);
-    SIM.shapes.forEach((s, i) => { if (s.name && st.rel[i] != null) rows.push([`${s.name} free`, `${(100*st.rel[i]).toFixed(0)} %${st.rel[i] > 0.995 ? " (released)" : ""}`]); });
+    SIM.shapes.forEach((s, i) => { if (s.name && st.rel[i] != null) rows.push([`${esc(s.name)} free`, `${(100*st.rel[i]).toFixed(0)} %${st.rel[i] > 0.995 ? " (released)" : ""}`]); });
     rows.push(["mask film", maskFilmText(maskFilm(SIM.rate, r.tv), r.tv)]);
   }
   $("simReadout").innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
@@ -405,11 +405,13 @@ function drawMaskEditor() {
   ctx.strokeStyle = "#" + COL["s-ink"].getHexString(); ctx.lineWidth = 1; ctx.strokeRect(10, 10, W*s, H*s);
   const zs = V.s, toC = p => [SIM.ed.ox + p[0]*zs, SIM.ed.oy - p[1]*zs];
   ctx.save(); ctx.beginPath(); ctx.rect(10, 10, W*s, H*s); ctx.clip();   // zoomed content stays in the plot
+  edGridDraw(ctx, { toC, X0: V.X0, X1: V.X1, Y0: V.Y0, Y1: V.Y1, g: edGrid(V.X1 - V.X0), px: zs, ink: "#" + COL["s-ink"].getHexString(), angs: gridAngles(inPlaneDirs(SFR[SIM.fk].e), SIM.rot) });
   SIM.shapes.forEach((sh, i) => {
     ctx.beginPath();
     for (const Q of shapePolys(sh)) { const P = Q.map(toC); P.forEach((p, k) => k ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath(); }
     ctx.setLineDash(sh.op === "open" ? [] : [4, 3]); ctx.lineWidth = i === SIM.sel ? 2.2 : 1;
-    ctx.strokeStyle = i === SIM.sel ? "#" + COL.accent.getHexString() : "#" + COL["s-ink"].getHexString(); ctx.stroke();
+    ctx.strokeStyle = i === SIM.sel ? "#" + COL.accent.getHexString() : "#" + COL["s-ink"].getHexString();
+    ctx.globalAlpha = sh.lock ? 0.55 : 1; ctx.stroke(); ctx.globalAlpha = 1;
   });
   ctx.setLineDash([]);
   drawSecLine(ctx, "maskCanvas", toC);   // section line A -> B (module 23)
@@ -417,10 +419,10 @@ function drawMaskEditor() {
   // flat at the bottom edge
   ctx.fillStyle = "#" + COL.accent.getHexString(); ctx.fillRect(10, 10 + H*s + 2, W*s, 3);
   ctx.font = "11px IBM Plex Sans, sans-serif";
-  ctx.fillText(`primary flat side; x along ${plainIdx(simFrame().idx[0])}${SET.coords !== false ? `; grid ${edGrid(V.X1 - V.X0)} µm` : ""}`, 12, 10 + H*s + 18);
+  ctx.fillText(`primary flat side; x along ${plainIdx(simFrame().idx[0])}${SET.coords !== false ? `; grid ${edGrid(V.X1 - V.X0)} µm` : ""}${SET.gridType === "crystal" ? " along the {111} traces" : ""}`, 12, 10 + H*s + 18);
   if (S.compass) drawCompass(ctx, 10 + W*s - 44, 54, 30, inPlaneDirs(SFR[SIM.fk].e), SIM.rot || 0);
   const sel = SIM.shapes[SIM.sel];
-  drawCoords(ctx, "maskCanvas", { X0: V.X0, X1: V.X1, Y0: V.Y0, Y1: V.Y1, toC, g: edGrid(V.X1 - V.X0), grid: true, sel: sel ? [sel.cx, sel.cy] : null });
+  drawCoords(ctx, "maskCanvas", { X0: V.X0, X1: V.X1, Y0: V.Y0, Y1: V.Y1, toC, g: edGrid(V.X1 - V.X0), grid: false, sel: sel ? [sel.cx, sel.cy] : null });
   drawOverlay(ctx, "maskCanvas", toC);
 }
 const plainIdx = v => "[" + v.map(x => x < 0 ? `${-x}̅` : `${x}`).join("") + "]";
@@ -432,10 +434,11 @@ function renderShapeList() {
     const dims = T.f.map(k => f(k, sh[k] == null ? 100 : sh[k], k === "n" ? 1 : 5, { w: "w (µm)", h: "h (µm)", t: sh.type === "ring" || sh.type === "star" ? "inner size (µm)" : "arm width t (µm)", n: "sides or points", k: "scale (%)" }[k])).join("");
     const ang = (sh.type === "para" ? f("a1", sh.a1, 1, "side 1 angle to the flat (°)") + f("a2", sh.a2, 1, "side 2 angle to the flat (°)") : sh.type === "pts" ? "" : f("ang", sh.ang, 1, "angle to the flat (°)")) + dirSelects(sh, i, dirs);
     const arr = `${f("nx", sh.nx || 1, 1, "copies along x")}${f("ny", sh.ny || 1, 1, "copies along y")}${f("px", sh.px || 0, 5, "pitch x (µm)")}${f("py", sh.py || 0, 5, "pitch y (µm)")}`;
-    return `<tr class="${i === SIM.sel ? "sel" : ""}" data-row="${i}"><td><select data-i="${i}" data-k="op"><option value="open"${sh.op === "open" ? " selected" : ""}>open</option><option value="mask"${sh.op === "mask" ? " selected" : ""}>mask</option></select></td>
-      <td class="ty">${T.name}</td><td>${f("cx", sh.cx)}${f("cy", sh.cy)}</td><td>${dims}</td><td>${ang}</td><td>${arr}</td><td style="white-space:nowrap"><button class="x" data-dup="${i}" title="duplicate (Ctrl+D)" aria-label="duplicate">⧉</button><button class="x" data-del="${i}" title="remove">×</button></td></tr>`;
+    return `<tr class="${i === SIM.sel ? "sel" : ""}${sh.lock ? " locked" : ""}" data-row="${i}"><td><select data-i="${i}" data-k="op"><option value="open"${sh.op === "open" ? " selected" : ""}>open</option><option value="mask"${sh.op === "mask" ? " selected" : ""}>mask</option></select></td>
+      <td class="ty">${T.name}</td><td>${f("cx", sh.cx)}${f("cy", sh.cy)}</td><td>${dims}</td><td>${ang}</td><td>${arr}</td><td style="white-space:nowrap">${lockBtn("data-lock", i, sh.lock)}<button class="x" data-dup="${i}" title="duplicate (Ctrl+D)" aria-label="duplicate">⧉</button><button class="x" data-del="${i}" title="${sh.lock ? "locked" : "remove"}"${sh.lock ? " disabled" : ""}>×</button></td></tr>`;
   }).join("");
   $("shapeList").innerHTML = `<tr class="hd"><td>layer</td><td>shape</td><td>centre x, y</td><td>size</td><td>angle°</td><td>array nx, ny, px, py</td><td></td></tr>` + rows;
+  lockInputs($("shapeList"));
 }
 function markDirty() { SIM.dirty = true; updateDirtyNote(); renderShapeList(); if (simLike()) buildSim(false); autoRunMaybe(); }
 function updateDirtyNote() { $("simDirty").classList.toggle("hidden", !SIM.dirty); stageRunSync(); }
@@ -490,10 +493,12 @@ $("cSimCut").addEventListener("change", e => { SIM.cutOn = e.target.checked; bui
 $("shapeList").addEventListener("change", e => {
   const el = e.target, i = Number(el.dataset.i), k = el.dataset.k; if (!(i >= 0) || !k) return;
   if (el.value === "" && el.tagName === "SELECT") return;
+  if (SIM.shapes[i].lock) { renderShapeList(); return; }
   SIM.shapes[i][k] = k === "op" ? el.value : Number(el.value); $("simPreset").value = "-1"; markDirty();
 });
 $("shapeList").addEventListener("click", e => {
-  const d = e.target.closest("[data-del]"); if (d) { SIM.shapes.splice(Number(d.dataset.del), 1); SIM.sel = -1; markDirty(); return; }
+  const lk = e.target.closest("[data-lock]"); if (lk) { const i = Number(lk.dataset.lock), sh = SIM.shapes[i]; if (sh.lock) delete sh.lock; else sh.lock = true; SIM.sel = i; renderShapeList(); drawMaskEditor(); return; }   // no new etch: the mask is the same
+  const d = e.target.closest("[data-del]"); if (d) { if (SIM.shapes[Number(d.dataset.del)].lock) return; SIM.shapes.splice(Number(d.dataset.del), 1); SIM.sel = -1; markDirty(); return; }
   const u = e.target.closest("[data-dup]"); if (u) { SIM.sel = Number(u.dataset.dup); $("bDupShape").click(); return; }
   const r = e.target.closest("tr[data-row]"); if (r && e.target.tagName !== "INPUT" && e.target.tagName !== "SELECT") { SIM.sel = Number(r.dataset.row); drawMaskEditor(); renderShapeList(); }
 });
@@ -505,7 +510,7 @@ $("bAddShape").addEventListener("click", () => {
 });
 $("bDupShape").addEventListener("click", () => {
   if (!(SIM.sel >= 0) || !SIM.shapes[SIM.sel]) return;
-  const c = JSON.parse(JSON.stringify(SIM.shapes[SIM.sel])); c.cx += 20; c.cy -= 20; delete c.name;
+  const c = JSON.parse(JSON.stringify(SIM.shapes[SIM.sel])); c.cx += 20; c.cy -= 20; delete c.name; delete c.lock;
   SIM.shapes.push(c); SIM.sel = SIM.shapes.length - 1; $("simPreset").value = "-1"; markDirty();
 });
 // drag shapes in the editor
@@ -514,8 +519,8 @@ $("bDupShape").addEventListener("click", () => {
   const world = ev => { const r = cv.getBoundingClientRect(); return [(ev.clientX - r.left - SIM.ed.ox)/SIM.ed.s, -(ev.clientY - r.top - SIM.ed.oy)/SIM.ed.s]; };
   cv.addEventListener("pointerdown", ev => {
     const [x, y] = world(ev);
-    for (let i = SIM.shapes.length - 1; i >= 0; i--) if (EE.isOpen([Object.assign(engineShape(SIM.shapes[i]), { op: "open" })], x, y)) {
-      let j = i; if (ev.altKey) { const c = JSON.parse(JSON.stringify(SIM.shapes[i])); delete c.name; SIM.shapes.push(c); j = SIM.shapes.length - 1; }   // Alt-drag: drag a copy
+    for (let i = SIM.shapes.length - 1; i >= 0; i--) if (!SIM.shapes[i].lock && EE.isOpen([Object.assign(engineShape(SIM.shapes[i]), { op: "open" })], x, y)) {
+      let j = i; if (ev.altKey) { const c = JSON.parse(JSON.stringify(SIM.shapes[i])); delete c.name; delete c.lock; SIM.shapes.push(c); j = SIM.shapes.length - 1; }   // Alt-drag: drag a copy
       SIM.sel = j; drag = { i: j, x0: x, y0: y, cx: SIM.shapes[j].cx, cy: SIM.shapes[j].cy, moved: j !== i }; cv.setPointerCapture(ev.pointerId); drawMaskEditor(); renderShapeList(); return;
     }
     SIM.sel = -1; drawMaskEditor(); renderShapeList();
@@ -536,6 +541,7 @@ $("bDupShape").addEventListener("click", () => {
   cv.addEventListener("keydown", ev => {   // arrow keys move the selected shape, Delete removes it
     const sh = SIM.shapes[SIM.sel]; if (!sh) return;
     if ((ev.ctrlKey || ev.metaKey) && (ev.key === "d" || ev.key === "D")) { ev.preventDefault(); $("bDupShape").click(); return; }
+    if (sh.lock) return;
     const st = (ev.shiftKey ? 5 : 1)*(Number(SET.snap) || 1), mv = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, st], ArrowDown: [0, -st] }[ev.key];
     if (mv) { ev.preventDefault(); sh.cx += mv[0]; sh.cy += mv[1]; $("simPreset").value = "-1"; markDirty(); }
     else if (ev.key === "Delete" || ev.key === "Backspace") { ev.preventDefault(); SIM.shapes.splice(SIM.sel, 1); SIM.sel = -1; markDirty(); }

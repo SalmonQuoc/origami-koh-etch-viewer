@@ -10,13 +10,17 @@ var MD = null;   // designer state while it is open (var: the Escape handlers of
 const MD_TGT = {
   sim: { name: "Etch simulator", ops: true, get: () => SIM.shapes, extra: () => ({ nx: 1, ny: 1, px: 0, py: 0 }),
     set: a => { SIM.shapes = a; SIM.sel = -1; $("simPreset").value = "-1"; markDirty(); },
+    meta: a => { SIM.shapes = a; },   // only locks or names changed: the etch stays valid
     frame: () => SFR[SIM.fk].e, rot: () => SIM.rot || 0, domain: () => [SIM.hx, SIM.hy],
     label: () => `(${SFR[SIM.fk].wf}) wafer · x along ${plainIdx(simFrame().idx[0])} · primary flat below` },
   pit: { name: "Etched pit", ops: false, get: () => pitShapesNow(), extra: () => ({ pre: 0 }),
     set: a => { S.open = "custom"; S.pitShapes = a; S.pitSel = -1; pitChanged(false); },
+    meta: a => { const was = S.open; S.open = "custom"; S.pitShapes = a; if (was !== "custom") pitChanged(false); },
     frame: () => C.FRAMES[S.wf], rot: () => S.rot || 0, domain: () => null,
     label: () => `(${S.wf}) wafer · x along ${plainIdx(C.FRAME_IDX[S.wf][0])} · primary flat below` },
 };
+// the corner lab etches the simulator's mask: the same target, with the two mesas and the domain locked by Build (module 10)
+MD_TGT["corner"] = Object.assign({}, MD_TGT.sim, { name: "Corner lab", label: () => "(100) wafer · mesa edges along ⟨110⟩ · the mesas are locked; unlock them to change them" });
 const MD_TOOLS = {
   select:  { key: "v", name: "Select", hint: "Click a shape to select it (Shift adds), drag to move (Alt-drag moves a copy). Drag on empty space: left to right selects shapes fully inside, right to left also those touched. Handles: stretch, scale, rotate (Shift: keep proportions or 15° steps; Alt: about the centre)." },
   node:    { key: "a", name: "Corners", hint: "Drag a corner of a drawn outline. Double-click an edge to add a corner; Delete removes the picked corner. Other shapes: press To outline first." },
@@ -33,6 +37,7 @@ const mdNormA = a => { const r = ((a % 360) + 540) % 360 - 180; return Math.roun
 const mdRot = (p, a) => { const c = Math.cos(a/C.DEG), s = Math.sin(a/C.DEG); return [p[0]*c - p[1]*s, p[0]*s + p[1]*c]; };
 const mdArr = sh => Math.max(1, Math.round(sh.nx || 1))*Math.max(1, Math.round(sh.ny || 1)) > 1;
 const mdCol = c => "#" + COL[c].getHexString();
+const mdLk = i => !!(MD && MD.shapes[i] && MD.shapes[i].lock);   // a locked shape cannot be picked on the drawing or changed
 const mdA = (name: string) => `${/^[aeiou]/i.test(name) ? "an" : "a"} ${name}`;
 function mdBBox(list) {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -154,7 +159,7 @@ function mdClose() {
   if (document.fullscreenElement === $("mdRoot")) document.exitFullscreen().catch(() => {});
   $("mdRoot").classList.add("hidden"); document.body.classList.remove("md-open");
   const tk = MD.tk; MD = null;
-  if (tk === "sim") { renderShapeList(); drawMaskEditor(); } else { renderCustomList(); drawPitEditor(); }
+  if (tk !== "pit") { renderShapeList(); drawMaskEditor(); } else { renderCustomList(); drawPitEditor(); }
 }
 function mdFillSelects() {
   const dirs = inPlaneDirs(MD.t.frame()), rot = MD.t.rot();
@@ -241,9 +246,14 @@ function mdSnap(sx, sy, o?: Record<string, any>) {
 }
 
 // ---- history: every finished edit is one step and is written back to the editor
+const mdGeo = a => JSON.stringify(a.map(s => { const c = Object.assign({}, s); delete c.lock; delete c.name; return c; }));   // what changes the etch
 function mdCommit(msg?: string) {
   const now = JSON.stringify(MD.shapes);
-  if (now !== MD.base) { MD.hist.push(MD.base); if (MD.hist.length > 300) MD.hist.shift(); MD.fut = []; MD.base = now; MD.t.set(JSON.parse(now)); }
+  if (now !== MD.base) {
+    const meta = mdGeo(MD.shapes) === mdGeo(JSON.parse(MD.base)) && MD.t.meta;
+    MD.hist.push(MD.base); if (MD.hist.length > 300) MD.hist.shift(); MD.fut = []; MD.base = now;
+    if (meta) MD.t.meta(JSON.parse(now)); else MD.t.set(JSON.parse(now));
+  }
   if (msg != null) mdMsg(msg);
   mdPanel(); mdRequest();
 }
@@ -258,7 +268,7 @@ function mdUndo(redo?: boolean) {
 
 // ---- selection frame and its handles
 function mdFrame() {   // single shape: its own axes (stretch); several or an array: the box around them (scale)
-  if (!MD.sel.length) return null;
+  if (!MD.sel.length || MD.sel.some(mdLk)) return null;
   if (MD.sel.length === 1) {
     const sh = MD.shapes[MD.sel[0]];
     if (sh && sh.type !== "para" && !mdArr(sh)) return { kind: "local", o: [sh.cx, sh.cy], a: sh.ang || 0, b: mdLocalBox(sh), uni: !!MD_UNI[sh.type] };
@@ -286,8 +296,8 @@ function mdHandleAt(sx, sy) {
 }
 function mdPick(sx, sy) {
   const w = mdToW(sx, sy), tol = 5/MD.v.s;
-  for (const i of MD.sel.slice().reverse()) if (MD.shapes[i] && mdHit(MD.shapes[i], w, tol)) return i;   // a selected shape stays on top for picking
-  for (let i = MD.shapes.length - 1; i >= 0; i--) if (mdHit(MD.shapes[i], w, tol)) return i;
+  for (const i of MD.sel.slice().reverse()) if (MD.shapes[i] && !mdLk(i) && mdHit(MD.shapes[i], w, tol)) return i;   // a selected shape stays on top for picking
+  for (let i = MD.shapes.length - 1; i >= 0; i--) if (!mdLk(i) && mdHit(MD.shapes[i], w, tol)) return i;
   return -1;
 }
 
@@ -314,14 +324,7 @@ function mdDraw() {
   o.globalCompositeOperation = "source-over"; o.globalAlpha = 1;
   // grid (minor and every fifth line), under the mask colour
   const g = mdGridStep(), G = g*5;
-  ctx.strokeStyle = ink; ctx.lineWidth = 1;
-  for (const [st, al] of [[g, 0.06], [G, 0.13]] as [number, number][]) {
-    ctx.globalAlpha = al; ctx.beginPath();
-    for (let x = Math.ceil(X0/st)*st; x <= X1; x += st) { const a = Math.round(mdToS([x, 0])[0]) + 0.5; ctx.moveTo(a, 0); ctx.lineTo(a, H); }
-    for (let y = Math.ceil(Y0/st)*st; y <= Y1; y += st) { const b = Math.round(mdToS([0, y])[1]) + 0.5; ctx.moveTo(0, b); ctx.lineTo(W, b); }
-    ctx.stroke();
-  }
-  ctx.globalAlpha = 1;
+  edGridDraw(ctx, { toC: mdToS, X0, X1, Y0, Y1, g, px: MD.v.s, ink, angs: gridAngles(inPlaneDirs(MD.t.frame()), MD.t.rot()) });
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(off, 0, 0); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   // axes through the origin, domain and flat
   const O = mdToS([0, 0]); ctx.globalAlpha = 0.45; ctx.beginPath(); ctx.moveTo(O[0], 0); ctx.lineTo(O[0], H); ctx.moveTo(0, O[1]); ctx.lineTo(W, O[1]); ctx.stroke(); ctx.globalAlpha = 1;
@@ -338,7 +341,8 @@ function mdDraw() {
     const on = MD.sel.includes(i), hv = i === MD.hover && !on;
     ctx.beginPath(); for (const P of shapeLoops(sh)) path(P);
     ctx.setLineDash(sh.op === "mask" ? [5, 3] : []); ctx.lineWidth = on ? 2.2 : hv ? 1.8 : 1.1;
-    ctx.strokeStyle = on || hv ? acc : ink; ctx.globalAlpha = hv ? 0.7 : 1; ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.strokeStyle = on || hv ? acc : ink; ctx.globalAlpha = hv ? 0.7 : sh.lock && !on ? 0.5 : 1; ctx.stroke(); ctx.globalAlpha = 1;
+    if (sh.lock) { const bb = mdBBox([sh]); if (bb) { const q = mdToS([bb[0], bb[3]]); ctx.font = "11px system-ui, sans-serif"; ctx.fillStyle = on ? acc : ink; ctx.fillText("🔒", q[0] + 2, q[1] + 13); } }
   });
   ctx.setLineDash([]);
   // selection: frame, handles, centre; corners in the corner tool
@@ -402,7 +406,7 @@ function mdDraw() {
   const L = niceStep(110/s), lp = L*s; ctx.strokeStyle = ink; ctx.fillStyle = ink; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(16, H - 16); ctx.lineTo(16 + lp, H - 16); ctx.moveTo(16, H - 21); ctx.lineTo(16, H - 11); ctx.moveTo(16 + lp, H - 21); ctx.lineTo(16 + lp, H - 11); ctx.stroke();
   ctx.font = "11px IBM Plex Mono, monospace"; ctx.fillText(fmtLen(L), 16, H - 25);
-  ctx.fillText(`grid ${fmtLen(g)} (bold ${fmtLen(G)})`, 16 + lp + 14, H - 12);
+  ctx.fillText(SET.gridType === "off" ? `grid hidden (snap step ${fmtLen(MD.step)})` : `grid ${fmtLen(g)} (bold ${fmtLen(G)})${SET.gridType === "crystal" ? " along the {111} traces" : ""}`, 16 + lp + 14, H - 12);
 }
 function mdMeasText(a, b) {
   const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy), ang = Math.atan2(dy, dx)*C.DEG;
@@ -448,14 +452,15 @@ function mdDown(ev) {
     if (i < 0) { if (!ev.shiftKey) MD.sel = []; MD.drag = { kind: "box", s0: [sx, sy], add: ev.shiftKey }; mdPanel(); mdRequest(); return; }
     if (ev.shiftKey) { MD.sel = MD.sel.includes(i) ? MD.sel.filter(j => j !== i) : MD.sel.concat([i]); mdPanel(); mdRequest(); return; }
     if (!MD.sel.includes(i)) MD.sel = [i];
-    if (ev.altKey) { const c = MD.sel.map(j => { const x = mdClone(MD.shapes[j]); delete x.name; return x; }); const n = MD.shapes.length; MD.shapes.push(...c); MD.sel = c.map((_, k) => n + k); }
+    MD.sel = MD.sel.filter(j => !mdLk(j));
+    if (ev.altKey) { const c = MD.sel.map(j => { const x = mdClone(MD.shapes[j]); delete x.name; delete x.lock; return x; }); const n = MD.shapes.length; MD.shapes.push(...c); MD.sel = c.map((_, k) => n + k); }
     const b = mdSnap(sx, sy, { skip: MD.sel });
     MD.drag = { kind: "move", b: b.p, orig: MD.sel.map(j => mdClone(MD.shapes[j])), moved: ev.altKey };
     mdPanel(); mdRequest(); return;
   }
   if (t === "node") {
     for (const i of MD.sel) {
-      const sh = MD.shapes[i]; if (!sh || (sh.type !== "free" && sh.type !== "pts") || mdArr(sh)) continue;
+      const sh = MD.shapes[i]; if (!sh || sh.lock || (sh.type !== "free" && sh.type !== "pts") || mdArr(sh)) continue;
       const k = mdCornerW(sh).findIndex(p => { const q = mdToS(p); return Math.abs(q[0] - sx) <= 6 && Math.abs(q[1] - sy) <= 6; });
       if (k >= 0) {
         if (sh.type === "pts") { const f = mdToFree(sh); MD.shapes[i] = f; }
@@ -527,7 +532,7 @@ function mdUp(ev) {
     const x0 = Math.min(a[0], b[0]), x1 = Math.max(a[0], b[0]), y0 = Math.min(a[1], b[1]), y1 = Math.max(a[1], b[1]);
     if (Math.abs(sx - d.s0[0]) + Math.abs(sy - d.s0[1]) > 3) {
       const got = [];
-      MD.shapes.forEach((sh, i) => { const bb = mdBBox([sh]); if (!bb) return;
+      MD.shapes.forEach((sh, i) => { const bb = mdBBox([sh]); if (!bb || sh.lock) return;
         const inside = bb[0] >= x0 && bb[2] <= x1 && bb[1] >= y0 && bb[3] <= y1, touch = bb[0] <= x1 && bb[2] >= x0 && bb[1] <= y1 && bb[3] >= y0;
         if (cross ? touch : inside) got.push(i); });
       MD.sel = d.add ? [...new Set(MD.sel.concat(got))] : got;
@@ -603,24 +608,54 @@ function mdRectFinish(b, ev) {
 // ---- commands of the toolbar, the keys and the command line
 function mdSelShapes() { return MD.sel.map(i => MD.shapes[i]).filter(Boolean); }
 function mdSelBox() { return mdBBox(mdSelShapes()); }
+function mdReorder(rows, at) {   // move the shapes rows to just before position at (in the old order); locked shapes stay
+  rows = rows.filter(i => !mdLk(i) && MD.shapes[i]).sort((a, b) => a - b); if (!rows.length) return;
+  const mv = rows.map(i => MD.shapes[i]), keep = MD.shapes.filter((_, i) => !rows.includes(i)), k = at - rows.filter(i => i < at).length;
+  MD.shapes = keep.slice(0, k).concat(mv, keep.slice(k)); MD.sel = mv.map((_, j) => k + j); MD.anchor = k;
+  mdCommit(MD.t.ops ? "Order changed: shapes lower in the list are applied later and win where they overlap." : "Order changed.");
+}
+const MD_MOD = { cut: 1, del: 1, move: 1, rot: 1, scale: 1, fliph: 1, flipv: 1, front: 1, back: 1, up: 1, down: 1, outline: 1, explode: 1, align: 1, array: 1, op: 1 };
 function mdDo(cmd, arg?: any) {
+  if (!MD) return;
+  if (cmd === "lock" || cmd === "unlock") {
+    if (!MD.sel.length) { mdMsg(`Select the shapes to ${cmd} first (on the drawing, or in the list: Ctrl-click adds, Shift-click a range).`); return; }
+    const n = MD.sel.length; for (const i of MD.sel) { if (cmd === "lock") MD.shapes[i].lock = true; else delete MD.shapes[i].lock; }
+    if (cmd === "lock") MD.sel = [];
+    mdCommit(cmd === "lock" ? `Locked ${n} shape${n === 1 ? "" : "s"}: ${n === 1 ? "it stays" : "they stay"} in the mask but cannot be picked or changed. Unlock with 🔒 in the list or Ctrl+Shift+L.` : `Unlocked ${n} shape${n === 1 ? "" : "s"}.`); return;
+  }
+  if (cmd === "unlockall") { const L = MD.shapes.map((s, i) => s.lock ? i : -1).filter(i => i >= 0); if (!L.length) { mdMsg("No shape is locked."); return; } for (const i of L) delete MD.shapes[i].lock; MD.sel = L; mdCommit(`Unlocked ${L.length} shape${L.length === 1 ? "" : "s"} (now selected).`); return; }
+  let note = "";
+  if (MD_MOD[cmd] && !(cmd === "del" && MD.tool === "node" && MD.vsel >= 0)) {
+    const lk = MD.sel.filter(mdLk);
+    if (lk.length) {
+      MD.sel = MD.sel.filter(i => !mdLk(i));
+      if (!MD.sel.length) { mdMsg(`${lk.length === 1 ? "This shape is" : "These shapes are"} locked. Unlock first (🔒 in the list, or Ctrl+Shift+L).`); mdPanel(); mdRequest(); return; }
+      note = ` ${lk.length} locked shape${lk.length === 1 ? " was" : "s were"} left as ${lk.length === 1 ? "it was" : "they were"}.`;
+    }
+  }
+  mdDo0(cmd, arg);
+  if (note) mdMsg($("mdMsg").textContent + note);
+}
+function mdDo0(cmd, arg?: any) {
   const need = () => { if (!MD.sel.length) { mdMsg("Select a shape first."); return false; } return true; };
   const box = () => mdSelBox(), ctr = () => { const b = box(); return [(b[0] + b[2])/2, (b[1] + b[3])/2]; };
   switch (cmd) {
     case "undo": mdUndo(); return;
     case "redo": mdUndo(true); return;
     case "fit": mdFit(); return;
+    case "side": listSide(SET.listSide === "left" ? "right" : "left"); return;
     case "done": mdClose(); return;
     case "full": { const rt = $("mdRoot"); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); else if (rt.requestFullscreen) rt.requestFullscreen().catch(() => mdMsg("Full screen is not allowed here; the designer fills the window.")); return; }
-    case "all": MD.sel = MD.shapes.map((_, i) => i); mdPanel(); mdRequest(); return;
+    case "all": { MD.sel = MD.shapes.map((_, i) => i).filter(i => !mdLk(i)); const nl = MD.shapes.length - MD.sel.length; if (nl) mdMsg(`${nl} locked shape${nl === 1 ? " is" : "s are"} not selected.`); mdPanel(); mdRequest(); return; }
+    case "op": { for (const s of mdSelShapes()) s.op = arg || (s.op === "mask" ? "open" : "mask"); mdCommit(MD.t.ops ? "Layer changed: open removes the mask, mask puts it back." : ""); return; }
     case "copy": case "cut": if (!need()) return; MD.clip = mdClone(mdSelShapes()); mdMsg(`Copied ${MD.clip.length} shape${MD.clip.length === 1 ? "" : "s"}.`); if (cmd === "cut") mdDo("del"); return;
     case "paste": {
       if (!MD.clip || !MD.clip.length) { mdMsg("Nothing copied yet."); return; }
-      const c = mdClone(MD.clip), off = 10*MD.step; for (const s of c) { mdMove(s, off, -off); if (MD.tk === "pit") { s.op = "open"; s.pre = s.pre || 0; } else Object.assign(s, Object.assign(MD.t.extra(), { nx: s.nx || 1, ny: s.ny || 1, px: s.px || 0, py: s.py || 0 })); }
+      const c = mdClone(MD.clip), off = 10*MD.step; for (const s of c) { delete s.lock; mdMove(s, off, -off); if (MD.tk === "pit") { s.op = "open"; s.pre = s.pre || 0; } else Object.assign(s, Object.assign(MD.t.extra(), { nx: s.nx || 1, ny: s.ny || 1, px: s.px || 0, py: s.py || 0 })); }
       const n = MD.shapes.length; MD.shapes.push(...c); MD.sel = c.map((_, k) => n + k); MD.clip = mdClone(c); mdCommit(`Pasted ${c.length} shape${c.length === 1 ? "" : "s"}.`); return;
     }
     case "dup": {
-      if (!need()) return; const d = arg || [20, -20], c = mdSelShapes().map(s => { const x = mdClone(s); delete x.name; mdMove(x, d[0], d[1]); return x; });
+      if (!need()) return; const d = arg || [20, -20], c = mdSelShapes().map(s => { const x = mdClone(s); delete x.name; delete x.lock; mdMove(x, d[0], d[1]); return x; });
       const n = MD.shapes.length; MD.shapes.push(...c); MD.sel = c.map((_, k) => n + k); mdCommit(`Duplicated ${c.length} shape${c.length === 1 ? "" : "s"}.`); return;
     }
     case "del": {
@@ -677,7 +712,7 @@ function mdDo(cmd, arg?: any) {
       mdCommit("Aligned."); return;
     }
     case "array": {
-      if (MD.tk !== "sim") { mdMsg("Arrays are part of the simulator mask; in the pit editor use Duplicate."); return; }
+      if (MD.tk === "pit") { mdMsg("Arrays are part of the simulator mask; in the pit editor use Duplicate."); return; }
       if (!need()) return; for (const s of mdSelShapes()) Object.assign(s, { nx: arg[0], ny: arg[1], px: arg[2], py: arg[3] }); mdCommit(`Array ${arg[0]} × ${arg[1]} at ${arg[2]} × ${arg[3]} µm.`); return;
     }
   }
@@ -740,11 +775,12 @@ function mdPanel() {
   if (sel.length === 1) {
     const sh = sel[0], T = SHAPE_TYPES[sh.type] || SHAPE_TYPES.rect, dirs = inPlaneDirs(MD.t.frame());
     const lab = { w: "w", h: "h", t: sh.type === "ring" || sh.type === "star" ? "inner" : "arm t", n: sh.type === "star" ? "points" : "sides", k: "scale %" };
-    h += `<h4>${MD.sel[0] + 1}. ${T.name}</h4>`;
+    h += `<h4>${MD.sel[0] + 1}. ${T.name}${sh.lock ? " · 🔒 locked" : ""}</h4>`;
+    h += `<div class="row mdLockRow"><label style="flex:1">name <input type="text" data-k="name" maxlength="40" value="${esc(sh.name || "")}" placeholder="${esc(T.name.replace(/ \(.*\)$/, ""))}"></label><button class="btn" data-md="${sh.lock ? "unlock" : "lock"}" title="${sh.lock ? "Allow changes again" : "Keep this shape as it is: it can no longer be picked or changed on the drawing"} (Ctrl+${sh.lock ? "Shift+" : ""}L)">${sh.lock ? "🔓 Unlock" : "🔒 Lock"}</button></div>`;
     if (MD.t.ops) h += `<label>layer <select data-k="op"><option value="open"${sh.op === "open" ? " selected" : ""}>open (removes the mask)</option><option value="mask"${sh.op === "mask" ? " selected" : ""}>mask (puts it back)</option></select></label>`;
     h += `<div class="mdF">${f("cx", sh.cx, "x (µm)")}${f("cy", sh.cy, "y (µm)")}${sh.type === "para" ? f("a1", sh.a1, "side 1 °", 0.1) + f("a2", sh.a2, "side 2 °", 0.1) : sh.type === "pts" ? "" : f("ang", sh.ang || 0, "angle °", 0.1)}`;
     h += T.f.map(k => f(k, sh[k] == null ? 100 : sh[k], lab[k] + (k === "n" || k === "k" ? "" : " (µm)"), k === "n" ? 1 : 0.5)).join("");
-    if (MD.tk === "sim") h += f("nx", sh.nx || 1, "copies x", 1) + f("ny", sh.ny || 1, "copies y", 1) + f("px", sh.px || 0, "pitch x (µm)", 1) + f("py", sh.py || 0, "pitch y (µm)", 1);
+    if (MD.tk !== "pit") h += f("nx", sh.nx || 1, "copies x", 1) + f("ny", sh.ny || 1, "copies y", 1) + f("px", sh.px || 0, "pitch x (µm)", 1) + f("py", sh.py || 0, "pitch y (µm)", 1);
     else h += f("pre", sh.pre || 0, "pre-etch (µm)", 1);
     h += `</div>${dirSelects(sh, 0, dirs).replace(/data-i="0" /g, "")}`;
     const bb = mdBBox([sh]); if (bb) h += `<p class="note">Extent ${fmtLen(bb[2] - bb[0])} × ${fmtLen(bb[3] - bb[1])}${sh.type === "free" || sh.type === "pts" ? ` · ${sh.pts.length} corners · area ${Math.round(Math.abs(polyArea(mdCornerW(sh)))).toLocaleString("en")} µm²` : ""}</p>`;
@@ -752,12 +788,16 @@ function mdPanel() {
       h += `<details class="mdCorners"><summary>Corners (x, y in µm)</summary><div>${mdCornerW(sh).map((p, k) => `<span class="mdV"><b>${k + 1}</b><input type="number" step="0.5" data-v="${k}" data-c="0" value="${mdR(p[0])}"><input type="number" step="0.5" data-v="${k}" data-c="1" value="${mdR(p[1])}"></span>`).join("")}</div></details>`;
   } else if (sel.length > 1) {
     const b = mdSelBox();
-    h += `<h4>${sel.length} shapes</h4><p class="note">Box ${fmtLen(b[2] - b[0])} × ${fmtLen(b[3] - b[1])}, centre (${mdR((b[0] + b[2])/2)}, ${mdR((b[1] + b[3])/2)}) µm.</p>`;
+    const nl = sel.filter(x => x.lock).length;
+    h += `<h4>${sel.length} shapes${nl ? ` · ${nl} locked` : ""}</h4><div class="row mdLockRow"><button class="btn" data-md="lock" title="Ctrl+L">🔒 Lock all ${sel.length}</button>${nl ? `<button class="btn" data-md="unlock" title="Unlock the selected shapes">🔓 Unlock</button>` : ""}</div><p class="note">Box ${fmtLen(b[2] - b[0])} × ${fmtLen(b[3] - b[1])}, centre (${mdR((b[0] + b[2])/2)}, ${mdR((b[1] + b[3])/2)}) µm.</p>`;
     if (MD.t.ops) h += `<label>layer of all <select data-k="op"><option value="">keep</option><option value="open">open</option><option value="mask">mask</option></select></label>`;
     h += `<div class="mdAlign"><button class="btn" data-md="align" data-a="l">Left</button><button class="btn" data-md="align" data-a="c">Centre</button><button class="btn" data-md="align" data-a="r">Right</button><button class="btn" data-md="align" data-a="t">Top</button><button class="btn" data-md="align" data-a="m">Middle</button><button class="btn" data-md="align" data-a="b">Bottom</button><button class="btn" data-md="align" data-a="dh">Spread ↔</button><button class="btn" data-md="align" data-a="dv">Spread ↕</button></div>`;
   } else h += `<h4>No selection</h4><p class="note">${MD.shapes.length} shape${MD.shapes.length === 1 ? "" : "s"}. Pick a tool on the left; ${MD_TOOLS[MD.tool].name}: ${MD_TOOLS[MD.tool].hint}</p>`;
   $("mdProps").innerHTML = h;
-  $("mdList").innerHTML = MD.shapes.map((sh, i) => `<div class="mdRow${MD.sel.includes(i) ? " sel" : ""}" data-row="${i}"><span>${i + 1}. ${SHAPE_TYPES[sh.type] ? SHAPE_TYPES[sh.type].name.replace(/ \(.*\)$/, "") : sh.type}${mdArr(sh) ? ` ×${(sh.nx || 1)*(sh.ny || 1)}` : ""}</span>${MD.t.ops ? `<span class="mdOp ${sh.op}">${sh.op}</span>` : ""}</div>`).join("") || `<p class="note">No shapes yet.</p>`;
+  if (sel.some(x => x.lock)) for (const el of $("mdProps").querySelectorAll("input, select, [data-md=align]")) (el as HTMLInputElement).disabled = true;   // locked: shown, not changed
+  const nm = sh => sh.name ? esc(sh.name) : SHAPE_TYPES[sh.type] ? SHAPE_TYPES[sh.type].name.replace(/ \(.*\)$/, "") : esc(sh.type);
+  $("mdList").innerHTML = MD.shapes.map((sh, i) => `<div class="mdRow${MD.sel.includes(i) ? " sel" : ""}${sh.lock ? " locked" : ""}" data-row="${i}" draggable="${sh.lock ? "false" : "true"}" title="Click selects, Ctrl-click adds, Shift-click selects a range; drag to change the order${sh.lock ? " (unlock first)" : ""}"><span class="mdGrip" aria-hidden="true">⋮⋮</span><span class="mdNm">${i + 1}. ${nm(sh)}${mdArr(sh) ? ` ×${(sh.nx || 1)*(sh.ny || 1)}` : ""}</span>${MD.t.ops ? `<button class="mdOp ${sh.op}" data-rop="${i}" title="${sh.lock ? "Locked" : "Switch between open (removes the mask) and mask (puts it back)"}"${sh.lock ? " disabled" : ""}>${sh.op}</button>` : ""}<button class="mdLk${sh.lock ? " on" : ""}" data-rlock="${i}" aria-pressed="${!!sh.lock}" title="${sh.lock ? "Locked: click to unlock" : "Lock: keep this shape as it is"}">${sh.lock ? "🔒" : "🔓"}</button></div>`).join("") || `<p class="note">No shapes yet.</p>`;
+  const nL = MD.shapes.filter(x => x.lock).length; $("mdLayInfo").textContent = MD.shapes.length ? `${MD.shapes.length} shape${MD.shapes.length === 1 ? "" : "s"}${nL ? `, ${nL} locked` : ""}` : "";
   for (const b of document.querySelectorAll("#mdRoot [data-md=undo]")) (b as HTMLButtonElement).disabled = !MD.hist.length;
   for (const b of document.querySelectorAll("#mdRoot [data-md=redo]")) (b as HTMLButtonElement).disabled = !MD.fut.length;
 }
@@ -924,13 +964,36 @@ function maskExportInfo(tk) {   // shapes, domain and a description of one edito
     }
   });
   new ResizeObserver(() => { if (MD && MD.on) mdResize(); }).observe($("mdCanvasBox"));
+  // layer list: drag rows to change the order in which the shapes are applied
+  const ls = $("mdList"), clr = () => { for (const r of ls.querySelectorAll(".mdRow.dropA, .mdRow.dropB")) r.classList.remove("dropA", "dropB"); };
+  ls.addEventListener("dragstart", ev => { const r = ev.target.closest && ev.target.closest(".mdRow"); if (!r || !MD) return; const i = Number(r.dataset.row);
+    if (!MD.sel.includes(i)) { MD.sel = [i]; MD.anchor = i; } MD.sel = MD.sel.filter(j => !mdLk(j)); MD.rowDrag = MD.sel.slice(); ev.dataTransfer.effectAllowed = "move"; ev.dataTransfer.setData("text/plain", String(i)); mdRequest(); });
+  ls.addEventListener("dragover", ev => { const r = ev.target.closest(".mdRow"); if (!r || !MD || !MD.rowDrag) return; ev.preventDefault(); clr();
+    const bx = r.getBoundingClientRect(); r.classList.add(ev.clientY < bx.top + bx.height/2 ? "dropA" : "dropB"); });
+  ls.addEventListener("dragleave", ev => { if (!ls.contains(ev.relatedTarget)) clr(); });
+  ls.addEventListener("drop", ev => { const r = ev.target.closest(".mdRow"); if (!r || !MD || !MD.rowDrag) return; ev.preventDefault();
+    const bx = r.getBoundingClientRect(), at = Number(r.dataset.row) + (ev.clientY < bx.top + bx.height/2 ? 0 : 1); clr(); mdReorder(MD.rowDrag, at); MD.rowDrag = null; });
+  ls.addEventListener("dragend", () => { clr(); if (MD) MD.rowDrag = null; });
   $("mdRoot").addEventListener("click", ev => {
     const b = ev.target.closest("[data-md]"); if (b && MD) { mdDo(b.dataset.md, b.dataset.a); return; }
     const t = ev.target.closest("#mdTools [data-tool]"); if (t && MD) { mdSetTool(t.dataset.tool); return; }
-    const r = ev.target.closest(".mdRow"); if (r && MD) { const i = Number(r.dataset.row); MD.sel = ev.shiftKey ? (MD.sel.includes(i) ? MD.sel.filter(j => j !== i) : MD.sel.concat([i])) : [i]; mdPanel(); mdRequest(); }
+    const lb = ev.target.closest("[data-rlock]"); if (lb && MD) {   // lock of one row; of all selected rows when it is one of them
+      const i = Number(lb.dataset.rlock), on = !MD.shapes[i].lock, L = MD.sel.includes(i) && MD.sel.length > 1 ? MD.sel.slice() : [i];
+      const keep = MD.sel.filter(j => !L.includes(j)); MD.sel = L; mdDo(on ? "lock" : "unlock"); if (!on) MD.sel = keep.concat(L); else MD.sel = keep; mdPanel(); mdRequest(); return;
+    }
+    const ob = ev.target.closest("[data-rop]"); if (ob && MD) { const i = Number(ob.dataset.rop); if (!MD.sel.includes(i)) MD.sel = [i]; mdDo("op", MD.shapes[i].op === "mask" ? "open" : "mask"); return; }
+    const r = ev.target.closest(".mdRow"); if (r && MD) {
+      const i = Number(r.dataset.row);
+      if (ev.shiftKey && MD.anchor != null && MD.shapes[MD.anchor]) { const a = Math.min(MD.anchor, i), b = Math.max(MD.anchor, i); MD.sel = Array.from({ length: b - a + 1 }, (_, k) => a + k); }
+      else if (ev.ctrlKey || ev.metaKey) { MD.sel = MD.sel.includes(i) ? MD.sel.filter(j => j !== i) : MD.sel.concat([i]); MD.anchor = i; }
+      else { MD.sel = [i]; MD.anchor = i; }
+      mdPanel(); mdRequest();
+    }
   });
   $("mdProps").addEventListener("change", ev => {
     if (!MD) return; const el = ev.target;
+    if (mdSelShapes().some(x => x.lock)) { mdMsg("Locked shapes are not changed. Unlock first."); mdPanel(); return; }
+    if (el.dataset.k === "name") { for (const sh of mdSelShapes()) { const v = el.value.trim().slice(0, 40); if (v) sh.name = v; else delete sh.name; } mdCommit("Renamed."); return; }
     if (el.dataset.v != null) {   // a corner typed in
       const sh = MD.shapes[MD.sel[0]], f = sh.type === "pts" ? mdToFree(sh) : sh, W0 = mdCornerW(f), k = Number(el.dataset.v), p = W0[k].slice(); p[Number(el.dataset.c)] = Number(el.value);
       mdSetCorner(f, k, p); MD.shapes[MD.sel[0]] = f;
@@ -960,6 +1023,8 @@ function maskExportInfo(tk) {   // shapes, domain and a description of one edito
   $("mdExpDxf").addEventListener("click", async () => { const i = maskExportInfo(MD.tk); const m = await saveFile(`${MD.tk}-mask.dxf`, maskDXF(i.shapes, i), "application/dxf"); mdMsg(m || "Saved the mask as DXF (R12, µm, layers OPEN, MASK, DOMAIN)."); });
   $("bDesign").addEventListener("click", () => mdOpen("sim"));
   $("pcDesign").addEventListener("click", () => mdOpen("pit"));
+  $("clDesign").addEventListener("click", () => { if (SIM.owner !== "corner") clBuild(false); mdOpen("corner"); });
+  $("bDesign").title = "Open the mask in the full-screen designer";
   // keys: while the designer is open the page's own shortcuts are off
   window.addEventListener("keydown", ev => {
     if (!MD || !MD.on) return;
@@ -973,7 +1038,7 @@ function maskExportInfo(tk) {   // shapes, domain and a description of one edito
     }
     const k = ev.key, ctl = ev.ctrlKey || ev.metaKey, lk = k.length === 1 ? k.toLowerCase() : k;
     if (ctl) {
-      const m = { z: ev.shiftKey ? "redo" : "undo", y: "redo", c: "copy", x: "cut", v: "paste", d: "dup", a: "all" }[lk];
+      const m = { z: ev.shiftKey ? "redo" : "undo", y: "redo", c: "copy", x: "cut", v: "paste", d: "dup", a: "all", l: ev.shiftKey ? "unlockall" : "lock" }[lk];
       if (m) { ev.preventDefault(); mdDo(m); } return;
     }
     if (k === " ") { MD.space = true; ev.preventDefault(); return; }

@@ -179,16 +179,36 @@ body.stacked aside.panel > * { break-inside: avoid; }
 body.lbl-off .labels { display: none; }
 /* enlarged editor or panel: a large window over the page */
 .enl { position: relative; }
-.enlBtn { position: absolute; top: 0; right: 0; z-index: 2; font-size: 12px !important; padding: 2px 8px !important; }
-.enl.enlarged { position: fixed; inset: 3vh 3vw; z-index: 70; background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+.enl.enlarged { position: fixed; inset: 1.5vh 1.5vw; z-index: 70; background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
   padding: 46px 22px 22px; overflow: auto; box-shadow: 0 12px 48px rgba(0, 0, 0, .35); margin: 0 !important; }
-.enl.enlarged > .enlBtn { top: 10px; right: 14px; }
-.enl:not(.panel):not(.enlarged) > .enlBtn { position: static; display: block; margin: 0 0 6px auto; }
 .enl.enlarged::before { content: attr(data-title); position: absolute; top: 12px; left: 22px; font: 600 17px/1.3 "Source Serif 4", Georgia, serif; color: var(--ink); }
 .enl.enlarged.hidden { display: block !important; }
 #enlBack { position: fixed; inset: 0; z-index: 69; background: rgba(0, 0, 0, .45); }
 body.enl-open { overflow: hidden; }
 .enl.enlarged .maskcv { margin: 0 auto; }
+.enl.enlarged:fullscreen { inset: 0; border-radius: 0; border: 0; width: 100vw; height: 100vh; }
+.enl.enlarged:fullscreen::backdrop { background: var(--panel); }
+.enlBar { position: absolute; top: 0; right: 0; z-index: 2; display: flex; gap: 6px; }
+.enlBar .btn { font-size: 12px !important; padding: 2px 8px !important; }
+.enl.enlarged > .enlBar { top: 10px; right: 14px; }
+.enl:not(.panel):not(.enlarged) > .enlBar { position: static; justify-content: flex-end; margin: 0 0 6px; }
+.edTools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: flex-end; margin: 0 0 4px; font-size: 12.5px; }
+.gridPick { display: inline-flex; gap: 4px; align-items: center; font-size: 12.5px; color: var(--muted); }
+.gridPick select { font-size: 12px; padding: 1px 3px; }
+/* enlarged mask editors: the shape list beside the drawing (right or left, setting listSide) */
+.enl.enlarged.edl { display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, 42%); grid-auto-rows: min-content; column-gap: 18px; align-content: start; }
+.enl.enlarged.edl > * { grid-column: 1; }
+.enl.enlarged.edl > .enlBar { grid-column: auto; }
+.enl.enlarged.edl > .edSide { grid-column: 2; grid-row: 1 / span 30; overflow: auto; max-height: calc(100% - 4px); align-self: stretch; border-left: 1px solid var(--line); padding-left: 14px; }
+body.list-left .enl.enlarged.edl { grid-template-columns: minmax(340px, 42%) minmax(0, 1fr); }
+body.list-left .enl.enlarged.edl > * { grid-column: 2; }
+body.list-left .enl.enlarged.edl > .edSide { grid-column: 1; border-left: 0; border-right: 1px solid var(--line); padding: 0 14px 0 0; }
+.enl.enlarged.edl > .edSide .addrow { margin-top: 0; }
+.enl:not(.enlarged) .edSideBtn { display: none; }
+body.list-left .mdBody { grid-template-columns: auto 290px minmax(0, 1fr); }
+body.list-left .mdSide { order: -1; grid-column: 2; grid-row: 1; border-left: 0; border-right: 1px solid var(--line); }
+body.list-left .mdCanvasBox { grid-column: 3; grid-row: 1; }
+body.list-left .mdTools { grid-column: 1; grid-row: 1; }
 /* drawing a free outline */
 .drawhelp { margin: 4px 0; padding: 6px 8px; border-radius: 6px; background: var(--chip); font-size: 12.5px; color: var(--ink); }
 /* a switched-on toggle (Explanations, Split, Theater, Full screen, Draw, Play, Enlarge) takes the accent colour */
@@ -232,6 +252,11 @@ section.refs a { color: var(--accent); overflow-wrap: anywhere; }
 .cards { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
 .card { border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; cursor: pointer; }
 .card.sel { border-color: var(--accent); background: var(--chip); }
+button.lockB { font-size: 13px !important; opacity: .4; }
+button.lockB.on, tr:hover button.lockB, .card:hover button.lockB { opacity: 1; }
+.card.locked, table.shapes tr.locked td { color: var(--muted); }
+.card.locked input, .card.locked select, table.shapes tr.locked input, table.shapes tr.locked select { opacity: .65; }
+button.x:disabled { opacity: .3; cursor: default; }
 .card .top { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
 .card .top b { font-weight: 600; }
 .card .fl { display: flex; flex-wrap: wrap; gap: 2px 8px; margin-top: 2px; }
@@ -383,7 +408,21 @@ body.md-open { overflow: hidden; }
 .mdV { display: grid; grid-template-columns: 22px 1fr 1fr; gap: 3px; align-items: center; font-size: 11px; }
 .mdV input { width: 100%; box-sizing: border-box; }
 #mdList { display: flex; flex-direction: column; gap: 1px; }
-.mdRow { display: flex; justify-content: space-between; padding: 3px 6px; border-radius: 5px; cursor: pointer; font-size: 12.5px; }
+.mdRow { display: flex; align-items: center; gap: 6px; padding: 3px 6px; border-radius: 5px; cursor: pointer; font-size: 12.5px; border-top: 2px solid transparent; border-bottom: 2px solid transparent; }
+.mdRow .mdNm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mdRow .mdGrip { color: var(--muted); cursor: grab; font-size: 11px; letter-spacing: -2px; }
+.mdRow.locked .mdNm { color: var(--muted); }
+.mdRow.locked .mdGrip { visibility: hidden; }
+.mdRow.dropA { border-top-color: var(--accent); }
+.mdRow.dropB { border-bottom-color: var(--accent); }
+.mdRow button { border: 1px solid transparent; background: none; color: inherit; border-radius: 4px; padding: 0 4px; cursor: pointer; }
+.mdRow button:hover:not(:disabled) { border-color: var(--line); }
+.mdRow button:disabled { cursor: default; opacity: .7; }
+.mdLk { opacity: .35; font-size: 12px; }
+.mdLk.on, .mdRow:hover .mdLk { opacity: 1; }
+.mdLayBar { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 4px 0; }
+.mdLayBar .btn { padding: 2px 7px; font-size: 12px; }
+.mdLockRow { gap: 6px; align-items: flex-end; margin: 4px 0; }
 .mdRow:hover { background: var(--chip); }
 .mdRow.sel { background: color-mix(in srgb, var(--accent) 22%, transparent); }
 .mdOp { font: 11px "IBM Plex Mono", monospace; color: var(--muted); }
@@ -486,15 +525,15 @@ body.md-open { overflow: hidden; }
     <div class="psBox" data-ps="pit"><div class="row"><input type="text" data-ps-name maxlength="60" placeholder="name for your preset" aria-label="name for your preset" style="flex:1;min-width:0"><button class="btn" data-ps-save title="Keep the current mask, etchant and flat error in this browser">☆ Save as my preset</button></div>
     <div class="row psMore"><button class="btn" data-ps-del disabled title="Delete the selected preset of yours">Delete preset</button><button class="btn" data-ps-exp title="Download all your presets as a .json file">Export</button><label class="btn" title="Add presets from a .json file">Import<input type="file" accept=".json,application/json" data-ps-imp hidden></label></div>
     <p class="note hidden" data-ps-msg></p></div>
-    <div class="enl" data-title="Mask editor: Etched pit">
+    <div class="enl edl" data-title="Mask editor: Etched pit">
     <p class="note" style="margin:4px 0 6px"><b>Drag</b> a shape to move it (<b>Alt</b>-drag moves a copy), <b>click</b> to select it, <b>double-click</b> an empty spot to add the chosen shape there. With the editor focused, the <span class="kbd">←</span><span class="kbd">→</span><span class="kbd">↑</span><span class="kbd">↓</span> keys move the selected shape by one snap step (with Shift, five), <span class="kbd">Ctrl</span>+<span class="kbd">D</span> duplicates it and <span class="kbd">Delete</span> removes it. <b>Draw</b> lets you draw your own outline. The 3D view updates when you let go.</p>
     <p class="drawhelp hidden" id="pcDrawHelp"></p>
-    <canvas id="pitCanvas" class="maskcv" tabindex="0" aria-label="Mask editor for the etched pit"></canvas>
+    <div class="edTools"><span class="gridHere"></span></div><canvas id="pitCanvas" class="maskcv" tabindex="0" aria-label="Mask editor for the etched pit"></canvas>
     <div class="legend" style="margin-top:4px"><span><i class="sw" style="background:var(--mask)"></i>mask</span><span><i class="sw" style="background:var(--scene-bg);border:1px solid var(--s-ink)"></i>opening</span><span><i class="sw" style="background:var(--ghost)"></i>cavity edge at the surface now</span><span><i class="sw" style="background:var(--ghost);height:2px"></i>section line A → B</span></div>
-    <div class="addrow"><select id="pcType" aria-label="shape to add"></select><button class="btn primary" id="pcAdd">Add shape</button><button class="btn" id="pcDraw" title="Click to place corners or drag to draw freely">✎ Draw</button><button class="btn" id="pcDesign" title="Open the full-screen mask designer: CAD-style drawing, snapping, typed coordinates, undo, DXF/SVG">⛶ Designer</button><button class="btn" id="pcDup">Duplicate</button><button class="btn" id="pcDel">Delete</button><button class="btn" id="pcClear">Clear all</button></div>
+    <div class="edSide"><div class="addrow"><select id="pcType" aria-label="shape to add"></select><button class="btn primary" id="pcAdd">Add shape</button><button class="btn" id="pcDraw" title="Click to place corners or drag to draw freely">✎ Draw</button><button class="btn" id="pcDesign" title="Open the full-screen mask designer: CAD-style drawing, snapping, typed coordinates, undo, DXF/SVG">⛶ Designer</button><button class="btn" id="pcDup">Duplicate</button><button class="btn" id="pcDel">Delete</button><button class="btn" id="pcClear">Clear all</button></div>
     <div id="pcList" class="cards"></div>
     <p class="warn hidden" id="pcWarn"></p>
-    <div class="row" style="margin-top:6px"><button class="btn" id="pcToSim">Open this mask in the etch simulator</button></div>
+    <div class="row" style="margin-top:6px"><button class="btn" id="pcToSim">Open this mask in the etch simulator</button></div></div>
     </div>
     <details class="srcs"><summary>How this scene etches a shape</summary>
       <p class="note">Each wall is a crystal plane that moves out from the opening at its own rate (n·x ≤ h + R·t). A non-convex shape (L, U, cross, frame, ring, star) is split into overlapping convex pieces; each piece etches as a convex opening and the cavity shown is their union. Concave corners therefore stop at {111} as they should. A drawn outline is split into convex pieces by triangulation (a design choice); where two pieces meet along a ⟨110⟩ line, a thin ridge can stay between their cavities. Convex mask corners (the inside corner of an L or U, the tips of a star) are <b>not</b> undercut here, although they are in real KOH etching (Kovacs et al. 1998, Fig. 1(c); Pal et al. 2007, Sec. 2). Openings that grow into each other are overlaid, not merged. The etch simulator handles both.</p>
@@ -531,7 +570,7 @@ body.md-open { overflow: hidden; }
         <label id="clL1">size 1 <span><input type="number" id="clS1" min="0" step="5"> µm</span></label>
         <label id="clL2">size 2 <span><input type="number" id="clS2" min="0" step="5"> µm</span></label>
       </div>
-      <div class="row"><button class="btn" id="clAuto">Size from the design rule</button><button class="btn primary" id="clRun">Build and run</button></div>
+      <div class="row"><button class="btn" id="clAuto">Size from the design rule</button><button class="btn primary" id="clRun" title="Build the mask from these settings and run (replaces hand edits)">Build and run</button><button class="btn" id="clDesign" title="Draw your own compensation in the full-screen designer; the mesas stay locked">⛶ Draw compensation</button><button class="btn" id="clRunMask" title="Run the mask as it is now, with your edits">▶ Run my edited mask</button></div>
       <p class="note src" id="clRule"></p>
       <h3>Corner result</h3>
       <dl class="kv" id="clReadout"></dl>
@@ -551,14 +590,14 @@ body.md-open { overflow: hidden; }
       <select id="simFrame"><option value="110f">Flat along ⟨110⟩ (Lec 4-1 p. 6)</option><option value="110a">⟨111⟩ arrow = flat normal (Lec 4-1 p. 11, HW2 P5)</option><option value="100" hidden>(100)</option><option value="111" hidden>(111)</option></select></div>
     <p class="note src" id="simFrameSrc"></p>
     <h3><span class="stepn">2</span>Edit or draw the mask</h3>
-    <div class="enl" data-title="Mask editor: etch simulator">
+    <div class="enl edl" data-title="Mask editor: etch simulator">
     <p class="note" style="margin:0 0 4px">Shapes are applied top to bottom: “open” removes the mask, “mask” puts it back (solid outline: open; dashed: mask). <b>Drag</b> a shape to move it (<b>Alt</b>-drag moves a copy), <b>double-click</b> an empty spot to add the chosen shape there; with the editor focused, the arrow keys move the selected shape by one snap step (Shift: five), <span class="kbd">Ctrl</span>+<span class="kbd">D</span> duplicates it and <span class="kbd">Delete</span> removes it. <b>Draw</b> lets you draw your own outline; <b>⛶ Designer</b> opens a full-screen drawing tool with snapping, typed coordinates, undo and DXF/SVG. Press Run to etch the new mask.</p>
     <p class="drawhelp hidden" id="simDrawHelp"></p>
-    <canvas id="maskCanvas" class="maskcv"></canvas>
+    <div class="edTools"><span class="gridHere"></span></div><canvas id="maskCanvas" class="maskcv"></canvas>
     <div class="legend"><span><i class="sw" style="background:var(--ghost);height:2px"></i>section line A → B</span></div>
-    <div class="addrow"><select id="addType"></select><select id="addOp"><option value="open">as opening</option><option value="mask">as mask</option></select><button class="btn" id="bAddShape">Add shape</button><button class="btn" id="bDraw" title="Click to place corners or drag to draw freely">✎ Draw</button><button class="btn" id="bDesign" title="Open the full-screen mask designer: CAD-style drawing, snapping, typed coordinates, undo, DXF/SVG">⛶ Designer</button><button class="btn" id="bDupShape">Duplicate selected</button></div>
+    <div class="edSide"><div class="addrow"><select id="addType"></select><select id="addOp"><option value="open">as opening</option><option value="mask">as mask</option></select><button class="btn" id="bAddShape">Add shape</button><button class="btn" id="bDraw" title="Click to place corners or drag to draw freely">✎ Draw</button><button class="btn" id="bDesign" title="Open the full-screen mask designer: CAD-style drawing, snapping, typed coordinates, undo, DXF/SVG">⛶ Designer</button><button class="btn" id="bDupShape">Duplicate selected</button></div>
     <p class="note" style="margin:4px 0 0">Columns: w, h = size; t = arm width (L, U, cross, frame) or inner size (ring, star); n = sides or points; array = copies nx × ny at pitch px, py (µm).</p>
-    <div class="tblwrap"><table class="shapes" id="shapeList"></table></div>
+    <div class="tblwrap"><table class="shapes" id="shapeList"></table></div></div>
     </div>
     <h3><span class="stepn">3</span>Process, then run</h3>
     <div class="row"><select id="simRate" style="flex:1;min-width:0"></select><button class="btn" data-etch-open="sim">Custom etchant…</button></div>
@@ -706,7 +745,8 @@ body.md-open { overflow: hidden; }
   <ul class="note" style="margin:0;padding-left:18px">
     <li><b>Sections</b>: click a heading in the right-hand panel (or press <span class="kbd">Enter</span> on it) to open or close that section. Only the first section of each panel is open at first; “open all” and “close all” sit at the top of the panel.</li>
     <li><b>Switches</b> that are on (Explanations, Split view, Theater view, Full screen, Draw, Play, Enlarge) are filled in the accent colour; open sections and open source lists have an accent heading.</li>
-    <li><b>⤢ Enlarge</b> opens an editor or a graph panel in a large window; <span class="kbd">Esc</span> closes it.</li>
+    <li><b>⤢ Enlarge</b> opens an editor or a graph panel in a large window and <b>⛶ Full screen</b> fills the whole screen; <span class="kbd">Esc</span> closes them. In a large mask editor the shape list sits beside the drawing (<b>⇆ List left / right</b>), and the <b>grid</b> list switches between square lines, dots, lines along the {111} traces, or none.</li>
+    <li><b>🔒 Lock</b> (in the shape lists and the designer, <span class="kbd">Ctrl</span>+<span class="kbd">L</span>; unlock all: <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">L</span>) keeps a shape in the mask but stops it being picked, moved or edited. The corner lab locks its two mesas, so <b>⛶ Draw compensation</b> changes only the compensation.</li>
     <li><b>ⓘ Explanations</b> shows the source notes under the controls and what each setting of the custom etchant means; they are off at first. <b>How it works</b>, below the page, explains the chemistry, the rate model and the simulation step by step.</li>
     <li><b>💾 Save</b> (<span class="kbd">Ctrl</span> + <span class="kbd">S</span>) writes one project file with the parts you tick and opens it again; it also exports masks as SVG or DXF, pictures as PNG and the etched surface as STL.</li>
     <li><b>⚙ Settings</b> sets the layout, panel width, theme, label size, snap step and simulator resolution. They are kept in this browser.</li>
@@ -947,11 +987,11 @@ body.md-open { overflow: hidden; }
     <span class="mdGrp"><button class="btn" data-md="rot" data-a="90" title="Turn the selection 90° counter-clockwise">⟲ 90°</button><button class="btn" data-md="rot" data-a="-90" title="Turn the selection 90° clockwise">⟳ 90°</button><button class="btn" data-md="fliph" title="Mirror left to right">⇋ Mirror</button><button class="btn" data-md="flipv" title="Mirror top to bottom">⇵ Mirror</button></span>
     <span class="mdGrp"><button class="btn" data-md="up" title="One step later in the list (applied later)">↓ Later</button><button class="btn" data-md="down" title="One step earlier in the list">↑ Earlier</button><button class="btn" data-md="front" title="Last in the list: applied last">To last</button><button class="btn" data-md="back" title="First in the list">To first</button></span>
     <span class="mdGrp"><button class="btn" data-md="outline" title="Turn the selection into editable outlines (key O)">To outline</button><button class="btn" data-md="explode" title="Turn an array into separate shapes">Explode array</button></span>
-    <span class="mdGrp"><button class="btn" data-md="fit" title="Zoom to fit (F)">Fit</button><button class="btn" data-md="full" id="mdFull" title="Full screen on or off">Full screen</button><button class="btn primary" data-md="done" title="Back to the page; every edit is already in the editor">Done</button></span>
+    <span class="mdGrp"><button class="btn" data-md="fit" title="Zoom to fit (F)">Fit</button><button class="btn" data-md="side" id="mdSideBtn" title="Put the layer list on the other side of the drawing">⇆ List left</button><button class="btn" data-md="full" id="mdFull" title="Full screen on or off">Full screen</button><button class="btn primary" data-md="done" title="Back to the page; every edit is already in the editor">Done</button></span>
   </div>
   <div class="mdSnap">
     <span class="lbl">snap</span>
-    <label title="Points and lengths on the grid (G)"><input type="checkbox" id="mdSnapGrid"> grid</label><label title="Grid and snap step">step <input type="number" id="mdStep" min="0.01" step="any"> µm</label>
+    <label title="Points and lengths on the grid (G)"><input type="checkbox" id="mdSnapGrid"> grid</label><label title="Grid and snap step">step <input type="number" id="mdStep" min="0.01" step="any"> µm</label><span class="gridHere"></span>
     <label title="Corners, midpoints and centres of the shapes, the origin and the domain edges"><input type="checkbox" id="mdSnapObj"> shape points</label>
     <label title="Lines along the in-plane crystal directions of the wafer (the compass), with the flat error included"><input type="checkbox" id="mdSnapDir"> crystal directions</label>
     <label title="Lines in 15° steps (or hold Shift)"><input type="checkbox" id="mdSnapOrtho"> 15° steps</label>
@@ -973,7 +1013,7 @@ body.md-open { overflow: hidden; }
       <button class="btn" data-tool="hand" title="Pan the view (H; or Space + drag)">Pan <kbd>H</kbd></button>
     </div>
     <div class="mdCanvasBox" id="mdCanvasBox"><canvas id="mdCanvas" tabindex="0" aria-label="Mask drawing area"></canvas></div>
-    <div class="mdSide"><div id="mdProps"></div><h4>Shapes, in the order they are applied</h4><div id="mdList"></div></div>
+    <div class="mdSide"><div id="mdProps"></div><h4>Layers <span class="note" id="mdLayInfo"></span></h4><p class="note">Applied from top to bottom: a lower shape wins where shapes overlap. Drag a row to reorder.</p><div class="mdLayBar"><button class="btn" data-md="lock" title="Lock the selected shapes (Ctrl+L)">🔒 Lock</button><button class="btn" data-md="unlock" title="Unlock the selected shapes">🔓 Unlock</button><button class="btn" data-md="unlockall" title="Unlock every shape (Ctrl+Shift+L)">Unlock all</button><button class="btn" data-md="up" title="One place later (applied later)">▼</button><button class="btn" data-md="down" title="One place earlier">▲</button></div><div id="mdList"></div></div>
   </div>
   <div class="mdBar"><span id="mdPos">x — y — µm</span><span id="mdHint"></span><label title="Type a point (x,y), a relative point (@dx,dy), a length and angle (@L&lt;A), a length along the pointer, or a command: move dx,dy · copy dx,dy · rotate a · scale f · array nx,ny,px,py · grid step · fit · undo">command <input id="mdCmd" type="text" autocomplete="off" spellcheck="false" placeholder="x,y  @dx,dy  @L<A"></label><span id="mdMsg"></span></div>
 </div>

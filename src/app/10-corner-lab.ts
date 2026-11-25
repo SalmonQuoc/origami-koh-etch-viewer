@@ -27,6 +27,7 @@ function clBuild(run = true) {
   const sh = [shp("rect", "open", 0, 0, 2*hx + 40, 2*hy + 40),
               shp("rect", "mask", (-hx - 20 + xL)/2, (yc - hy - 20)/2, xL + hx + 20, yc + hy + 20),
               shp("rect", "mask", (xR + hx + 20)/2, (yc - hy - 20)/2, hx + 20 - xR, yc + hy + 20)];
+  for (const x of sh) x.lock = true;   // domain and mesas: locked, so editing in the designer or the table changes only the compensation
   const a = CL.s1, w = CL.s2, d = [-SQ2, SQ2];
   if (CL.type === "square") sh.push(shp("rect", "mask", xR, yc, a, a));
   else if (CL.type === "beam110") sh.push(shp("rect", "mask", xR - a/2, yc - w/2, a, w));
@@ -66,6 +67,7 @@ $("clType").addEventListener("change", e => { CL.type = e.target.value; Object.a
 for (const [id, k] of [["clH", "H"], ["clA", "A"], ["clS1", "s1"], ["clS2", "s2"]]) $(id).addEventListener("change", e => { const v = Number(e.target.value); if (v >= 0) CL[k] = v; clSync(); });
 $("clAuto").addEventListener("click", () => { const r = clRule(CL.type, CL.H); CL.s1 = r.s1; CL.s2 = r.s2; clSync(); clBuild(); });
 $("clRun").addEventListener("click", () => clBuild());
+$("clRunMask").addEventListener("click", () => { if (SIM.owner !== "corner") { clBuild(); return; } simRun(); buildSim(false); });
 // hover on the 3D surface
 function simHover(ev) {
   if (!simScene || !simScene.pick) { tip.style.display = "none"; return; }

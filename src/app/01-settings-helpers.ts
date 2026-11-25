@@ -1,7 +1,7 @@
 const C = Core, V3 = THREE.Vector3;
 const T_WAFER = 525;
 // ---- user settings (kept in this browser only)
-const SET_DEF = { layout: "standard", panelW: 340, stageH: 68, theme: "auto", labels: "normal", anim: true, pixel: "auto", snap: 5, quality: "normal", autoRun: false, engine: "auto", coords: true, explain: false, arrAlong: true, arrPerp: true, gizmo: true, scaleBar: true };
+const SET_DEF = { gridType: "lines", listSide: "right", layout: "standard", panelW: 340, stageH: 68, theme: "auto", labels: "normal", anim: true, pixel: "auto", snap: 5, quality: "normal", autoRun: false, engine: "auto", coords: true, explain: false, arrAlong: true, arrPerp: true, gizmo: true, scaleBar: true };
 const SET = Object.assign({}, SET_DEF);
 try { Object.assign(SET, JSON.parse(localStorage.getItem("o3d-settings") || "{}")); } catch (e) {}
 const saveSet = () => { try { localStorage.setItem("o3d-settings", JSON.stringify(SET)); } catch (e) {} };
@@ -26,7 +26,47 @@ const EDM: Record<string, { on: boolean; a: number[] | null; b: number[] | null 
 const fmtLen = (v: number) => { const a = Math.abs(v); return a >= 1000 ? `${+(v/1000).toPrecision(4)} mm` : a >= 10 ? `${+v.toFixed(1)} µm` : `${+v.toFixed(2)} µm`; };   // zoom and centre of each 2D editor (19-coordinates.ts)  // grid and tick step of an editor W µm wide
 // height limit of an editor or graph canvas: generous inside an enlarged window, none otherwise
 const bigBox = cv => !!(cv && cv.closest(".enlarged"));
-const edMaxH = cv => bigBox(cv) ? Math.max(260, window.innerHeight*0.94 - 230) : Infinity;
+const edMaxH = cv => { if (!bigBox(cv)) return Infinity; const box = cv.closest(".enlarged"); return Math.max(260, (box.clientHeight || window.innerHeight*0.94) - (cv.offsetTop || 120) - 56); };
+// grid of the 2D editors (setting gridType): square lines, dots, lines along the crystal directions in the wafer plane, or none
+const GRID_TYPES = { lines: "square lines", dots: "dots", crystal: "crystal directions", off: "no grid" };
+function gridSelect(cls = "gridSel") { return `<label class="gridPick" title="Grid of the editors: square lines, dots, lines along the {111} wall traces of this wafer, or none">grid <select class="${cls}">${Object.entries(GRID_TYPES).map(([k, v]) => `<option value="${k}"${SET.gridType === k ? " selected" : ""}>${v}</option>`).join("")}</select></label>`; }
+function gridAngles(dirs, rot) {   // up to three line families: the {111} wall traces (else all listed directions), modulo 180°
+  const L = (dirs.some(d => d.wall != null) ? dirs.filter(d => d.wall != null) : dirs).map(d => (((d.ang + (rot || 0)) % 180) + 180) % 180), out = [];
+  for (const a of L) if (!out.some(b => Math.min(Math.abs(a - b), 180 - Math.abs(a - b)) < 1)) out.push(a);
+  return out.length ? out.slice(0, 3) : [0, 90];
+}
+function edGridDraw(ctx: CanvasRenderingContext2D, o: { toC: (p: number[]) => number[]; X0: number; X1: number; Y0: number; Y1: number; g: number; px: number; angs?: number[]; ink: string; kind?: string; bold?: number }) {
+  const kind = o.kind || SET.gridType || "lines"; if (kind === "off") return;
+  const g = o.g, G = g*(o.bold || 5);
+  ctx.save(); ctx.strokeStyle = ctx.fillStyle = o.ink; ctx.lineWidth = 1; ctx.setLineDash([]);
+  if (kind === "dots") {
+    const st = g*o.px >= 7 ? g : G; ctx.globalAlpha = 0.35; const r = st === g ? 0.8 : 1;
+    for (let x = Math.ceil(o.X0/st)*st; x <= o.X1; x += st) for (let y = Math.ceil(o.Y0/st)*st; y <= o.Y1; y += st) {
+      const q = o.toC([x, y]), big = Math.abs(x/G - Math.round(x/G)) < 1e-6 && Math.abs(y/G - Math.round(y/G)) < 1e-6; ctx.fillRect(q[0] - (big ? 1.2 : r), q[1] - (big ? 1.2 : r), big ? 2.4 : 2*r, big ? 2.4 : 2*r);
+    }
+  } else {
+    const angs = kind === "crystal" ? (o.angs && o.angs.length ? o.angs : [0, 90]) : [0, 90];
+    const cx = (o.X0 + o.X1)/2, cy = (o.Y0 + o.Y1)/2, R = Math.hypot(o.X1 - o.X0, o.Y1 - o.Y0)/2;
+    for (const [st, al] of [[g, 0.07], [G, 0.15]] as [number, number][]) {
+      if (st*o.px < 4) continue;
+      ctx.globalAlpha = al; ctx.beginPath();
+      for (const a of angs) {
+        const u = [Math.cos(a*Math.PI/180), Math.sin(a*Math.PI/180)], n = [-u[1], u[0]], c0 = cx*n[0] + cy*n[1];
+        for (let k = Math.ceil((c0 - R)/st); k*st <= c0 + R; k++) {
+          const d = k*st, m = [n[0]*d, n[1]*d], t0 = (cx - m[0])*u[0] + (cy - m[1])*u[1];
+          const A = o.toC([m[0] + u[0]*(t0 - R), m[1] + u[1]*(t0 - R)]), B = o.toC([m[0] + u[0]*(t0 + R), m[1] + u[1]*(t0 + R)]);
+          ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]);
+        }
+      }
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+// every grid list on the page shows the same choice; a change redraws the editors (redrawAll and mdRequest are defined later)
+document.addEventListener("change", ev => { const t = ev.target as HTMLSelectElement; if (!t || !t.classList || !t.classList.contains("gridSel")) return;
+  SET.gridType = t.value; saveSet(); for (const s of document.querySelectorAll(".gridSel")) (s as HTMLSelectElement).value = SET.gridType;
+  if (typeof redrawAll === "function") redrawAll(); if (typeof MD !== "undefined" && MD && MD.on) mdRequest(); });
 const graphH = (cv, h) => bigBox(cv) ? Math.max(h, Math.round(window.innerHeight*0.33)) : h;
 // etch rates from data/etchants.json (pit: three planes per etchant; simulator: up to 12, see 07-pit-editor)
 const ETCH = loadEtchants(readDb<EtchantDb>("etchants"));

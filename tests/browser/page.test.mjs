@@ -264,6 +264,32 @@ test("page: scenes, simulator kernel, drawing, mask designer, save and export, s
     await ev(() => { localStorage.removeItem("o3d-projects"); localStorage.removeItem("o3d-project-cur"); document.getElementById("dlgSave").close(); });
   });
 
+  await t.test("lock and layers: locked shapes are not picked or changed; grid types; list beside an enlarged editor", async () => {
+    await p.click('#segM button[data-m="sim"]');
+    await ev(() => document.getElementById("bDesign").click());
+    const n = await ev(() => window.__o3d.MD.shapes.length); assert.ok(n >= 2);
+    await ev(() => { window.__o3d.MD.sel = [0]; });
+    await p.keyboard.press("Control+l");
+    assert.equal(await ev(() => window.__o3d.SIM.shapes[0].lock), true);
+    await ev(() => { window.__o3d.MD.sel = [0, 1]; });
+    const x1 = await ev(() => window.__o3d.SIM.shapes[1].cx), x0 = await ev(() => window.__o3d.SIM.shapes[0].cx);
+    await ev(() => window.__o3d.mdCommand("move 10,0"));
+    assert.equal(await ev(() => window.__o3d.SIM.shapes[0].cx), x0);   // locked: stays
+    assert.equal(await ev(() => window.__o3d.SIM.shapes[1].cx), x1 + 10);
+    await p.keyboard.press("Control+a"); assert.ok(!(await ev(() => window.__o3d.MD.sel.includes(0))));
+    await p.keyboard.press("Control+Shift+L"); assert.ok(!(await ev(() => window.__o3d.SIM.shapes[0].lock)));
+    await ev(() => window.__o3d.mdCommand("undo")); await ev(() => window.__o3d.mdCommand("undo"));
+    await p.click('#mdRoot [data-md="done"]');
+    await ev(() => { const s = document.querySelector("#panelSim .gridSel"); s.value = "crystal"; s.dispatchEvent(new Event("change", { bubbles: true })); });
+    assert.ok(await ev(() => [...document.querySelectorAll(".gridSel")].every(s => s.value === "crystal")));
+    await ev(() => { const s = document.querySelector("#panelSim .gridSel"); s.value = "lines"; s.dispatchEvent(new Event("change", { bubbles: true })); });
+    await ev(() => document.querySelector('#panelSim .enl.edl .enlBtn').click());
+    const side = await ev(() => { const a = document.querySelector(".enlarged .edSide").getBoundingClientRect(), c = document.getElementById("maskCanvas").getBoundingClientRect(); return a.left > c.right - 1; });
+    assert.ok(side, "the shape list sits right of the drawing");
+    assert.ok(await ev(() => !!document.querySelector(".enlarged .enlBar .enlFs")));
+    await ev(() => document.querySelector(".enlarged .enlBtn").click());
+  });
+
   await t.test("no sideways scroll at phone width", async () => {
     await p.setViewportSize({ width: 390, height: 844 });
     for (const m of ["model", "pit", "sim", "find"]) {

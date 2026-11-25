@@ -179,16 +179,36 @@ body.stacked aside.panel > * { break-inside: avoid; }
 body.lbl-off .labels { display: none; }
 /* enlarged editor or panel: a large window over the page */
 .enl { position: relative; }
-.enlBtn { position: absolute; top: 0; right: 0; z-index: 2; font-size: 12px !important; padding: 2px 8px !important; }
-.enl.enlarged { position: fixed; inset: 3vh 3vw; z-index: 70; background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+.enl.enlarged { position: fixed; inset: 1.5vh 1.5vw; z-index: 70; background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
   padding: 46px 22px 22px; overflow: auto; box-shadow: 0 12px 48px rgba(0, 0, 0, .35); margin: 0 !important; }
-.enl.enlarged > .enlBtn { top: 10px; right: 14px; }
-.enl:not(.panel):not(.enlarged) > .enlBtn { position: static; display: block; margin: 0 0 6px auto; }
 .enl.enlarged::before { content: attr(data-title); position: absolute; top: 12px; left: 22px; font: 600 17px/1.3 "Source Serif 4", Georgia, serif; color: var(--ink); }
 .enl.enlarged.hidden { display: block !important; }
 #enlBack { position: fixed; inset: 0; z-index: 69; background: rgba(0, 0, 0, .45); }
 body.enl-open { overflow: hidden; }
 .enl.enlarged .maskcv { margin: 0 auto; }
+.enl.enlarged:fullscreen { inset: 0; border-radius: 0; border: 0; width: 100vw; height: 100vh; }
+.enl.enlarged:fullscreen::backdrop { background: var(--panel); }
+.enlBar { position: absolute; top: 0; right: 0; z-index: 2; display: flex; gap: 6px; }
+.enlBar .btn { font-size: 12px !important; padding: 2px 8px !important; }
+.enl.enlarged > .enlBar { top: 10px; right: 14px; }
+.enl:not(.panel):not(.enlarged) > .enlBar { position: static; justify-content: flex-end; margin: 0 0 6px; }
+.edTools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: flex-end; margin: 0 0 4px; font-size: 12.5px; }
+.gridPick { display: inline-flex; gap: 4px; align-items: center; font-size: 12.5px; color: var(--muted); }
+.gridPick select { font-size: 12px; padding: 1px 3px; }
+/* enlarged mask editors: the shape list beside the drawing (right or left, setting listSide) */
+.enl.enlarged.edl { display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, 42%); grid-auto-rows: min-content; column-gap: 18px; align-content: start; }
+.enl.enlarged.edl > * { grid-column: 1; }
+.enl.enlarged.edl > .enlBar { grid-column: auto; }
+.enl.enlarged.edl > .edSide { grid-column: 2; grid-row: 1 / span 30; overflow: auto; max-height: calc(100% - 4px); align-self: stretch; border-left: 1px solid var(--line); padding-left: 14px; }
+body.list-left .enl.enlarged.edl { grid-template-columns: minmax(340px, 42%) minmax(0, 1fr); }
+body.list-left .enl.enlarged.edl > * { grid-column: 2; }
+body.list-left .enl.enlarged.edl > .edSide { grid-column: 1; border-left: 0; border-right: 1px solid var(--line); padding: 0 14px 0 0; }
+.enl.enlarged.edl > .edSide .addrow { margin-top: 0; }
+.enl:not(.enlarged) .edSideBtn { display: none; }
+body.list-left .mdBody { grid-template-columns: auto 290px minmax(0, 1fr); }
+body.list-left .mdSide { order: -1; grid-column: 2; grid-row: 1; border-left: 0; border-right: 1px solid var(--line); }
+body.list-left .mdCanvasBox { grid-column: 3; grid-row: 1; }
+body.list-left .mdTools { grid-column: 1; grid-row: 1; }
 /* drawing a free outline */
 .drawhelp { margin: 4px 0; padding: 6px 8px; border-radius: 6px; background: var(--chip); font-size: 12.5px; color: var(--ink); }
 /* a switched-on toggle (Explanations, Split, Theater, Full screen, Draw, Play, Enlarge) takes the accent colour */
@@ -232,6 +252,11 @@ section.refs a { color: var(--accent); overflow-wrap: anywhere; }
 .cards { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
 .card { border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; cursor: pointer; }
 .card.sel { border-color: var(--accent); background: var(--chip); }
+button.lockB { font-size: 13px !important; opacity: .4; }
+button.lockB.on, tr:hover button.lockB, .card:hover button.lockB { opacity: 1; }
+.card.locked, table.shapes tr.locked td { color: var(--muted); }
+.card.locked input, .card.locked select, table.shapes tr.locked input, table.shapes tr.locked select { opacity: .65; }
+button.x:disabled { opacity: .3; cursor: default; }
 .card .top { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
 .card .top b { font-weight: 600; }
 .card .fl { display: flex; flex-wrap: wrap; gap: 2px 8px; margin-top: 2px; }
@@ -383,7 +408,21 @@ body.md-open { overflow: hidden; }
 .mdV { display: grid; grid-template-columns: 22px 1fr 1fr; gap: 3px; align-items: center; font-size: 11px; }
 .mdV input { width: 100%; box-sizing: border-box; }
 #mdList { display: flex; flex-direction: column; gap: 1px; }
-.mdRow { display: flex; justify-content: space-between; padding: 3px 6px; border-radius: 5px; cursor: pointer; font-size: 12.5px; }
+.mdRow { display: flex; align-items: center; gap: 6px; padding: 3px 6px; border-radius: 5px; cursor: pointer; font-size: 12.5px; border-top: 2px solid transparent; border-bottom: 2px solid transparent; }
+.mdRow .mdNm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mdRow .mdGrip { color: var(--muted); cursor: grab; font-size: 11px; letter-spacing: -2px; }
+.mdRow.locked .mdNm { color: var(--muted); }
+.mdRow.locked .mdGrip { visibility: hidden; }
+.mdRow.dropA { border-top-color: var(--accent); }
+.mdRow.dropB { border-bottom-color: var(--accent); }
+.mdRow button { border: 1px solid transparent; background: none; color: inherit; border-radius: 4px; padding: 0 4px; cursor: pointer; }
+.mdRow button:hover:not(:disabled) { border-color: var(--line); }
+.mdRow button:disabled { cursor: default; opacity: .7; }
+.mdLk { opacity: .35; font-size: 12px; }
+.mdLk.on, .mdRow:hover .mdLk { opacity: 1; }
+.mdLayBar { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 4px 0; }
+.mdLayBar .btn { padding: 2px 7px; font-size: 12px; }
+.mdLockRow { gap: 6px; align-items: flex-end; margin: 4px 0; }
 .mdRow:hover { background: var(--chip); }
 .mdRow.sel { background: color-mix(in srgb, var(--accent) 22%, transparent); }
 .mdOp { font: 11px "IBM Plex Mono", monospace; color: var(--muted); }
@@ -486,15 +525,15 @@ body.md-open { overflow: hidden; }
     <div class="psBox" data-ps="pit"><div class="row"><input type="text" data-ps-name maxlength="60" placeholder="name for your preset" aria-label="name for your preset" style="flex:1;min-width:0"><button class="btn" data-ps-save title="Keep the current mask, etchant and flat error in this browser">☆ Save as my preset</button></div>
     <div class="row psMore"><button class="btn" data-ps-del disabled title="Delete the selected preset of yours">Delete preset</button><button class="btn" data-ps-exp title="Download all your presets as a .json file">Export</button><label class="btn" title="Add presets from a .json file">Import<input type="file" accept=".json,application/json" data-ps-imp hidden></label></div>
     <p class="note hidden" data-ps-msg></p></div>
-    <div class="enl" data-title="Mask editor: Etched pit">
+    <div class="enl edl" data-title="Mask editor: Etched pit">
     <p class="note" style="margin:4px 0 6px"><b>Drag</b> a shape to move it (<b>Alt</b>-drag moves a copy), <b>click</b> to select it, <b>double-click</b> an empty spot to add the chosen shape there. With the editor focused, the <span class="kbd">←</span><span class="kbd">→</span><span class="kbd">↑</span><span class="kbd">↓</span> keys move the selected shape by one snap step (with Shift, five), <span class="kbd">Ctrl</span>+<span class="kbd">D</span> duplicates it and <span class="kbd">Delete</span> removes it. <b>Draw</b> lets you draw your own outline. The 3D view updates when you let go.</p>
     <p class="drawhelp hidden" id="pcDrawHelp"></p>
-    <canvas id="pitCanvas" class="maskcv" tabindex="0" aria-label="Mask editor for the etched pit"></canvas>
+    <div class="edTools"><span class="gridHere"></span></div><canvas id="pitCanvas" class="maskcv" tabindex="0" aria-label="Mask editor for the etched pit"></canvas>
     <div class="legend" style="margin-top:4px"><span><i class="sw" style="background:var(--mask)"></i>mask</span><span><i class="sw" style="background:var(--scene-bg);border:1px solid var(--s-ink)"></i>opening</span><span><i class="sw" style="background:var(--ghost)"></i>cavity edge at the surface now</span><span><i class="sw" style="background:var(--ghost);height:2px"></i>section line A → B</span></div>
-    <div class="addrow"><select id="pcType" aria-label="shape to add"></select><button class="btn primary" id="pcAdd">Add shape</button><button class="btn" id="pcDraw" title="Click to place corners or drag to draw freely">✎ Draw</button><button class="btn" id="pcDesign" title="Open the full-screen mask designer: CAD-style drawing, snapping, typed coordinates, undo, DXF/SVG">⛶ Designer</button><button class="btn" id="pcDup">Duplicate</button><button class="btn" id="pcDel">Delete</button><button class="btn" id="pcClear">Clear all</button></div>
+    <div class="edSide"><div class="addrow"><select id="pcType" aria-label="shape to add"></select><button class="btn primary" id="pcAdd">Add shape</button><button class="btn" id="pcDraw" title="Click to place corners or drag to draw freely">✎ Draw</button><button class="btn" id="pcDesign" title="Open the full-screen mask designer: CAD-style drawing, snapping, typed coordinates, undo, DXF/SVG">⛶ Designer</button><button class="btn" id="pcDup">Duplicate</button><button class="btn" id="pcDel">Delete</button><button class="btn" id="pcClear">Clear all</button></div>
     <div id="pcList" class="cards"></div>
     <p class="warn hidden" id="pcWarn"></p>
-    <div class="row" style="margin-top:6px"><button class="btn" id="pcToSim">Open this mask in the etch simulator</button></div>
+    <div class="row" style="margin-top:6px"><button class="btn" id="pcToSim">Open this mask in the etch simulator</button></div></div>
     </div>
     <details class="srcs"><summary>How this scene etches a shape</summary>
       <p class="note">Each wall is a crystal plane that moves out from the opening at its own rate (n·x ≤ h + R·t). A non-convex shape (L, U, cross, frame, ring, star) is split into overlapping convex pieces; each piece etches as a convex opening and the cavity shown is their union. Concave corners therefore stop at {111} as they should. A drawn outline is split into convex pieces by triangulation (a design choice); where two pieces meet along a ⟨110⟩ line, a thin ridge can stay between their cavities. Convex mask corners (the inside corner of an L or U, the tips of a star) are <b>not</b> undercut here, although they are in real KOH etching (Kovacs et al. 1998, Fig. 1(c); Pal et al. 2007, Sec. 2). Openings that grow into each other are overlaid, not merged. The etch simulator handles both.</p>
@@ -531,7 +570,7 @@ body.md-open { overflow: hidden; }
         <label id="clL1">size 1 <span><input type="number" id="clS1" min="0" step="5"> µm</span></label>
         <label id="clL2">size 2 <span><input type="number" id="clS2" min="0" step="5"> µm</span></label>
       </div>
-      <div class="row"><button class="btn" id="clAuto">Size from the design rule</button><button class="btn primary" id="clRun">Build and run</button></div>
+      <div class="row"><button class="btn" id="clAuto">Size from the design rule</button><button class="btn primary" id="clRun" title="Build the mask from these settings and run (replaces hand edits)">Build and run</button><button class="btn" id="clDesign" title="Draw your own compensation in the full-screen designer; the mesas stay locked">⛶ Draw compensation</button><button class="btn" id="clRunMask" title="Run the mask as it is now, with your edits">▶ Run my edited mask</button></div>
       <p class="note src" id="clRule"></p>
       <h3>Corner result</h3>
       <dl class="kv" id="clReadout"></dl>
@@ -551,14 +590,14 @@ body.md-open { overflow: hidden; }
       <select id="simFrame"><option value="110f">Flat along ⟨110⟩ (Lec 4-1 p. 6)</option><option value="110a">⟨111⟩ arrow = flat normal (Lec 4-1 p. 11, HW2 P5)</option><option value="100" hidden>(100)</option><option value="111" hidden>(111)</option></select></div>
     <p class="note src" id="simFrameSrc"></p>
     <h3><span class="stepn">2</span>Edit or draw the mask</h3>
-    <div class="enl" data-title="Mask editor: etch simulator">
+    <div class="enl edl" data-title="Mask editor: etch simulator">
     <p class="note" style="margin:0 0 4px">Shapes are applied top to bottom: “open” removes the mask, “mask” puts it back (solid outline: open; dashed: mask). <b>Drag</b> a shape to move it (<b>Alt</b>-drag moves a copy), <b>double-click</b> an empty spot to add the chosen shape there; with the editor focused, the arrow keys move the selected shape by one snap step (Shift: five), <span class="kbd">Ctrl</span>+<span class="kbd">D</span> duplicates it and <span class="kbd">Delete</span> removes it. <b>Draw</b> lets you draw your own outline; <b>⛶ Designer</b> opens a full-screen drawing tool with snapping, typed coordinates, undo and DXF/SVG. Press Run to etch the new mask.</p>
     <p class="drawhelp hidden" id="simDrawHelp"></p>
-    <canvas id="maskCanvas" class="maskcv"></canvas>
+    <div class="edTools"><span class="gridHere"></span></div><canvas id="maskCanvas" class="maskcv"></canvas>
     <div class="legend"><span><i class="sw" style="background:var(--ghost);height:2px"></i>section line A → B</span></div>
-    <div class="addrow"><select id="addType"></select><select id="addOp"><option value="open">as opening</option><option value="mask">as mask</option></select><button class="btn" id="bAddShape">Add shape</button><button class="btn" id="bDraw" title="Click to place corners or drag to draw freely">✎ Draw</button><button class="btn" id="bDesign" title="Open the full-screen mask designer: CAD-style drawing, snapping, typed coordinates, undo, DXF/SVG">⛶ Designer</button><button class="btn" id="bDupShape">Duplicate selected</button></div>
+    <div class="edSide"><div class="addrow"><select id="addType"></select><select id="addOp"><option value="open">as opening</option><option value="mask">as mask</option></select><button class="btn" id="bAddShape">Add shape</button><button class="btn" id="bDraw" title="Click to place corners or drag to draw freely">✎ Draw</button><button class="btn" id="bDesign" title="Open the full-screen mask designer: CAD-style drawing, snapping, typed coordinates, undo, DXF/SVG">⛶ Designer</button><button class="btn" id="bDupShape">Duplicate selected</button></div>
     <p class="note" style="margin:4px 0 0">Columns: w, h = size; t = arm width (L, U, cross, frame) or inner size (ring, star); n = sides or points; array = copies nx × ny at pitch px, py (µm).</p>
-    <div class="tblwrap"><table class="shapes" id="shapeList"></table></div>
+    <div class="tblwrap"><table class="shapes" id="shapeList"></table></div></div>
     </div>
     <h3><span class="stepn">3</span>Process, then run</h3>
     <div class="row"><select id="simRate" style="flex:1;min-width:0"></select><button class="btn" data-etch-open="sim">Custom etchant…</button></div>
@@ -706,7 +745,8 @@ body.md-open { overflow: hidden; }
   <ul class="note" style="margin:0;padding-left:18px">
     <li><b>Sections</b>: click a heading in the right-hand panel (or press <span class="kbd">Enter</span> on it) to open or close that section. Only the first section of each panel is open at first; “open all” and “close all” sit at the top of the panel.</li>
     <li><b>Switches</b> that are on (Explanations, Split view, Theater view, Full screen, Draw, Play, Enlarge) are filled in the accent colour; open sections and open source lists have an accent heading.</li>
-    <li><b>⤢ Enlarge</b> opens an editor or a graph panel in a large window; <span class="kbd">Esc</span> closes it.</li>
+    <li><b>⤢ Enlarge</b> opens an editor or a graph panel in a large window and <b>⛶ Full screen</b> fills the whole screen; <span class="kbd">Esc</span> closes them. In a large mask editor the shape list sits beside the drawing (<b>⇆ List left / right</b>), and the <b>grid</b> list switches between square lines, dots, lines along the {111} traces, or none.</li>
+    <li><b>🔒 Lock</b> (in the shape lists and the designer, <span class="kbd">Ctrl</span>+<span class="kbd">L</span>; unlock all: <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">L</span>) keeps a shape in the mask but stops it being picked, moved or edited. The corner lab locks its two mesas, so <b>⛶ Draw compensation</b> changes only the compensation.</li>
     <li><b>ⓘ Explanations</b> shows the source notes under the controls and what each setting of the custom etchant means; they are off at first. <b>How it works</b>, below the page, explains the chemistry, the rate model and the simulation step by step.</li>
     <li><b>💾 Save</b> (<span class="kbd">Ctrl</span> + <span class="kbd">S</span>) writes one project file with the parts you tick and opens it again; it also exports masks as SVG or DXF, pictures as PNG and the etched surface as STL.</li>
     <li><b>⚙ Settings</b> sets the layout, panel width, theme, label size, snap step and simulator resolution. They are kept in this browser.</li>
@@ -947,11 +987,11 @@ body.md-open { overflow: hidden; }
     <span class="mdGrp"><button class="btn" data-md="rot" data-a="90" title="Turn the selection 90° counter-clockwise">⟲ 90°</button><button class="btn" data-md="rot" data-a="-90" title="Turn the selection 90° clockwise">⟳ 90°</button><button class="btn" data-md="fliph" title="Mirror left to right">⇋ Mirror</button><button class="btn" data-md="flipv" title="Mirror top to bottom">⇵ Mirror</button></span>
     <span class="mdGrp"><button class="btn" data-md="up" title="One step later in the list (applied later)">↓ Later</button><button class="btn" data-md="down" title="One step earlier in the list">↑ Earlier</button><button class="btn" data-md="front" title="Last in the list: applied last">To last</button><button class="btn" data-md="back" title="First in the list">To first</button></span>
     <span class="mdGrp"><button class="btn" data-md="outline" title="Turn the selection into editable outlines (key O)">To outline</button><button class="btn" data-md="explode" title="Turn an array into separate shapes">Explode array</button></span>
-    <span class="mdGrp"><button class="btn" data-md="fit" title="Zoom to fit (F)">Fit</button><button class="btn" data-md="full" id="mdFull" title="Full screen on or off">Full screen</button><button class="btn primary" data-md="done" title="Back to the page; every edit is already in the editor">Done</button></span>
+    <span class="mdGrp"><button class="btn" data-md="fit" title="Zoom to fit (F)">Fit</button><button class="btn" data-md="side" id="mdSideBtn" title="Put the layer list on the other side of the drawing">⇆ List left</button><button class="btn" data-md="full" id="mdFull" title="Full screen on or off">Full screen</button><button class="btn primary" data-md="done" title="Back to the page; every edit is already in the editor">Done</button></span>
   </div>
   <div class="mdSnap">
     <span class="lbl">snap</span>
-    <label title="Points and lengths on the grid (G)"><input type="checkbox" id="mdSnapGrid"> grid</label><label title="Grid and snap step">step <input type="number" id="mdStep" min="0.01" step="any"> µm</label>
+    <label title="Points and lengths on the grid (G)"><input type="checkbox" id="mdSnapGrid"> grid</label><label title="Grid and snap step">step <input type="number" id="mdStep" min="0.01" step="any"> µm</label><span class="gridHere"></span>
     <label title="Corners, midpoints and centres of the shapes, the origin and the domain edges"><input type="checkbox" id="mdSnapObj"> shape points</label>
     <label title="Lines along the in-plane crystal directions of the wafer (the compass), with the flat error included"><input type="checkbox" id="mdSnapDir"> crystal directions</label>
     <label title="Lines in 15° steps (or hold Shift)"><input type="checkbox" id="mdSnapOrtho"> 15° steps</label>
@@ -973,7 +1013,7 @@ body.md-open { overflow: hidden; }
       <button class="btn" data-tool="hand" title="Pan the view (H; or Space + drag)">Pan <kbd>H</kbd></button>
     </div>
     <div class="mdCanvasBox" id="mdCanvasBox"><canvas id="mdCanvas" tabindex="0" aria-label="Mask drawing area"></canvas></div>
-    <div class="mdSide"><div id="mdProps"></div><h4>Shapes, in the order they are applied</h4><div id="mdList"></div></div>
+    <div class="mdSide"><div id="mdProps"></div><h4>Layers <span class="note" id="mdLayInfo"></span></h4><p class="note">Applied from top to bottom: a lower shape wins where shapes overlap. Drag a row to reorder.</p><div class="mdLayBar"><button class="btn" data-md="lock" title="Lock the selected shapes (Ctrl+L)">🔒 Lock</button><button class="btn" data-md="unlock" title="Unlock the selected shapes">🔓 Unlock</button><button class="btn" data-md="unlockall" title="Unlock every shape (Ctrl+Shift+L)">Unlock all</button><button class="btn" data-md="up" title="One place later (applied later)">▼</button><button class="btn" data-md="down" title="One place earlier">▲</button></div><div id="mdList"></div></div>
   </div>
   <div class="mdBar"><span id="mdPos">x — y — µm</span><span id="mdHint"></span><label title="Type a point (x,y), a relative point (@dx,dy), a length and angle (@L&lt;A), a length along the pointer, or a command: move dx,dy · copy dx,dy · rotate a · scale f · array nx,ny,px,py · grid step · fit · undo">command <input id="mdCmd" type="text" autocomplete="off" spellcheck="false" placeholder="x,y  @dx,dy  @L<A"></label><span id="mdMsg"></span></div>
 </div>
@@ -1839,7 +1879,7 @@ function loadPitExamples(db, trench) {
 // ---- src/app/01-settings-helpers.ts
 const C = Core, V3 = THREE.Vector3;
 const T_WAFER = 525;
-const SET_DEF = { layout: "standard", panelW: 340, stageH: 68, theme: "auto", labels: "normal", anim: true, pixel: "auto", snap: 5, quality: "normal", autoRun: false, engine: "auto", coords: true, explain: false, arrAlong: true, arrPerp: true, gizmo: true, scaleBar: true };
+const SET_DEF = { gridType: "lines", listSide: "right", layout: "standard", panelW: 340, stageH: 68, theme: "auto", labels: "normal", anim: true, pixel: "auto", snap: 5, quality: "normal", autoRun: false, engine: "auto", coords: true, explain: false, arrAlong: true, arrPerp: true, gizmo: true, scaleBar: true };
 const SET = Object.assign({}, SET_DEF);
 try {
   Object.assign(SET, JSON.parse(localStorage.getItem("o3d-settings") || "{}"));
@@ -1893,7 +1933,66 @@ const fmtLen = (v) => {
   return a >= 1e3 ? `${+(v / 1e3).toPrecision(4)} mm` : a >= 10 ? `${+v.toFixed(1)} \xB5m` : `${+v.toFixed(2)} \xB5m`;
 };
 const bigBox = (cv) => !!(cv && cv.closest(".enlarged"));
-const edMaxH = (cv) => bigBox(cv) ? Math.max(260, window.innerHeight * 0.94 - 230) : Infinity;
+const edMaxH = (cv) => {
+  if (!bigBox(cv)) return Infinity;
+  const box = cv.closest(".enlarged");
+  return Math.max(260, (box.clientHeight || window.innerHeight * 0.94) - (cv.offsetTop || 120) - 56);
+};
+const GRID_TYPES = { lines: "square lines", dots: "dots", crystal: "crystal directions", off: "no grid" };
+function gridSelect(cls = "gridSel") {
+  return `<label class="gridPick" title="Grid of the editors: square lines, dots, lines along the {111} wall traces of this wafer, or none">grid <select class="${cls}">${Object.entries(GRID_TYPES).map(([k, v]) => `<option value="${k}"${SET.gridType === k ? " selected" : ""}>${v}</option>`).join("")}</select></label>`;
+}
+function gridAngles(dirs, rot) {
+  const L = (dirs.some((d) => d.wall != null) ? dirs.filter((d) => d.wall != null) : dirs).map((d) => ((d.ang + (rot || 0)) % 180 + 180) % 180), out = [];
+  for (const a of L) if (!out.some((b) => Math.min(Math.abs(a - b), 180 - Math.abs(a - b)) < 1)) out.push(a);
+  return out.length ? out.slice(0, 3) : [0, 90];
+}
+function edGridDraw(ctx, o) {
+  const kind = o.kind || SET.gridType || "lines";
+  if (kind === "off") return;
+  const g = o.g, G = g * (o.bold || 5);
+  ctx.save();
+  ctx.strokeStyle = ctx.fillStyle = o.ink;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([]);
+  if (kind === "dots") {
+    const st = g * o.px >= 7 ? g : G;
+    ctx.globalAlpha = 0.35;
+    const r = st === g ? 0.8 : 1;
+    for (let x = Math.ceil(o.X0 / st) * st; x <= o.X1; x += st) for (let y = Math.ceil(o.Y0 / st) * st; y <= o.Y1; y += st) {
+      const q = o.toC([x, y]), big = Math.abs(x / G - Math.round(x / G)) < 1e-6 && Math.abs(y / G - Math.round(y / G)) < 1e-6;
+      ctx.fillRect(q[0] - (big ? 1.2 : r), q[1] - (big ? 1.2 : r), big ? 2.4 : 2 * r, big ? 2.4 : 2 * r);
+    }
+  } else {
+    const angs = kind === "crystal" ? o.angs && o.angs.length ? o.angs : [0, 90] : [0, 90];
+    const cx = (o.X0 + o.X1) / 2, cy = (o.Y0 + o.Y1) / 2, R = Math.hypot(o.X1 - o.X0, o.Y1 - o.Y0) / 2;
+    for (const [st, al] of [[g, 0.07], [G, 0.15]]) {
+      if (st * o.px < 4) continue;
+      ctx.globalAlpha = al;
+      ctx.beginPath();
+      for (const a of angs) {
+        const u = [Math.cos(a * Math.PI / 180), Math.sin(a * Math.PI / 180)], n = [-u[1], u[0]], c0 = cx * n[0] + cy * n[1];
+        for (let k = Math.ceil((c0 - R) / st); k * st <= c0 + R; k++) {
+          const d = k * st, m = [n[0] * d, n[1] * d], t0 = (cx - m[0]) * u[0] + (cy - m[1]) * u[1];
+          const A = o.toC([m[0] + u[0] * (t0 - R), m[1] + u[1] * (t0 - R)]), B = o.toC([m[0] + u[0] * (t0 + R), m[1] + u[1] * (t0 + R)]);
+          ctx.moveTo(A[0], A[1]);
+          ctx.lineTo(B[0], B[1]);
+        }
+      }
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+document.addEventListener("change", (ev) => {
+  const t = ev.target;
+  if (!t || !t.classList || !t.classList.contains("gridSel")) return;
+  SET.gridType = t.value;
+  saveSet();
+  for (const s of document.querySelectorAll(".gridSel")) s.value = SET.gridType;
+  if (typeof redrawAll === "function") redrawAll();
+  if (typeof MD !== "undefined" && MD && MD.on) mdRequest();
+});
 const graphH = (cv, h) => bigBox(cv) ? Math.max(h, Math.round(window.innerHeight * 0.33)) : h;
 const ETCH = loadEtchants(readDb("etchants"));
 const RATES = ETCH.PR, PIT2SIM = ETCH.PIT2SIM;
@@ -3479,6 +3578,10 @@ function dirSelects(sh, i, dirs) {
   if (sh.type === "para") return dirSelect(dirs, sh.a1, `data-i="${i}" data-k="a1"`, "side 1 along") + dirSelect(dirs, sh.a2, `data-i="${i}" data-k="a2"`, "side 2 along");
   return dirSelect(dirs, sh.ang, `data-i="${i}" data-k="ang"`, sh.type === "circle" || sh.type === "ring" || sh.type === "free" ? "turned to" : "edges along");
 }
+const lockBtn = (attr, i, on) => `<button class="x lockB${on ? " on" : ""}" ${attr}="${i}" aria-pressed="${!!on}" title="${on ? "Locked: click to allow changes again" : "Lock: keep this shape as it is (no dragging, keys or typing)"}" aria-label="${on ? "unlock" : "lock"}">${on ? "\u{1F512}" : "\u{1F513}"}</button>`;
+function lockInputs(root) {
+  for (const c of root.querySelectorAll(".locked")) for (const el of c.querySelectorAll("input, select")) el.disabled = true;
+}
 function renderCustomList() {
   const list = pitShapesNow(), dirs = inPlaneDirs(C.FRAMES[S.wf]);
   const f = (i, k, v, lbl, st = 5) => `<label>${lbl}<input type="number" step="${st}" data-i="${i}" data-k="${k}" aria-label="${lbl}" value="${+(+(v == null ? 0 : v)).toFixed(1)}"></label>`;
@@ -3486,13 +3589,16 @@ function renderCustomList() {
     const T = SHAPE_TYPES[sh.type] || SHAPE_TYPES.rect;
     const lab = { w: "w", h: "h", t: sh.type === "ring" || sh.type === "star" ? "inner" : "arm t", n: sh.type === "star" ? "points" : "sides", k: "scale %" };
     const dims = T.f.map((k) => f(i, k, sh[k] == null ? 100 : sh[k], lab[k], k === "n" ? 1 : 5)).join("");
-    return `<div class="card${i === S.pitSel ? " sel" : ""}" data-row="${i}">
-      <div class="top"><span><b>${i + 1}. ${T.name}</b>${S.open === "custom" ? "" : ' <span class="note">(the example; editing it makes it your own mask)</span>'}</span><span><button class="x" data-pcdup="${i}" title="duplicate (Ctrl+D)" aria-label="duplicate">\u29C9</button><button class="x" data-pcdel="${i}" title="remove" aria-label="remove">\xD7</button></span></div>
+    return `<div class="card${i === S.pitSel ? " sel" : ""}${sh.lock ? " locked" : ""}" data-row="${i}">
+      <div class="top"><span><b>${i + 1}. ${T.name}</b>${S.open === "custom" ? "" : ' <span class="note">(the example; editing it makes it your own mask)</span>'}</span><span>${lockBtn("data-pclock", i, sh.lock)}<button class="x" data-pcdup="${i}" title="duplicate (Ctrl+D)" aria-label="duplicate">\u29C9</button><button class="x" data-pcdel="${i}" title="${sh.lock ? "locked" : "remove"}" aria-label="remove"${sh.lock ? " disabled" : ""}>\xD7</button></span></div>
       <div class="fl">${f(i, "cx", sh.cx, "x")}${f(i, "cy", sh.cy, "y")}${sh.type === "para" ? f(i, "a1", sh.a1, "side 1\xB0", 1) + f(i, "a2", sh.a2, "side 2\xB0", 1) : sh.type === "pts" ? "" : f(i, "ang", sh.ang, "angle\xB0", 1)}${f(i, "pre", sh.pre || 0, "pre-etch")}</div>
       ${dims ? `<div class="fl">${dims}<span class="note">${sh.type === "free" ? sh.pts.length + " corners" : "\xB5m"}</span></div>` : ""}${dirSelects(sh, i, dirs)}</div>`;
   }).join("");
   $("pcList").innerHTML = list.length ? cards : `<p class="note">No openings. Pick a shape and press \u201CAdd shape\u201D, or double-click in the editor.</p>`;
-  $("pcDup").disabled = $("pcDel").disabled = !(S.pitSel >= 0 && S.pitSel < list.length);
+  lockInputs($("pcList"));
+  const ok = S.pitSel >= 0 && S.pitSel < list.length;
+  $("pcDup").disabled = !ok;
+  $("pcDel").disabled = !ok || !!list[S.pitSel].lock;
 }
 function drawPitEditor(keepExtent) {
   const cv = $("pitCanvas");
@@ -3534,22 +3640,7 @@ function drawPitEditor(keepExtent) {
   ctx.rect(10, 10, 2 * hx * s, 2 * hy * s);
   ctx.clip();
   const g = edGrid(V.X1 - V.X0);
-  ctx.strokeStyle = col("s-ink");
-  ctx.globalAlpha = 0.08;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  for (let x = Math.ceil(V.X0 / g) * g; x <= V.X1; x += g) {
-    const [a] = toC([x, 0]);
-    ctx.moveTo(a, 10);
-    ctx.lineTo(a, 10 + 2 * hy * s);
-  }
-  for (let y = Math.ceil(V.Y0 / g) * g; y <= V.Y1; y += g) {
-    const [, b] = toC([0, y]);
-    ctx.moveTo(10, b);
-    ctx.lineTo(10 + 2 * hx * s, b);
-  }
-  ctx.stroke();
-  ctx.globalAlpha = 1;
+  edGridDraw(ctx, { toC, X0: V.X0, X1: V.X1, Y0: V.Y0, Y1: V.Y1, g, px: V.s, ink: col("s-ink"), angs: gridAngles(inPlaneDirs(C.FRAMES[S.wf]), S.rot) });
   const tmp = edTmp("pitCanvas", cv.width, cv.height);
   const t = tmp.getContext("2d");
   t.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -3583,7 +3674,13 @@ function drawPitEditor(keepExtent) {
     for (const P of shapeLoops(sh)) path(ctx, P);
     ctx.lineWidth = i === S.pitSel ? 2.4 : 1.1;
     ctx.strokeStyle = i === S.pitSel ? col("accent") : col("s-ink");
+    if (sh.lock) {
+      ctx.globalAlpha = 0.55;
+      ctx.setLineDash([2, 3]);
+    }
     ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.setLineDash([]);
     if (i === S.pitSel) {
       const [a, b] = toC([sh.cx, sh.cy]);
       ctx.fillStyle = col("accent");
@@ -3597,7 +3694,7 @@ function drawPitEditor(keepExtent) {
   ctx.fillStyle = col("accent");
   ctx.fillRect(10, 10 + 2 * hy * s + 2, 2 * hx * s, 3);
   ctx.font = "11px IBM Plex Sans, sans-serif";
-  ctx.fillText(`primary flat side; x along ${plainIdx(C.FRAME_IDX[S.wf][0])}; grid ${g} \xB5m`, 12, 10 + 2 * hy * s + 18);
+  ctx.fillText(`primary flat side; x along ${plainIdx(C.FRAME_IDX[S.wf][0])}${SET.gridType === "off" ? "" : `; grid ${g} \xB5m${SET.gridType === "crystal" ? " along the {111} traces" : ""}`}`, 12, 10 + 2 * hy * s + 18);
   if (S.compass) drawCompass(ctx, 10 + 2 * hx * s - 44, 54, 30, inPlaneDirs(C.FRAMES[S.wf]), S.rot || 0);
   const sel = list[S.pitSel];
   drawCoords(ctx, "pitCanvas", { X0: V.X0, X1: V.X1, Y0: V.Y0, Y1: V.Y1, toC, g, grid: false, sel: sel ? [sel.cx, sel.cy] : null });
@@ -3612,7 +3709,7 @@ function drawPitEditor(keepExtent) {
   };
   const hit = (x, y) => {
     const list = pitShapesNow();
-    for (let i = list.length - 1; i >= 0; i--) if (shapePieces(list[i]).some((P) => EE.isOpen([{ pts: P, op: "open" }], x, y))) return i;
+    for (let i = list.length - 1; i >= 0; i--) if (!list[i].lock && shapePieces(list[i]).some((P) => EE.isOpen([{ pts: P, op: "open" }], x, y))) return i;
     return -1;
   };
   cv.addEventListener("pointerdown", (ev) => {
@@ -3673,7 +3770,7 @@ function drawPitEditor(keepExtent) {
       $("pcDup").click();
       return;
     }
-    if (!(S.pitSel >= 0)) return;
+    if (!(S.pitSel >= 0) || !pitShapesNow()[S.pitSel] || pitShapesNow()[S.pitSel].lock) return;
     const st = (ev.shiftKey ? 5 : 1) * (Number(SET.snap) || 1), mv = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, st], ArrowDown: [0, -st] }[ev.key];
     if (mv) {
       ev.preventDefault();
@@ -3701,33 +3798,53 @@ $("pcDup").addEventListener("click", () => {
   const c = JSON.parse(JSON.stringify(S.pitShapes[S.pitSel]));
   c.cx += 40;
   c.cy -= 40;
+  delete c.lock;
   S.pitShapes.push(c);
   S.pitSel = S.pitShapes.length - 1;
   pitChanged(false);
 });
 $("pcDel").addEventListener("click", () => {
-  if (!(S.pitSel >= 0)) return;
+  if (!(S.pitSel >= 0) || (pitShapesNow()[S.pitSel] || {}).lock) return;
   toCustom();
   S.pitShapes.splice(S.pitSel, 1);
   S.pitSel = -1;
   pitChanged(false);
 });
 $("pcClear").addEventListener("click", () => {
+  const keep = S.open === "custom" ? S.pitShapes.filter((x) => x.lock) : [];
   S.open = "custom";
-  S.pitShapes = [];
+  S.pitShapes = keep;
   S.pitSel = -1;
   pitChanged(false);
+  if (keep.length) $("hint").textContent = `Cleared; ${keep.length} locked shape${keep.length === 1 ? " stays" : "s stay"}.`;
 });
 $("pcList").addEventListener("change", (e) => {
   const el = e.target, i = Number(el.dataset.i), k = el.dataset.k;
   if (!(i >= 0) || !k) return;
   if (el.value === "") return;
   toCustom();
+  if (S.pitShapes[i].lock) {
+    renderCustomList();
+    return;
+  }
   S.pitShapes[i][k] = Number(el.value);
   S.pitSel = i;
   pitChanged(false);
 });
 $("pcList").addEventListener("click", (e) => {
+  const lk = e.target.closest("[data-pclock]");
+  if (lk) {
+    const i = Number(lk.dataset.pclock);
+    toCustom();
+    const sh = S.pitShapes[i];
+    if (sh.lock) delete sh.lock;
+    else sh.lock = true;
+    S.pitSel = i;
+    fillOpenings();
+    renderCustomList();
+    drawPitEditor(true);
+    return;
+  }
   const d = e.target.closest("[data-pcdel]");
   if (d) {
     S.pitSel = Number(d.dataset.pcdel);
@@ -4701,7 +4818,7 @@ function updateSimReadout() {
     rows.push(["mask with no Si under it", `${(st.susp / 1e3).toFixed(1)}\xD710\xB3 \xB5m\xB2`]);
     if (st.through > 0) rows.push(SIM.cfg && SIM.cfg.depth >= SIM.thick - 1e-6 ? ["etched through the wafer", `${(st.through / 1e3).toFixed(1)}\xD710\xB3 \xB5m\xB2`] : ["reached the simulated depth", `${SIM.cfg.depth.toFixed(0)} \xB5m (raise it only by a longer time)`]);
     SIM.shapes.forEach((s, i) => {
-      if (s.name && st.rel[i] != null) rows.push([`${s.name} free`, `${(100 * st.rel[i]).toFixed(0)} %${st.rel[i] > 0.995 ? " (released)" : ""}`]);
+      if (s.name && st.rel[i] != null) rows.push([`${esc(s.name)} free`, `${(100 * st.rel[i]).toFixed(0)} %${st.rel[i] > 0.995 ? " (released)" : ""}`]);
     });
     rows.push(["mask film", maskFilmText(maskFilm(SIM.rate, r.tv), r.tv)]);
   }
@@ -4818,6 +4935,7 @@ function drawMaskEditor() {
   ctx.beginPath();
   ctx.rect(10, 10, W * s, H * s);
   ctx.clip();
+  edGridDraw(ctx, { toC, X0: V.X0, X1: V.X1, Y0: V.Y0, Y1: V.Y1, g: edGrid(V.X1 - V.X0), px: zs, ink: "#" + COL["s-ink"].getHexString(), angs: gridAngles(inPlaneDirs(SFR[SIM.fk].e), SIM.rot) });
   SIM.shapes.forEach((sh, i) => {
     ctx.beginPath();
     for (const Q of shapePolys(sh)) {
@@ -4828,7 +4946,9 @@ function drawMaskEditor() {
     ctx.setLineDash(sh.op === "open" ? [] : [4, 3]);
     ctx.lineWidth = i === SIM.sel ? 2.2 : 1;
     ctx.strokeStyle = i === SIM.sel ? "#" + COL.accent.getHexString() : "#" + COL["s-ink"].getHexString();
+    ctx.globalAlpha = sh.lock ? 0.55 : 1;
     ctx.stroke();
+    ctx.globalAlpha = 1;
   });
   ctx.setLineDash([]);
   drawSecLine(ctx, "maskCanvas", toC);
@@ -4836,10 +4956,10 @@ function drawMaskEditor() {
   ctx.fillStyle = "#" + COL.accent.getHexString();
   ctx.fillRect(10, 10 + H * s + 2, W * s, 3);
   ctx.font = "11px IBM Plex Sans, sans-serif";
-  ctx.fillText(`primary flat side; x along ${plainIdx(simFrame().idx[0])}${SET.coords !== false ? `; grid ${edGrid(V.X1 - V.X0)} \xB5m` : ""}`, 12, 10 + H * s + 18);
+  ctx.fillText(`primary flat side; x along ${plainIdx(simFrame().idx[0])}${SET.coords !== false ? `; grid ${edGrid(V.X1 - V.X0)} \xB5m` : ""}${SET.gridType === "crystal" ? " along the {111} traces" : ""}`, 12, 10 + H * s + 18);
   if (S.compass) drawCompass(ctx, 10 + W * s - 44, 54, 30, inPlaneDirs(SFR[SIM.fk].e), SIM.rot || 0);
   const sel = SIM.shapes[SIM.sel];
-  drawCoords(ctx, "maskCanvas", { X0: V.X0, X1: V.X1, Y0: V.Y0, Y1: V.Y1, toC, g: edGrid(V.X1 - V.X0), grid: true, sel: sel ? [sel.cx, sel.cy] : null });
+  drawCoords(ctx, "maskCanvas", { X0: V.X0, X1: V.X1, Y0: V.Y0, Y1: V.Y1, toC, g: edGrid(V.X1 - V.X0), grid: false, sel: sel ? [sel.cx, sel.cy] : null });
   drawOverlay(ctx, "maskCanvas", toC);
 }
 const plainIdx = (v) => "[" + v.map((x) => x < 0 ? `${-x}\u0305` : `${x}`).join("") + "]";
@@ -4851,10 +4971,11 @@ function renderShapeList() {
     const dims = T.f.map((k) => f(k, sh[k] == null ? 100 : sh[k], k === "n" ? 1 : 5, { w: "w (\xB5m)", h: "h (\xB5m)", t: sh.type === "ring" || sh.type === "star" ? "inner size (\xB5m)" : "arm width t (\xB5m)", n: "sides or points", k: "scale (%)" }[k])).join("");
     const ang = (sh.type === "para" ? f("a1", sh.a1, 1, "side 1 angle to the flat (\xB0)") + f("a2", sh.a2, 1, "side 2 angle to the flat (\xB0)") : sh.type === "pts" ? "" : f("ang", sh.ang, 1, "angle to the flat (\xB0)")) + dirSelects(sh, i, dirs);
     const arr = `${f("nx", sh.nx || 1, 1, "copies along x")}${f("ny", sh.ny || 1, 1, "copies along y")}${f("px", sh.px || 0, 5, "pitch x (\xB5m)")}${f("py", sh.py || 0, 5, "pitch y (\xB5m)")}`;
-    return `<tr class="${i === SIM.sel ? "sel" : ""}" data-row="${i}"><td><select data-i="${i}" data-k="op"><option value="open"${sh.op === "open" ? " selected" : ""}>open</option><option value="mask"${sh.op === "mask" ? " selected" : ""}>mask</option></select></td>
-      <td class="ty">${T.name}</td><td>${f("cx", sh.cx)}${f("cy", sh.cy)}</td><td>${dims}</td><td>${ang}</td><td>${arr}</td><td style="white-space:nowrap"><button class="x" data-dup="${i}" title="duplicate (Ctrl+D)" aria-label="duplicate">\u29C9</button><button class="x" data-del="${i}" title="remove">\xD7</button></td></tr>`;
+    return `<tr class="${i === SIM.sel ? "sel" : ""}${sh.lock ? " locked" : ""}" data-row="${i}"><td><select data-i="${i}" data-k="op"><option value="open"${sh.op === "open" ? " selected" : ""}>open</option><option value="mask"${sh.op === "mask" ? " selected" : ""}>mask</option></select></td>
+      <td class="ty">${T.name}</td><td>${f("cx", sh.cx)}${f("cy", sh.cy)}</td><td>${dims}</td><td>${ang}</td><td>${arr}</td><td style="white-space:nowrap">${lockBtn("data-lock", i, sh.lock)}<button class="x" data-dup="${i}" title="duplicate (Ctrl+D)" aria-label="duplicate">\u29C9</button><button class="x" data-del="${i}" title="${sh.lock ? "locked" : "remove"}"${sh.lock ? " disabled" : ""}>\xD7</button></td></tr>`;
   }).join("");
   $("shapeList").innerHTML = `<tr class="hd"><td>layer</td><td>shape</td><td>centre x, y</td><td>size</td><td>angle\xB0</td><td>array nx, ny, px, py</td><td></td></tr>` + rows;
+  lockInputs($("shapeList"));
 }
 function markDirty() {
   SIM.dirty = true;
@@ -4994,13 +5115,28 @@ $("shapeList").addEventListener("change", (e) => {
   const el = e.target, i = Number(el.dataset.i), k = el.dataset.k;
   if (!(i >= 0) || !k) return;
   if (el.value === "" && el.tagName === "SELECT") return;
+  if (SIM.shapes[i].lock) {
+    renderShapeList();
+    return;
+  }
   SIM.shapes[i][k] = k === "op" ? el.value : Number(el.value);
   $("simPreset").value = "-1";
   markDirty();
 });
 $("shapeList").addEventListener("click", (e) => {
+  const lk = e.target.closest("[data-lock]");
+  if (lk) {
+    const i = Number(lk.dataset.lock), sh = SIM.shapes[i];
+    if (sh.lock) delete sh.lock;
+    else sh.lock = true;
+    SIM.sel = i;
+    renderShapeList();
+    drawMaskEditor();
+    return;
+  }
   const d = e.target.closest("[data-del]");
   if (d) {
+    if (SIM.shapes[Number(d.dataset.del)].lock) return;
     SIM.shapes.splice(Number(d.dataset.del), 1);
     SIM.sel = -1;
     markDirty();
@@ -5033,6 +5169,7 @@ $("bDupShape").addEventListener("click", () => {
   c.cx += 20;
   c.cy -= 20;
   delete c.name;
+  delete c.lock;
   SIM.shapes.push(c);
   SIM.sel = SIM.shapes.length - 1;
   $("simPreset").value = "-1";
@@ -5047,11 +5184,12 @@ $("bDupShape").addEventListener("click", () => {
   };
   cv.addEventListener("pointerdown", (ev) => {
     const [x, y] = world(ev);
-    for (let i = SIM.shapes.length - 1; i >= 0; i--) if (EE.isOpen([Object.assign(engineShape(SIM.shapes[i]), { op: "open" })], x, y)) {
+    for (let i = SIM.shapes.length - 1; i >= 0; i--) if (!SIM.shapes[i].lock && EE.isOpen([Object.assign(engineShape(SIM.shapes[i]), { op: "open" })], x, y)) {
       let j = i;
       if (ev.altKey) {
         const c = JSON.parse(JSON.stringify(SIM.shapes[i]));
         delete c.name;
+        delete c.lock;
         SIM.shapes.push(c);
         j = SIM.shapes.length - 1;
       }
@@ -5100,6 +5238,7 @@ $("bDupShape").addEventListener("click", () => {
       $("bDupShape").click();
       return;
     }
+    if (sh.lock) return;
     const st = (ev.shiftKey ? 5 : 1) * (Number(SET.snap) || 1), mv = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, st], ArrowDown: [0, -st] }[ev.key];
     if (mv) {
       ev.preventDefault();
@@ -5155,6 +5294,7 @@ function clBuild(run = true) {
     shp("rect", "mask", (-hx - 20 + xL) / 2, (yc - hy - 20) / 2, xL + hx + 20, yc + hy + 20),
     shp("rect", "mask", (xR + hx + 20) / 2, (yc - hy - 20) / 2, hx + 20 - xR, yc + hy + 20)
   ];
+  for (const x of sh) x.lock = true;
   const a = CL.s1, w = CL.s2, d = [-SQ2, SQ2];
   if (CL.type === "square") sh.push(shp("rect", "mask", xR, yc, a, a));
   else if (CL.type === "beam110") sh.push(shp("rect", "mask", xR - a / 2, yc - w / 2, a, w));
@@ -5239,6 +5379,14 @@ $("clAuto").addEventListener("click", () => {
   clBuild();
 });
 $("clRun").addEventListener("click", () => clBuild());
+$("clRunMask").addEventListener("click", () => {
+  if (SIM.owner !== "corner") {
+    clBuild();
+    return;
+  }
+  simRun();
+  buildSim(false);
+});
 function simHover(ev) {
   if (!simScene || !simScene.pick) {
     tip.style.display = "none";
@@ -6623,25 +6771,87 @@ function enlarge(el, on) {
     document.body.classList.remove("enl-open");
     enlOpen = null;
   }
-  const b = el.querySelector(":scope > .enlBtn");
+  const b = el.querySelector(":scope > .enlBar > .enlBtn");
   if (b) {
     b.setAttribute("aria-pressed", String(on));
     b.textContent = on ? "\u2715 Close" : "\u2922 Enlarge";
     b.title = on ? "Back to the page (Esc)" : "Open in a large window";
   }
+  if (!on && document.fullscreenElement === el) document.exitFullscreen().catch(() => {
+  });
+  enlSync(el);
   requestAnimationFrame(redrawAll);
 }
+function enlFull(el) {
+  if (document.fullscreenElement === el) {
+    document.exitFullscreen().catch(() => {
+    });
+    return;
+  }
+  if (!el.classList.contains("enlarged")) enlarge(el, true);
+  if (el.requestFullscreen) el.requestFullscreen().catch(() => {
+  });
+}
+function enlSync(el) {
+  const f = el.querySelector(":scope > .enlBar > .enlFs");
+  if (f) {
+    const on = document.fullscreenElement === el;
+    f.textContent = on ? "Leave full screen" : "\u26F6 Full screen";
+    f.setAttribute("aria-pressed", String(on));
+  }
+  const sd = el.querySelector(":scope > .enlBar > .edSideBtn");
+  if (sd) sd.textContent = SET.listSide === "left" ? "\u21C6 List right" : "\u21C6 List left";
+}
+function listSide(side) {
+  SET.listSide = side === "left" ? "left" : "right";
+  saveSet();
+  document.body.classList.toggle("list-left", SET.listSide === "left");
+  for (const el of document.querySelectorAll(".enl")) enlSync(el);
+  const m = document.getElementById("mdSideBtn");
+  if (m) m.textContent = SET.listSide === "left" ? "\u21C6 List right" : "\u21C6 List left";
+  requestAnimationFrame(() => {
+    redrawAll();
+    if (MD && MD.on) mdResize();
+  });
+}
 for (const el of document.querySelectorAll(".enl")) {
+  const bar = document.createElement("div");
+  bar.className = "enlBar";
+  if (el.classList.contains("edl")) {
+    const sd = document.createElement("button");
+    sd.className = "btn edSideBtn";
+    sd.type = "button";
+    sd.title = "Put the shape list on the other side of the drawing";
+    sd.addEventListener("click", () => listSide(SET.listSide === "left" ? "right" : "left"));
+    bar.append(sd);
+  }
+  const fs = document.createElement("button");
+  fs.className = "btn enlFs";
+  fs.type = "button";
+  fs.title = "Fill the whole screen (Esc leaves)";
+  fs.addEventListener("click", () => enlFull(el));
   const b = document.createElement("button");
   b.className = "btn enlBtn";
   b.type = "button";
   b.textContent = "\u2922 Enlarge";
   b.title = "Open in a large window";
   b.addEventListener("click", () => enlarge(el, !el.classList.contains("enlarged")));
-  el.prepend(b);
+  bar.append(fs, b);
+  el.prepend(bar);
+  enlSync(el);
+}
+document.addEventListener("fullscreenchange", () => {
+  for (const el of document.querySelectorAll(".enl")) enlSync(el);
+  if (enlOpen) requestAnimationFrame(redrawAll);
+});
+for (const h of document.querySelectorAll(".gridHere")) h.innerHTML = gridSelect();
+document.body.classList.toggle("list-left", SET.listSide === "left");
+{
+  const m = document.getElementById("mdSideBtn");
+  if (m) m.textContent = SET.listSide === "left" ? "\u21C6 List right" : "\u21C6 List left";
 }
 document.addEventListener("keydown", (ev) => {
-  if (ev.key === "Escape" && enlOpen && !DRAW.on && !document.querySelector("dialog[open]")) enlarge(enlOpen.el, false);
+  if (ev.key === "Escape" && enlOpen && !DRAW.on && !document.querySelector("dialog[open]") && !document.fullscreenElement) enlarge(enlOpen.el, false);
 });
 window.addEventListener("resize", () => {
   if (enlOpen) requestAnimationFrame(redrawAll);
@@ -8765,6 +8975,10 @@ const MD_TGT = {
       $("simPreset").value = "-1";
       markDirty();
     },
+    meta: (a) => {
+      SIM.shapes = a;
+    },
+    // only locks or names changed: the etch stays valid
     frame: () => SFR[SIM.fk].e,
     rot: () => SIM.rot || 0,
     domain: () => [SIM.hx, SIM.hy],
@@ -8781,12 +8995,19 @@ const MD_TGT = {
       S.pitSel = -1;
       pitChanged(false);
     },
+    meta: (a) => {
+      const was = S.open;
+      S.open = "custom";
+      S.pitShapes = a;
+      if (was !== "custom") pitChanged(false);
+    },
     frame: () => C.FRAMES[S.wf],
     rot: () => S.rot || 0,
     domain: () => null,
     label: () => `(${S.wf}) wafer \xB7 x along ${plainIdx(C.FRAME_IDX[S.wf][0])} \xB7 primary flat below`
   }
 };
+MD_TGT["corner"] = Object.assign({}, MD_TGT.sim, { name: "Corner lab", label: () => "(100) wafer \xB7 mesa edges along \u27E8110\u27E9 \xB7 the mesas are locked; unlock them to change them" });
 const MD_TOOLS = {
   select: { key: "v", name: "Select", hint: "Click a shape to select it (Shift adds), drag to move (Alt-drag moves a copy). Drag on empty space: left to right selects shapes fully inside, right to left also those touched. Handles: stretch, scale, rotate (Shift: keep proportions or 15\xB0 steps; Alt: about the centre)." },
   node: { key: "a", name: "Corners", hint: "Drag a corner of a drawn outline. Double-click an edge to add a corner; Delete removes the picked corner. Other shapes: press To outline first." },
@@ -8809,6 +9030,7 @@ const mdRot = (p, a) => {
 };
 const mdArr = (sh) => Math.max(1, Math.round(sh.nx || 1)) * Math.max(1, Math.round(sh.ny || 1)) > 1;
 const mdCol = (c) => "#" + COL[c].getHexString();
+const mdLk = (i) => !!(MD && MD.shapes[i] && MD.shapes[i].lock);
 const mdA = (name) => `${/^[aeiou]/i.test(name) ? "an" : "a"} ${name}`;
 function mdBBox(list) {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -9028,7 +9250,7 @@ function mdClose() {
   document.body.classList.remove("md-open");
   const tk = MD.tk;
   MD = null;
-  if (tk === "sim") {
+  if (tk !== "pit") {
     renderShapeList();
     drawMaskEditor();
   } else {
@@ -9174,14 +9396,22 @@ function mdSnap(sx, sy, o) {
   }
   return { p: [mdR(w[0]), mdR(w[1])], kind: "" };
 }
+const mdGeo = (a) => JSON.stringify(a.map((s) => {
+  const c = Object.assign({}, s);
+  delete c.lock;
+  delete c.name;
+  return c;
+}));
 function mdCommit(msg) {
   const now = JSON.stringify(MD.shapes);
   if (now !== MD.base) {
+    const meta = mdGeo(MD.shapes) === mdGeo(JSON.parse(MD.base)) && MD.t.meta;
     MD.hist.push(MD.base);
     if (MD.hist.length > 300) MD.hist.shift();
     MD.fut = [];
     MD.base = now;
-    MD.t.set(JSON.parse(now));
+    if (meta) MD.t.meta(JSON.parse(now));
+    else MD.t.set(JSON.parse(now));
   }
   if (msg != null) mdMsg(msg);
   mdPanel();
@@ -9209,7 +9439,7 @@ function mdUndo(redo) {
   mdRequest();
 }
 function mdFrame() {
-  if (!MD.sel.length) return null;
+  if (!MD.sel.length || MD.sel.some(mdLk)) return null;
   if (MD.sel.length === 1) {
     const sh = MD.shapes[MD.sel[0]];
     if (sh && sh.type !== "para" && !mdArr(sh)) return { kind: "local", o: [sh.cx, sh.cy], a: sh.ang || 0, b: mdLocalBox(sh), uni: !!MD_UNI[sh.type] };
@@ -9245,8 +9475,8 @@ function mdHandleAt(sx, sy) {
 }
 function mdPick(sx, sy) {
   const w = mdToW(sx, sy), tol = 5 / MD.v.s;
-  for (const i of MD.sel.slice().reverse()) if (MD.shapes[i] && mdHit(MD.shapes[i], w, tol)) return i;
-  for (let i = MD.shapes.length - 1; i >= 0; i--) if (mdHit(MD.shapes[i], w, tol)) return i;
+  for (const i of MD.sel.slice().reverse()) if (MD.shapes[i] && !mdLk(i) && mdHit(MD.shapes[i], w, tol)) return i;
+  for (let i = MD.shapes.length - 1; i >= 0; i--) if (!mdLk(i) && mdHit(MD.shapes[i], w, tol)) return i;
   return -1;
 }
 function mdGridStep() {
@@ -9293,24 +9523,7 @@ function mdDraw() {
   o.globalCompositeOperation = "source-over";
   o.globalAlpha = 1;
   const g = mdGridStep(), G = g * 5;
-  ctx.strokeStyle = ink;
-  ctx.lineWidth = 1;
-  for (const [st, al] of [[g, 0.06], [G, 0.13]]) {
-    ctx.globalAlpha = al;
-    ctx.beginPath();
-    for (let x = Math.ceil(X0 / st) * st; x <= X1; x += st) {
-      const a = Math.round(mdToS([x, 0])[0]) + 0.5;
-      ctx.moveTo(a, 0);
-      ctx.lineTo(a, H);
-    }
-    for (let y = Math.ceil(Y0 / st) * st; y <= Y1; y += st) {
-      const b = Math.round(mdToS([0, y])[1]) + 0.5;
-      ctx.moveTo(0, b);
-      ctx.lineTo(W, b);
-    }
-    ctx.stroke();
-  }
-  ctx.globalAlpha = 1;
+  edGridDraw(ctx, { toC: mdToS, X0, X1, Y0, Y1, g, px: MD.v.s, ink, angs: gridAngles(inPlaneDirs(MD.t.frame()), MD.t.rot()) });
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.drawImage(off, 0, 0);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -9349,9 +9562,18 @@ function mdDraw() {
     ctx.setLineDash(sh.op === "mask" ? [5, 3] : []);
     ctx.lineWidth = on ? 2.2 : hv ? 1.8 : 1.1;
     ctx.strokeStyle = on || hv ? acc : ink;
-    ctx.globalAlpha = hv ? 0.7 : 1;
+    ctx.globalAlpha = hv ? 0.7 : sh.lock && !on ? 0.5 : 1;
     ctx.stroke();
     ctx.globalAlpha = 1;
+    if (sh.lock) {
+      const bb = mdBBox([sh]);
+      if (bb) {
+        const q = mdToS([bb[0], bb[3]]);
+        ctx.font = "11px system-ui, sans-serif";
+        ctx.fillStyle = on ? acc : ink;
+        ctx.fillText("\u{1F512}", q[0] + 2, q[1] + 13);
+      }
+    }
   });
   ctx.setLineDash([]);
   const F = MD.tool === "select" && !MD.drag ? mdFrame() : MD.tool === "select" && MD.drag && MD.drag.kind === "handle" ? mdFrame() : null;
@@ -9535,7 +9757,7 @@ function mdDraw() {
   ctx.stroke();
   ctx.font = "11px IBM Plex Mono, monospace";
   ctx.fillText(fmtLen(L), 16, H - 25);
-  ctx.fillText(`grid ${fmtLen(g)} (bold ${fmtLen(G)})`, 16 + lp + 14, H - 12);
+  ctx.fillText(SET.gridType === "off" ? `grid hidden (snap step ${fmtLen(MD.step)})` : `grid ${fmtLen(g)} (bold ${fmtLen(G)})${SET.gridType === "crystal" ? " along the {111} traces" : ""}`, 16 + lp + 14, H - 12);
 }
 function mdMeasText(a, b) {
   const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy), ang = Math.atan2(dy, dx) * C.DEG;
@@ -9620,10 +9842,12 @@ function mdDown(ev) {
       return;
     }
     if (!MD.sel.includes(i)) MD.sel = [i];
+    MD.sel = MD.sel.filter((j) => !mdLk(j));
     if (ev.altKey) {
       const c = MD.sel.map((j) => {
         const x = mdClone(MD.shapes[j]);
         delete x.name;
+        delete x.lock;
         return x;
       });
       const n = MD.shapes.length;
@@ -9639,7 +9863,7 @@ function mdDown(ev) {
   if (t === "node") {
     for (const i2 of MD.sel) {
       const sh = MD.shapes[i2];
-      if (!sh || sh.type !== "free" && sh.type !== "pts" || mdArr(sh)) continue;
+      if (!sh || sh.lock || sh.type !== "free" && sh.type !== "pts" || mdArr(sh)) continue;
       const k = mdCornerW(sh).findIndex((p) => {
         const q = mdToS(p);
         return Math.abs(q[0] - sx) <= 6 && Math.abs(q[1] - sy) <= 6;
@@ -9808,7 +10032,7 @@ function mdUp(ev) {
       const got = [];
       MD.shapes.forEach((sh, i) => {
         const bb = mdBBox([sh]);
-        if (!bb) return;
+        if (!bb || sh.lock) return;
         const inside = bb[0] >= x0 && bb[2] <= x1 && bb[1] >= y0 && bb[3] <= y1, touch = bb[0] <= x1 && bb[2] >= x0 && bb[1] <= y1 && bb[3] >= y0;
         if (cross ? touch : inside) got.push(i);
       });
@@ -9947,7 +10171,61 @@ function mdSelShapes() {
 function mdSelBox() {
   return mdBBox(mdSelShapes());
 }
+function mdReorder(rows, at) {
+  rows = rows.filter((i) => !mdLk(i) && MD.shapes[i]).sort((a, b) => a - b);
+  if (!rows.length) return;
+  const mv = rows.map((i) => MD.shapes[i]), keep = MD.shapes.filter((_, i) => !rows.includes(i)), k = at - rows.filter((i) => i < at).length;
+  MD.shapes = keep.slice(0, k).concat(mv, keep.slice(k));
+  MD.sel = mv.map((_, j) => k + j);
+  MD.anchor = k;
+  mdCommit(MD.t.ops ? "Order changed: shapes lower in the list are applied later and win where they overlap." : "Order changed.");
+}
+const MD_MOD = { cut: 1, del: 1, move: 1, rot: 1, scale: 1, fliph: 1, flipv: 1, front: 1, back: 1, up: 1, down: 1, outline: 1, explode: 1, align: 1, array: 1, op: 1 };
 function mdDo(cmd, arg) {
+  if (!MD) return;
+  if (cmd === "lock" || cmd === "unlock") {
+    if (!MD.sel.length) {
+      mdMsg(`Select the shapes to ${cmd} first (on the drawing, or in the list: Ctrl-click adds, Shift-click a range).`);
+      return;
+    }
+    const n = MD.sel.length;
+    for (const i of MD.sel) {
+      if (cmd === "lock") MD.shapes[i].lock = true;
+      else delete MD.shapes[i].lock;
+    }
+    if (cmd === "lock") MD.sel = [];
+    mdCommit(cmd === "lock" ? `Locked ${n} shape${n === 1 ? "" : "s"}: ${n === 1 ? "it stays" : "they stay"} in the mask but cannot be picked or changed. Unlock with \u{1F512} in the list or Ctrl+Shift+L.` : `Unlocked ${n} shape${n === 1 ? "" : "s"}.`);
+    return;
+  }
+  if (cmd === "unlockall") {
+    const L = MD.shapes.map((s, i) => s.lock ? i : -1).filter((i) => i >= 0);
+    if (!L.length) {
+      mdMsg("No shape is locked.");
+      return;
+    }
+    for (const i of L) delete MD.shapes[i].lock;
+    MD.sel = L;
+    mdCommit(`Unlocked ${L.length} shape${L.length === 1 ? "" : "s"} (now selected).`);
+    return;
+  }
+  let note = "";
+  if (MD_MOD[cmd] && !(cmd === "del" && MD.tool === "node" && MD.vsel >= 0)) {
+    const lk = MD.sel.filter(mdLk);
+    if (lk.length) {
+      MD.sel = MD.sel.filter((i) => !mdLk(i));
+      if (!MD.sel.length) {
+        mdMsg(`${lk.length === 1 ? "This shape is" : "These shapes are"} locked. Unlock first (\u{1F512} in the list, or Ctrl+Shift+L).`);
+        mdPanel();
+        mdRequest();
+        return;
+      }
+      note = ` ${lk.length} locked shape${lk.length === 1 ? " was" : "s were"} left as ${lk.length === 1 ? "it was" : "they were"}.`;
+    }
+  }
+  mdDo0(cmd, arg);
+  if (note) mdMsg($("mdMsg").textContent + note);
+}
+function mdDo0(cmd, arg) {
   const need = () => {
     if (!MD.sel.length) {
       mdMsg("Select a shape first.");
@@ -9969,6 +10247,9 @@ function mdDo(cmd, arg) {
     case "fit":
       mdFit();
       return;
+    case "side":
+      listSide(SET.listSide === "left" ? "right" : "left");
+      return;
     case "done":
       mdClose();
       return;
@@ -9979,11 +10260,19 @@ function mdDo(cmd, arg) {
       else if (rt.requestFullscreen) rt.requestFullscreen().catch(() => mdMsg("Full screen is not allowed here; the designer fills the window."));
       return;
     }
-    case "all":
-      MD.sel = MD.shapes.map((_, i) => i);
+    case "all": {
+      MD.sel = MD.shapes.map((_, i) => i).filter((i) => !mdLk(i));
+      const nl = MD.shapes.length - MD.sel.length;
+      if (nl) mdMsg(`${nl} locked shape${nl === 1 ? " is" : "s are"} not selected.`);
       mdPanel();
       mdRequest();
       return;
+    }
+    case "op": {
+      for (const s of mdSelShapes()) s.op = arg || (s.op === "mask" ? "open" : "mask");
+      mdCommit(MD.t.ops ? "Layer changed: open removes the mask, mask puts it back." : "");
+      return;
+    }
     case "copy":
     case "cut":
       if (!need()) return;
@@ -9998,6 +10287,7 @@ function mdDo(cmd, arg) {
       }
       const c = mdClone(MD.clip), off = 10 * MD.step;
       for (const s of c) {
+        delete s.lock;
         mdMove(s, off, -off);
         if (MD.tk === "pit") {
           s.op = "open";
@@ -10016,6 +10306,7 @@ function mdDo(cmd, arg) {
       const d = arg || [20, -20], c = mdSelShapes().map((s) => {
         const x = mdClone(s);
         delete x.name;
+        delete x.lock;
         mdMove(x, d[0], d[1]);
         return x;
       });
@@ -10166,7 +10457,7 @@ function mdDo(cmd, arg) {
       return;
     }
     case "array": {
-      if (MD.tk !== "sim") {
+      if (MD.tk === "pit") {
         mdMsg("Arrays are part of the simulator mask; in the pit editor use Duplicate.");
         return;
       }
@@ -10313,11 +10604,12 @@ function mdPanel() {
   if (sel.length === 1) {
     const sh = sel[0], T = SHAPE_TYPES[sh.type] || SHAPE_TYPES.rect, dirs = inPlaneDirs(MD.t.frame());
     const lab = { w: "w", h: "h", t: sh.type === "ring" || sh.type === "star" ? "inner" : "arm t", n: sh.type === "star" ? "points" : "sides", k: "scale %" };
-    h += `<h4>${MD.sel[0] + 1}. ${T.name}</h4>`;
+    h += `<h4>${MD.sel[0] + 1}. ${T.name}${sh.lock ? " \xB7 \u{1F512} locked" : ""}</h4>`;
+    h += `<div class="row mdLockRow"><label style="flex:1">name <input type="text" data-k="name" maxlength="40" value="${esc(sh.name || "")}" placeholder="${esc(T.name.replace(/ \(.*\)$/, ""))}"></label><button class="btn" data-md="${sh.lock ? "unlock" : "lock"}" title="${sh.lock ? "Allow changes again" : "Keep this shape as it is: it can no longer be picked or changed on the drawing"} (Ctrl+${sh.lock ? "Shift+" : ""}L)">${sh.lock ? "\u{1F513} Unlock" : "\u{1F512} Lock"}</button></div>`;
     if (MD.t.ops) h += `<label>layer <select data-k="op"><option value="open"${sh.op === "open" ? " selected" : ""}>open (removes the mask)</option><option value="mask"${sh.op === "mask" ? " selected" : ""}>mask (puts it back)</option></select></label>`;
     h += `<div class="mdF">${f("cx", sh.cx, "x (\xB5m)")}${f("cy", sh.cy, "y (\xB5m)")}${sh.type === "para" ? f("a1", sh.a1, "side 1 \xB0", 0.1) + f("a2", sh.a2, "side 2 \xB0", 0.1) : sh.type === "pts" ? "" : f("ang", sh.ang || 0, "angle \xB0", 0.1)}`;
     h += T.f.map((k) => f(k, sh[k] == null ? 100 : sh[k], lab[k] + (k === "n" || k === "k" ? "" : " (\xB5m)"), k === "n" ? 1 : 0.5)).join("");
-    if (MD.tk === "sim") h += f("nx", sh.nx || 1, "copies x", 1) + f("ny", sh.ny || 1, "copies y", 1) + f("px", sh.px || 0, "pitch x (\xB5m)", 1) + f("py", sh.py || 0, "pitch y (\xB5m)", 1);
+    if (MD.tk !== "pit") h += f("nx", sh.nx || 1, "copies x", 1) + f("ny", sh.ny || 1, "copies y", 1) + f("px", sh.px || 0, "pitch x (\xB5m)", 1) + f("py", sh.py || 0, "pitch y (\xB5m)", 1);
     else h += f("pre", sh.pre || 0, "pre-etch (\xB5m)", 1);
     h += `</div>${dirSelects(sh, 0, dirs).replace(/data-i="0" /g, "")}`;
     const bb = mdBBox([sh]);
@@ -10326,12 +10618,17 @@ function mdPanel() {
       h += `<details class="mdCorners"><summary>Corners (x, y in \xB5m)</summary><div>${mdCornerW(sh).map((p, k) => `<span class="mdV"><b>${k + 1}</b><input type="number" step="0.5" data-v="${k}" data-c="0" value="${mdR(p[0])}"><input type="number" step="0.5" data-v="${k}" data-c="1" value="${mdR(p[1])}"></span>`).join("")}</div></details>`;
   } else if (sel.length > 1) {
     const b = mdSelBox();
-    h += `<h4>${sel.length} shapes</h4><p class="note">Box ${fmtLen(b[2] - b[0])} \xD7 ${fmtLen(b[3] - b[1])}, centre (${mdR((b[0] + b[2]) / 2)}, ${mdR((b[1] + b[3]) / 2)}) \xB5m.</p>`;
+    const nl = sel.filter((x) => x.lock).length;
+    h += `<h4>${sel.length} shapes${nl ? ` \xB7 ${nl} locked` : ""}</h4><div class="row mdLockRow"><button class="btn" data-md="lock" title="Ctrl+L">\u{1F512} Lock all ${sel.length}</button>${nl ? `<button class="btn" data-md="unlock" title="Unlock the selected shapes">\u{1F513} Unlock</button>` : ""}</div><p class="note">Box ${fmtLen(b[2] - b[0])} \xD7 ${fmtLen(b[3] - b[1])}, centre (${mdR((b[0] + b[2]) / 2)}, ${mdR((b[1] + b[3]) / 2)}) \xB5m.</p>`;
     if (MD.t.ops) h += `<label>layer of all <select data-k="op"><option value="">keep</option><option value="open">open</option><option value="mask">mask</option></select></label>`;
     h += `<div class="mdAlign"><button class="btn" data-md="align" data-a="l">Left</button><button class="btn" data-md="align" data-a="c">Centre</button><button class="btn" data-md="align" data-a="r">Right</button><button class="btn" data-md="align" data-a="t">Top</button><button class="btn" data-md="align" data-a="m">Middle</button><button class="btn" data-md="align" data-a="b">Bottom</button><button class="btn" data-md="align" data-a="dh">Spread \u2194</button><button class="btn" data-md="align" data-a="dv">Spread \u2195</button></div>`;
   } else h += `<h4>No selection</h4><p class="note">${MD.shapes.length} shape${MD.shapes.length === 1 ? "" : "s"}. Pick a tool on the left; ${MD_TOOLS[MD.tool].name}: ${MD_TOOLS[MD.tool].hint}</p>`;
   $("mdProps").innerHTML = h;
-  $("mdList").innerHTML = MD.shapes.map((sh, i) => `<div class="mdRow${MD.sel.includes(i) ? " sel" : ""}" data-row="${i}"><span>${i + 1}. ${SHAPE_TYPES[sh.type] ? SHAPE_TYPES[sh.type].name.replace(/ \(.*\)$/, "") : sh.type}${mdArr(sh) ? ` \xD7${(sh.nx || 1) * (sh.ny || 1)}` : ""}</span>${MD.t.ops ? `<span class="mdOp ${sh.op}">${sh.op}</span>` : ""}</div>`).join("") || `<p class="note">No shapes yet.</p>`;
+  if (sel.some((x) => x.lock)) for (const el of $("mdProps").querySelectorAll("input, select, [data-md=align]")) el.disabled = true;
+  const nm = (sh) => sh.name ? esc(sh.name) : SHAPE_TYPES[sh.type] ? SHAPE_TYPES[sh.type].name.replace(/ \(.*\)$/, "") : esc(sh.type);
+  $("mdList").innerHTML = MD.shapes.map((sh, i) => `<div class="mdRow${MD.sel.includes(i) ? " sel" : ""}${sh.lock ? " locked" : ""}" data-row="${i}" draggable="${sh.lock ? "false" : "true"}" title="Click selects, Ctrl-click adds, Shift-click selects a range; drag to change the order${sh.lock ? " (unlock first)" : ""}"><span class="mdGrip" aria-hidden="true">\u22EE\u22EE</span><span class="mdNm">${i + 1}. ${nm(sh)}${mdArr(sh) ? ` \xD7${(sh.nx || 1) * (sh.ny || 1)}` : ""}</span>${MD.t.ops ? `<button class="mdOp ${sh.op}" data-rop="${i}" title="${sh.lock ? "Locked" : "Switch between open (removes the mask) and mask (puts it back)"}"${sh.lock ? " disabled" : ""}>${sh.op}</button>` : ""}<button class="mdLk${sh.lock ? " on" : ""}" data-rlock="${i}" aria-pressed="${!!sh.lock}" title="${sh.lock ? "Locked: click to unlock" : "Lock: keep this shape as it is"}">${sh.lock ? "\u{1F512}" : "\u{1F513}"}</button></div>`).join("") || `<p class="note">No shapes yet.</p>`;
+  const nL = MD.shapes.filter((x) => x.lock).length;
+  $("mdLayInfo").textContent = MD.shapes.length ? `${MD.shapes.length} shape${MD.shapes.length === 1 ? "" : "s"}${nL ? `, ${nL} locked` : ""}` : "";
   for (const b of document.querySelectorAll("#mdRoot [data-md=undo]")) b.disabled = !MD.hist.length;
   for (const b of document.querySelectorAll("#mdRoot [data-md=redo]")) b.disabled = !MD.fut.length;
 }
@@ -10674,6 +10971,47 @@ function maskExportInfo(tk) {
   new ResizeObserver(() => {
     if (MD && MD.on) mdResize();
   }).observe($("mdCanvasBox"));
+  const ls = $("mdList"), clr = () => {
+    for (const r of ls.querySelectorAll(".mdRow.dropA, .mdRow.dropB")) r.classList.remove("dropA", "dropB");
+  };
+  ls.addEventListener("dragstart", (ev) => {
+    const r = ev.target.closest && ev.target.closest(".mdRow");
+    if (!r || !MD) return;
+    const i = Number(r.dataset.row);
+    if (!MD.sel.includes(i)) {
+      MD.sel = [i];
+      MD.anchor = i;
+    }
+    MD.sel = MD.sel.filter((j) => !mdLk(j));
+    MD.rowDrag = MD.sel.slice();
+    ev.dataTransfer.effectAllowed = "move";
+    ev.dataTransfer.setData("text/plain", String(i));
+    mdRequest();
+  });
+  ls.addEventListener("dragover", (ev) => {
+    const r = ev.target.closest(".mdRow");
+    if (!r || !MD || !MD.rowDrag) return;
+    ev.preventDefault();
+    clr();
+    const bx = r.getBoundingClientRect();
+    r.classList.add(ev.clientY < bx.top + bx.height / 2 ? "dropA" : "dropB");
+  });
+  ls.addEventListener("dragleave", (ev) => {
+    if (!ls.contains(ev.relatedTarget)) clr();
+  });
+  ls.addEventListener("drop", (ev) => {
+    const r = ev.target.closest(".mdRow");
+    if (!r || !MD || !MD.rowDrag) return;
+    ev.preventDefault();
+    const bx = r.getBoundingClientRect(), at = Number(r.dataset.row) + (ev.clientY < bx.top + bx.height / 2 ? 0 : 1);
+    clr();
+    mdReorder(MD.rowDrag, at);
+    MD.rowDrag = null;
+  });
+  ls.addEventListener("dragend", () => {
+    clr();
+    if (MD) MD.rowDrag = null;
+  });
   $("mdRoot").addEventListener("click", (ev) => {
     const b = ev.target.closest("[data-md]");
     if (b && MD) {
@@ -10685,10 +11023,38 @@ function maskExportInfo(tk) {
       mdSetTool(t.dataset.tool);
       return;
     }
+    const lb = ev.target.closest("[data-rlock]");
+    if (lb && MD) {
+      const i = Number(lb.dataset.rlock), on = !MD.shapes[i].lock, L = MD.sel.includes(i) && MD.sel.length > 1 ? MD.sel.slice() : [i];
+      const keep = MD.sel.filter((j) => !L.includes(j));
+      MD.sel = L;
+      mdDo(on ? "lock" : "unlock");
+      if (!on) MD.sel = keep.concat(L);
+      else MD.sel = keep;
+      mdPanel();
+      mdRequest();
+      return;
+    }
+    const ob = ev.target.closest("[data-rop]");
+    if (ob && MD) {
+      const i = Number(ob.dataset.rop);
+      if (!MD.sel.includes(i)) MD.sel = [i];
+      mdDo("op", MD.shapes[i].op === "mask" ? "open" : "mask");
+      return;
+    }
     const r = ev.target.closest(".mdRow");
     if (r && MD) {
       const i = Number(r.dataset.row);
-      MD.sel = ev.shiftKey ? MD.sel.includes(i) ? MD.sel.filter((j) => j !== i) : MD.sel.concat([i]) : [i];
+      if (ev.shiftKey && MD.anchor != null && MD.shapes[MD.anchor]) {
+        const a = Math.min(MD.anchor, i), b2 = Math.max(MD.anchor, i);
+        MD.sel = Array.from({ length: b2 - a + 1 }, (_, k) => a + k);
+      } else if (ev.ctrlKey || ev.metaKey) {
+        MD.sel = MD.sel.includes(i) ? MD.sel.filter((j) => j !== i) : MD.sel.concat([i]);
+        MD.anchor = i;
+      } else {
+        MD.sel = [i];
+        MD.anchor = i;
+      }
       mdPanel();
       mdRequest();
     }
@@ -10696,6 +11062,20 @@ function maskExportInfo(tk) {
   $("mdProps").addEventListener("change", (ev) => {
     if (!MD) return;
     const el = ev.target;
+    if (mdSelShapes().some((x) => x.lock)) {
+      mdMsg("Locked shapes are not changed. Unlock first.");
+      mdPanel();
+      return;
+    }
+    if (el.dataset.k === "name") {
+      for (const sh of mdSelShapes()) {
+        const v = el.value.trim().slice(0, 40);
+        if (v) sh.name = v;
+        else delete sh.name;
+      }
+      mdCommit("Renamed.");
+      return;
+    }
     if (el.dataset.v != null) {
       const sh = MD.shapes[MD.sel[0]], f = sh.type === "pts" ? mdToFree(sh) : sh, W0 = mdCornerW(f), k2 = Number(el.dataset.v), p = W0[k2].slice();
       p[Number(el.dataset.c)] = Number(el.value);
@@ -10763,6 +11143,11 @@ function maskExportInfo(tk) {
   });
   $("bDesign").addEventListener("click", () => mdOpen("sim"));
   $("pcDesign").addEventListener("click", () => mdOpen("pit"));
+  $("clDesign").addEventListener("click", () => {
+    if (SIM.owner !== "corner") clBuild(false);
+    mdOpen("corner");
+  });
+  $("bDesign").title = "Open the mask in the full-screen designer";
   window.addEventListener("keydown", (ev) => {
     if (!MD || !MD.on) return;
     ev.stopPropagation();
@@ -10789,7 +11174,7 @@ function maskExportInfo(tk) {
     }
     const k = ev.key, ctl = ev.ctrlKey || ev.metaKey, lk = k.length === 1 ? k.toLowerCase() : k;
     if (ctl) {
-      const m = { z: ev.shiftKey ? "redo" : "undo", y: "redo", c: "copy", x: "cut", v: "paste", d: "dup", a: "all" }[lk];
+      const m = { z: ev.shiftKey ? "redo" : "undo", y: "redo", c: "copy", x: "cut", v: "paste", d: "dup", a: "all", l: ev.shiftKey ? "unlockall" : "lock" }[lk];
       if (m) {
         ev.preventDefault();
         mdDo(m);

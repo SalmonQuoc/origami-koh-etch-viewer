@@ -13,14 +13,35 @@ function enlarge(el, on) {
   } else if (enlOpen && enlOpen.el === el) {
     enlOpen.ph.replaceWith(el); enlOpen.back.remove(); el.classList.remove("enlarged"); document.body.classList.remove("enl-open"); enlOpen = null;
   }
-  const b = el.querySelector(":scope > .enlBtn"); if (b) { b.setAttribute("aria-pressed", String(on)); b.textContent = on ? "✕ Close" : "⤢ Enlarge"; b.title = on ? "Back to the page (Esc)" : "Open in a large window"; }
-  requestAnimationFrame(redrawAll);
+  const b = el.querySelector(":scope > .enlBar > .enlBtn"); if (b) { b.setAttribute("aria-pressed", String(on)); b.textContent = on ? "✕ Close" : "⤢ Enlarge"; b.title = on ? "Back to the page (Esc)" : "Open in a large window"; }
+  if (!on && document.fullscreenElement === el) document.exitFullscreen().catch(() => {});
+  enlSync(el); requestAnimationFrame(redrawAll);
 }
+// full screen: every enlargeable editor or graph can also fill the whole screen (it is enlarged first)
+function enlFull(el) {
+  if (document.fullscreenElement === el) { document.exitFullscreen().catch(() => {}); return; }
+  if (!el.classList.contains("enlarged")) enlarge(el, true);
+  if (el.requestFullscreen) el.requestFullscreen().catch(() => {});   // where full screen is not allowed, the large window stays
+}
+function enlSync(el) {
+  const f = el.querySelector(":scope > .enlBar > .enlFs"); if (f) { const on = document.fullscreenElement === el; f.textContent = on ? "Leave full screen" : "⛶ Full screen"; f.setAttribute("aria-pressed", String(on)); }
+  const sd = el.querySelector(":scope > .enlBar > .edSideBtn"); if (sd) sd.textContent = SET.listSide === "left" ? "⇆ List right" : "⇆ List left";
+}
+function listSide(side) { SET.listSide = side === "left" ? "left" : "right"; saveSet(); document.body.classList.toggle("list-left", SET.listSide === "left");
+  for (const el of document.querySelectorAll(".enl")) enlSync(el); const m = document.getElementById("mdSideBtn"); if (m) m.textContent = SET.listSide === "left" ? "⇆ List right" : "⇆ List left";
+  requestAnimationFrame(() => { redrawAll(); if (MD && MD.on) mdResize(); }); }
 for (const el of document.querySelectorAll(".enl")) {
+  const bar = document.createElement("div"); bar.className = "enlBar";
+  if (el.classList.contains("edl")) { const sd = document.createElement("button"); sd.className = "btn edSideBtn"; sd.type = "button"; sd.title = "Put the shape list on the other side of the drawing"; sd.addEventListener("click", () => listSide(SET.listSide === "left" ? "right" : "left")); bar.append(sd); }
+  const fs = document.createElement("button"); fs.className = "btn enlFs"; fs.type = "button"; fs.title = "Fill the whole screen (Esc leaves)"; fs.addEventListener("click", () => enlFull(el));
   const b = document.createElement("button"); b.className = "btn enlBtn"; b.type = "button"; b.textContent = "⤢ Enlarge"; b.title = "Open in a large window";
-  b.addEventListener("click", () => enlarge(el, !el.classList.contains("enlarged"))); el.prepend(b);
+  b.addEventListener("click", () => enlarge(el, !el.classList.contains("enlarged")));
+  bar.append(fs, b); el.prepend(bar); enlSync(el);
 }
-document.addEventListener("keydown", ev => { if (ev.key === "Escape" && enlOpen && !DRAW.on && !document.querySelector("dialog[open]")) enlarge(enlOpen.el, false); });
+document.addEventListener("fullscreenchange", () => { for (const el of document.querySelectorAll(".enl")) enlSync(el); if (enlOpen) requestAnimationFrame(redrawAll); });
+for (const h of document.querySelectorAll(".gridHere")) h.innerHTML = gridSelect();
+document.body.classList.toggle("list-left", SET.listSide === "left"); { const m = document.getElementById("mdSideBtn"); if (m) m.textContent = SET.listSide === "left" ? "⇆ List right" : "⇆ List left"; }
+document.addEventListener("keydown", ev => { if (ev.key === "Escape" && enlOpen && !DRAW.on && !document.querySelector("dialog[open]") && !document.fullscreenElement) enlarge(enlOpen.el, false); });
 window.addEventListener("resize", () => { if (enlOpen) requestAnimationFrame(redrawAll); });
 
 // =====================================================================================================
