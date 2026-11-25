@@ -241,7 +241,15 @@ function mdSnap(sx, sy, o?: Record<string, any>) {
       }
     }
   }
-  if (MD.snap.grid && !o.noGrid) { const st = MD.step; return { p: [mdR(Math.round(w[0]/st)*st), mdR(Math.round(w[1]/st)*st)], kind: "grid" }; }
+  if (MD.snap.grid && !o.noGrid) {
+    const st = MD.step, A = SET.gridType === "crystal" ? gridAngles(inPlaneDirs(MD.t.frame()), MD.t.rot()) : [0, 90];
+    if (A.length >= 2 && !(Math.abs(A[0]) < 1e-9 && Math.abs(A[1] - 90) < 1e-9)) {   // crystal grid: the crossing of the two nearest lines of the first two families
+      const n = A.slice(0, 2).map(a => [-Math.sin(a*Math.PI/180), Math.cos(a*Math.PI/180)]), k = n.map(v => Math.round((v[0]*w[0] + v[1]*w[1])/st)*st);
+      const det = n[0][0]*n[1][1] - n[0][1]*n[1][0];
+      if (Math.abs(det) > 1e-6) return { p: [mdR((k[0]*n[1][1] - n[0][1]*k[1])/det), mdR((n[0][0]*k[1] - k[0]*n[1][0])/det)], kind: "grid" };
+    }
+    return { p: [mdR(Math.round(w[0]/st)*st), mdR(Math.round(w[1]/st)*st)], kind: "grid" };
+  }
   return { p: [mdR(w[0]), mdR(w[1])], kind: "" };
 }
 
@@ -1023,7 +1031,7 @@ function maskExportInfo(tk) {   // shapes, domain and a description of one edito
   $("mdExpDxf").addEventListener("click", async () => { const i = maskExportInfo(MD.tk); const m = await saveFile(`${MD.tk}-mask.dxf`, maskDXF(i.shapes, i), "application/dxf"); mdMsg(m || "Saved the mask as DXF (R12, µm, layers OPEN, MASK, DOMAIN)."); });
   $("bDesign").addEventListener("click", () => mdOpen("sim"));
   $("pcDesign").addEventListener("click", () => mdOpen("pit"));
-  $("clDesign").addEventListener("click", () => { if (SIM.owner !== "corner") clBuild(false); mdOpen("corner"); });
+  $("clDesign").addEventListener("click", () => { if (SIM.owner !== "corner") clBuild(false, true); mdOpen("corner"); });
   $("bDesign").title = "Open the mask in the full-screen designer";
   // keys: while the designer is open the page's own shortcuts are off
   window.addEventListener("keydown", ev => {
@@ -1057,5 +1065,6 @@ function maskExportInfo(tk) {   // shapes, domain and a description of one edito
     if (/^[0-9@.,<-]$/.test(k)) { const c = $("mdCmd"); c.focus(); }   // typing a point or a size goes to the command line
   }, true);
   window.addEventListener("keyup", ev => { if (MD && MD.on && ev.key === " ") { MD.space = false; ev.stopPropagation(); } }, true);
-  document.addEventListener("fullscreenchange", () => { if (MD && MD.on) { $("mdFull").textContent = document.fullscreenElement ? "Leave full screen" : "Full screen"; requestAnimationFrame(mdResize); } });
+  document.addEventListener("fullscreenchange", () => { if (document.fullscreenElement === $("mdRoot") && !(MD && MD.on)) { document.exitFullscreen().catch(() => {}); return; }   // closed before full screen began
+    if (MD && MD.on) { $("mdFull").textContent = document.fullscreenElement ? "Leave full screen" : "Full screen"; requestAnimationFrame(mdResize); } });
 })();

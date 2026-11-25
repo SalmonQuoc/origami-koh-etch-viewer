@@ -125,7 +125,7 @@ function drawPitEditor(keepExtent?: boolean) {
     if (!drag || !S.pitEd) return; const [x, y] = world(ev);
     if (!drag.moved) { toCustom(); drag.moved = true; }
     if (!S.pitShapes[drag.i]) return;
-    const sh = S.pitShapes[drag.i]; sh.cx = snapV(drag.cx + x - drag.x0); sh.cy = snapV(drag.cy + y - drag.y0);
+    const sh = S.pitShapes[drag.i]; [sh.cx, sh.cy] = snapP(drag.cx + x - drag.x0, drag.cy + y - drag.y0, gridAngles(inPlaneDirs(C.FRAMES[S.wf]), S.rot));
     edLater("pitCanvas", () => drawPitEditor(true)); $("hint").textContent = `Moving to (${sh.cx}, ${sh.cy}) µm; let go to update the 3D view`;
   });
   const end = () => { cv.style.cursor = ""; if (drag && drag.moved) pitChanged(false); else drawPitEditor(); drag = null; };

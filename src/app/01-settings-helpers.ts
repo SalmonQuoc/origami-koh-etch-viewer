@@ -7,6 +7,15 @@ try { Object.assign(SET, JSON.parse(localStorage.getItem("o3d-settings") || "{}"
 const saveSet = () => { try { localStorage.setItem("o3d-settings", JSON.stringify(SET)); } catch (e) {} };
 let layoutBusy = false;   // true while applyLayout() switches split/theater, so they do not overwrite SET.layout
 const snapV = v => { const st = Number(SET.snap) || 1; return Math.round(v/st)*st; };
+// a point on the editor grid: square steps, or with the crystal grid the crossing of its first two line families (angs in degrees)
+function snapP(x: number, y: number, angs?: number[]) {
+  const st = Number(SET.snap) || 1, r = v => Math.round(v*1e4)/1e4;
+  if (SET.gridType === "crystal" && angs && angs.length >= 2 && !(Math.abs(angs[0]) < 1e-9 && Math.abs(angs[1] - 90) < 1e-9)) {
+    const n = angs.slice(0, 2).map(a => [-Math.sin(a*Math.PI/180), Math.cos(a*Math.PI/180)]), k = n.map(v => Math.round((v[0]*x + v[1]*y)/st)*st), det = n[0][0]*n[1][1] - n[0][1]*n[1][0];
+    if (Math.abs(det) > 1e-6) return [r((k[0]*n[1][1] - n[0][1]*k[1])/det), r((n[0][0]*k[1] - k[0]*n[1][0])/det)];
+  }
+  return [snapV(x), snapV(y)];
+}
 const EDC: Record<string, number[]> = {};   // cursor position in each 2D editor (world µm), set in 19-coordinates.ts
 const edGrid = (W: number) => niceStep(W/8);
 // editor speed: pointer moves redraw an editor at most once per frame, and the off-screen mask layers are reused

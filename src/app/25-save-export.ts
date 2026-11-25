@@ -18,7 +18,7 @@ function svCapture(part) {
     case "view": return { wf: S.wf, mode: S.mode };
     case "sim": return Object.assign(psCapture("sim"), { quality: SIM.quality, wf: S.wf, owner: SIM.owner || "sim" });
     case "pit": return Object.assign(psCapture("pit"), { wf: S.wf, open: S.open });
-    case "corner": return { rate: CL.rate, H: CL.H, A: CL.A, type: CL.type, s1: CL.s1, s2: CL.s2 };
+    case "corner": return Object.assign({ rate: CL.rate, H: CL.H, A: CL.A, type: CL.type, s1: CL.s1, s2: CL.s2 }, Array.isArray(CL.mask) && CL.mask.length ? { mask: mdClone(CL.mask) } : {});
     case "find": return { relW: FD.relW, delta: FD.delta, reveal: FD.reveal, rate: FD.rate, final: FD.final, t: FD.t, res: FD.res, correct: FD.correct, items: mdClone(FD.items || []), wf: S.wf };
     case "etchants": return mdClone(CUSTOM);
     case "presets": return mdClone(PSETS);
@@ -74,7 +74,9 @@ function svApply(proj, parts) {
     if (d.open && d.open !== "custom" && !String(d.open).startsWith("u:")) S.open = d.open; else { S.open = "custom"; S.pitShapes = mdClone(d.shapes); }
     S.pitSel = -1; fillOpenings(); renderCustomList(); prepPit(); done.push("etched pit");
   }
-  if (has("corner") && CL_TYPES[P.corner.type]) { Object.assign(CL, P.corner, { rate: rate(P.corner.rate, SRATES), built: false }); if (SIM.owner === "corner") SIM.owner = "none"; clSync(); done.push("corner lab"); }
+  if (has("corner") && CL_TYPES[P.corner.type]) {
+    const m = P.corner.mask, okM = Array.isArray(m) && m.length && m.every(s => s && SHAPE_TYPES[s.type] && (s.op === "open" || s.op === "mask") && ["cx", "cy"].every(k => isFinite(s[k])));
+    Object.assign(CL, P.corner, { rate: rate(P.corner.rate, SRATES), built: false, mask: okM ? mdClone(m) : null }); clEditNote(); if (SIM.owner === "corner") SIM.owner = "none"; clSync(); done.push("corner lab"); }
   if (has("find") && Array.isArray(P.find.items)) {
     const d = P.find; Object.assign(FD, { relW: d.relW, delta: d.delta, reveal: d.reveal, rate: rate(d.rate, SRATES), final: d.final, t: d.t, res: d.res, correct: d.correct, items: mdClone(d.items), sel: 0, mc: null, wfLoaded: fdWf() });
     fdSync(); done.push("find orientation");

@@ -290,6 +290,20 @@ test("page: scenes, simulator kernel, drawing, mask designer, save and export, s
     await ev(() => document.querySelector(".enlarged .enlBtn").click());
   });
 
+  await t.test("corner lab: a hand-edited mask is kept in the project and restored", async () => {
+    await p.click('#segM button[data-m="corner"]'); await p.waitForTimeout(400);
+    assert.ok(await ev(() => window.__o3d.SIM.shapes.slice(0, 3).every(s => s.lock)));   // domain and mesas locked
+    await ev(() => { const o = window.__o3d; o.mdOpen("corner"); o.MD.sel = [o.MD.shapes.length - 1]; o.mdCommand("move 5,0"); document.querySelector('#mdRoot [data-md="done"]').click(); });
+    const proj = await ev(() => window.__o3d.svProject(["corner"]));
+    assert.ok(Array.isArray(proj.parts.corner.mask) && proj.parts.corner.mask.length >= 3);
+    await ev(() => document.getElementById("clRun").click()); assert.equal(await ev(() => window.__o3d.svProject(["corner"]).parts.corner.mask), undefined);
+    await p.click('#segM button[data-m="sim"]');
+    await p.evaluate(p0 => window.__o3d.svApply(p0, ["corner"]), proj);
+    await p.click('#segM button[data-m="corner"]'); await p.waitForTimeout(300);
+    assert.deepEqual(await ev(() => window.__o3d.SIM.shapes.map(s => s.cx)), proj.parts.corner.mask.map(s => s.cx));
+    assert.ok(await ev(() => !document.getElementById("clEdited").classList.contains("hidden")));
+  });
+
   await t.test("no sideways scroll at phone width", async () => {
     await p.setViewportSize({ width: 390, height: 844 });
     for (const m of ["model", "pit", "sim", "find"]) {

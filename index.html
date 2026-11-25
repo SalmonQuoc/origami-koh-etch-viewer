@@ -572,6 +572,7 @@ body.md-open { overflow: hidden; }
       </div>
       <div class="row"><button class="btn" id="clAuto">Size from the design rule</button><button class="btn primary" id="clRun" title="Build the mask from these settings and run (replaces hand edits)">Build and run</button><button class="btn" id="clDesign" title="Draw your own compensation in the full-screen designer; the mesas stay locked">⛶ Draw compensation</button><button class="btn" id="clRunMask" title="Run the mask as it is now, with your edits">▶ Run my edited mask</button></div>
       <p class="note src" id="clRule"></p>
+      <p class="note hidden" id="clEdited">This corner lab mask has your own edits; they are kept in the project. <b>Build and run</b> replaces them by the mask built from the settings.</p>
       <h3>Corner result</h3>
       <dl class="kv" id="clReadout"></dl>
       <p class="note">The mask, time and grid below can still be edited by hand; “Build and run” rebuilds them from these settings.</p>
@@ -1896,6 +1897,14 @@ const snapV = (v) => {
   const st = Number(SET.snap) || 1;
   return Math.round(v / st) * st;
 };
+function snapP(x, y, angs) {
+  const st = Number(SET.snap) || 1, r = (v) => Math.round(v * 1e4) / 1e4;
+  if (SET.gridType === "crystal" && angs && angs.length >= 2 && !(Math.abs(angs[0]) < 1e-9 && Math.abs(angs[1] - 90) < 1e-9)) {
+    const n = angs.slice(0, 2).map((a) => [-Math.sin(a * Math.PI / 180), Math.cos(a * Math.PI / 180)]), k = n.map((v) => Math.round((v[0] * x + v[1] * y) / st) * st), det = n[0][0] * n[1][1] - n[0][1] * n[1][0];
+    if (Math.abs(det) > 1e-6) return [r((k[0] * n[1][1] - n[0][1] * k[1]) / det), r((n[0][0] * k[1] - k[0] * n[1][0]) / det)];
+  }
+  return [snapV(x), snapV(y)];
+}
 const EDC = {};
 const edGrid = (W) => niceStep(W / 8);
 var ED_LATER = {};
@@ -3329,7 +3338,7 @@ function rebuild(resetView) {
     if (S.mode === "corner") {
       if (SIM.owner !== "corner") {
         clSync();
-        clBuild(false);
+        clBuild(false, true);
         simRun();
         resetView = true;
       }
@@ -3743,8 +3752,7 @@ function drawPitEditor(keepExtent) {
     }
     if (!S.pitShapes[drag.i]) return;
     const sh = S.pitShapes[drag.i];
-    sh.cx = snapV(drag.cx + x - drag.x0);
-    sh.cy = snapV(drag.cy + y - drag.y0);
+    [sh.cx, sh.cy] = snapP(drag.cx + x - drag.x0, drag.cy + y - drag.y0, gridAngles(inPlaneDirs(C.FRAMES[S.wf]), S.rot));
     edLater("pitCanvas", () => drawPitEditor(true));
     $("hint").textContent = `Moving to (${sh.cx}, ${sh.cy}) \xB5m; let go to update the 3D view`;
   });
@@ -4978,6 +4986,10 @@ function renderShapeList() {
   lockInputs($("shapeList"));
 }
 function markDirty() {
+  if (SIM.owner === "corner") {
+    CL.mask = JSON.parse(JSON.stringify(SIM.shapes));
+    clEditNote();
+  }
   SIM.dirty = true;
   updateDirtyNote();
   renderShapeList();
@@ -5208,8 +5220,7 @@ $("bDupShape").addEventListener("click", () => {
     if (!drag) return;
     const [x, y] = world(ev);
     const sh = SIM.shapes[drag.i];
-    sh.cx = snapV(drag.cx + x - drag.x0);
-    sh.cy = snapV(drag.cy + y - drag.y0);
+    [sh.cx, sh.cy] = snapP(drag.cx + x - drag.x0, drag.cy + y - drag.y0, gridAngles(inPlaneDirs(SFR[SIM.fk].e), SIM.rot));
     drag.moved = true;
     edLater("maskCanvas", drawMaskEditor);
   });
@@ -5256,7 +5267,7 @@ $("bDupShape").addEventListener("click", () => {
 })();
 
 // ---- src/app/10-corner-lab.ts
-const CL = { rate: "PAL30", H: 40, A: 200, type: "beam110", s1: 108, s2: 40, built: false };
+const CL = { rate: "PAL30", H: 40, A: 200, type: "beam110", s1: 108, s2: 40, built: false, mask: null };
 const CL_TYPES = {
   // size labels and the design rules (sourced) or design choices
   none: { l1: null, l2: null },
@@ -5284,7 +5295,7 @@ function clSync() {
   if (T.l2) $("clL2").firstChild.textContent = T.l2 + " ";
   $("clRule").textContent = clRule(CL.type, CL.H).txt;
 }
-function clBuild(run = true) {
+function clBuild(run = true, keepEdits = false) {
   const H = CL.H, A = CL.A, R100 = SRATES[CL.rate].r["100"], tT = H / R100;
   const reach = CL.type === "square" ? CL.s1 * 0.75 : CL.type === "none" ? 0 : CL.s1;
   const m = 1.6 * H + 30, hx = A / 2 + reach + m, Ly1 = Math.max(0.5 * A, 1.5 * H), Ly = Ly1 + reach + m, hy = Ly / 2, yc = hy - reach - m;
@@ -5308,7 +5319,7 @@ function clBuild(run = true) {
     hx: Math.ceil(hx / 5) * 5,
     hy: Math.ceil(hy / 5) * 5,
     dxMax: Math.max(0.5, H / 16),
-    shapes: sh,
+    shapes: keepEdits && Array.isArray(CL.mask) && CL.mask.length ? JSON.parse(JSON.stringify(CL.mask)) : sh,
     sel: -1,
     preset: -1,
     cutPos: Math.round(yc - 0.15 * H),
@@ -5319,9 +5330,11 @@ function clBuild(run = true) {
   });
   SIM.probes = [{ x: xL, y: yc, ux: SQ2, uy: SQ2, s0: -0.45 * Math.min(A, 2 * Ly1), s1: reach + m }, { x: xR, y: yc, ux: -SQ2, uy: SQ2, s0: -0.45 * Math.min(A, 2 * Ly1), s1: reach + m }];
   SIM.cl = { tT, H, xL, xR, yc, type: CL.type };
+  if (!keepEdits) CL.mask = null;
   CL.built = true;
   syncSimInputs();
   renderShapeList();
+  clEditNote();
   if (run) {
     simRun();
     buildSim(true);
@@ -5381,12 +5394,16 @@ $("clAuto").addEventListener("click", () => {
 $("clRun").addEventListener("click", () => clBuild());
 $("clRunMask").addEventListener("click", () => {
   if (SIM.owner !== "corner") {
-    clBuild();
+    clBuild(true, true);
     return;
   }
   simRun();
   buildSim(false);
 });
+function clEditNote() {
+  const e = $("clEdited");
+  if (e) e.classList.toggle("hidden", !(Array.isArray(CL.mask) && CL.mask.length));
+}
 function simHover(ev) {
   if (!simScene || !simScene.pick) {
     tip.style.display = "none";
@@ -6841,6 +6858,12 @@ for (const el of document.querySelectorAll(".enl")) {
   enlSync(el);
 }
 document.addEventListener("fullscreenchange", () => {
+  const fe = document.fullscreenElement;
+  if (fe && fe.classList && fe.classList.contains("enl") && !fe.classList.contains("enlarged")) {
+    document.exitFullscreen().catch(() => {
+    });
+    return;
+  }
   for (const el of document.querySelectorAll(".enl")) enlSync(el);
   if (enlOpen) requestAnimationFrame(redrawAll);
 });
@@ -9391,7 +9414,12 @@ function mdSnap(sx, sy, o) {
     }
   }
   if (MD.snap.grid && !o.noGrid) {
-    const st = MD.step;
+    const st = MD.step, A = SET.gridType === "crystal" ? gridAngles(inPlaneDirs(MD.t.frame()), MD.t.rot()) : [0, 90];
+    if (A.length >= 2 && !(Math.abs(A[0]) < 1e-9 && Math.abs(A[1] - 90) < 1e-9)) {
+      const n = A.slice(0, 2).map((a) => [-Math.sin(a * Math.PI / 180), Math.cos(a * Math.PI / 180)]), k = n.map((v) => Math.round((v[0] * w[0] + v[1] * w[1]) / st) * st);
+      const det = n[0][0] * n[1][1] - n[0][1] * n[1][0];
+      if (Math.abs(det) > 1e-6) return { p: [mdR((k[0] * n[1][1] - n[0][1] * k[1]) / det), mdR((n[0][0] * k[1] - k[0] * n[1][0]) / det)], kind: "grid" };
+    }
     return { p: [mdR(Math.round(w[0] / st) * st), mdR(Math.round(w[1] / st) * st)], kind: "grid" };
   }
   return { p: [mdR(w[0]), mdR(w[1])], kind: "" };
@@ -11144,7 +11172,7 @@ function maskExportInfo(tk) {
   $("bDesign").addEventListener("click", () => mdOpen("sim"));
   $("pcDesign").addEventListener("click", () => mdOpen("pit"));
   $("clDesign").addEventListener("click", () => {
-    if (SIM.owner !== "corner") clBuild(false);
+    if (SIM.owner !== "corner") clBuild(false, true);
     mdOpen("corner");
   });
   $("bDesign").title = "Open the mask in the full-screen designer";
@@ -11269,6 +11297,11 @@ function maskExportInfo(tk) {
     }
   }, true);
   document.addEventListener("fullscreenchange", () => {
+    if (document.fullscreenElement === $("mdRoot") && !(MD && MD.on)) {
+      document.exitFullscreen().catch(() => {
+      });
+      return;
+    }
     if (MD && MD.on) {
       $("mdFull").textContent = document.fullscreenElement ? "Leave full screen" : "Full screen";
       requestAnimationFrame(mdResize);
@@ -11297,7 +11330,7 @@ function svCapture(part) {
     case "pit":
       return Object.assign(psCapture("pit"), { wf: S.wf, open: S.open });
     case "corner":
-      return { rate: CL.rate, H: CL.H, A: CL.A, type: CL.type, s1: CL.s1, s2: CL.s2 };
+      return Object.assign({ rate: CL.rate, H: CL.H, A: CL.A, type: CL.type, s1: CL.s1, s2: CL.s2 }, Array.isArray(CL.mask) && CL.mask.length ? { mask: mdClone(CL.mask) } : {});
     case "find":
       return { relW: FD.relW, delta: FD.delta, reveal: FD.reveal, rate: FD.rate, final: FD.final, t: FD.t, res: FD.res, correct: FD.correct, items: mdClone(FD.items || []), wf: S.wf };
     case "etchants":
@@ -11426,7 +11459,9 @@ function svApply(proj, parts) {
     done.push("etched pit");
   }
   if (has("corner") && CL_TYPES[P.corner.type]) {
-    Object.assign(CL, P.corner, { rate: rate(P.corner.rate, SRATES), built: false });
+    const m = P.corner.mask, okM = Array.isArray(m) && m.length && m.every((s) => s && SHAPE_TYPES[s.type] && (s.op === "open" || s.op === "mask") && ["cx", "cy"].every((k) => isFinite(s[k])));
+    Object.assign(CL, P.corner, { rate: rate(P.corner.rate, SRATES), built: false, mask: okM ? mdClone(m) : null });
+    clEditNote();
     if (SIM.owner === "corner") SIM.owner = "none";
     clSync();
     done.push("corner lab");

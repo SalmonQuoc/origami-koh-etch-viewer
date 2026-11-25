@@ -38,7 +38,8 @@ for (const el of document.querySelectorAll(".enl")) {
   b.addEventListener("click", () => enlarge(el, !el.classList.contains("enlarged")));
   bar.append(fs, b); el.prepend(bar); enlSync(el);
 }
-document.addEventListener("fullscreenchange", () => { for (const el of document.querySelectorAll(".enl")) enlSync(el); if (enlOpen) requestAnimationFrame(redrawAll); });
+document.addEventListener("fullscreenchange", () => { const fe = document.fullscreenElement; if (fe && fe.classList && fe.classList.contains("enl") && !fe.classList.contains("enlarged")) { document.exitFullscreen().catch(() => {}); return; }
+  for (const el of document.querySelectorAll(".enl")) enlSync(el); if (enlOpen) requestAnimationFrame(redrawAll); });
 for (const h of document.querySelectorAll(".gridHere")) h.innerHTML = gridSelect();
 document.body.classList.toggle("list-left", SET.listSide === "left"); { const m = document.getElementById("mdSideBtn"); if (m) m.textContent = SET.listSide === "left" ? "⇆ List right" : "⇆ List left"; }
 document.addEventListener("keydown", ev => { if (ev.key === "Escape" && enlOpen && !DRAW.on && !document.querySelector("dialog[open]") && !document.fullscreenElement) enlarge(enlOpen.el, false); });

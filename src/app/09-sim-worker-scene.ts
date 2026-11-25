@@ -440,7 +440,7 @@ function renderShapeList() {
   $("shapeList").innerHTML = `<tr class="hd"><td>layer</td><td>shape</td><td>centre x, y</td><td>size</td><td>angle°</td><td>array nx, ny, px, py</td><td></td></tr>` + rows;
   lockInputs($("shapeList"));
 }
-function markDirty() { SIM.dirty = true; updateDirtyNote(); renderShapeList(); if (simLike()) buildSim(false); autoRunMaybe(); }
+function markDirty() { if (SIM.owner === "corner") { CL.mask = JSON.parse(JSON.stringify(SIM.shapes)); clEditNote(); } SIM.dirty = true; updateDirtyNote(); renderShapeList(); if (simLike()) buildSim(false); autoRunMaybe(); }
 function updateDirtyNote() { $("simDirty").classList.toggle("hidden", !SIM.dirty); stageRunSync(); }
 
 function loadPreset(wf, i) {
@@ -527,7 +527,7 @@ $("bDupShape").addEventListener("click", () => {
   });
   cv.addEventListener("pointermove", ev => {
     if (!drag) return; const [x, y] = world(ev);
-    const sh = SIM.shapes[drag.i]; sh.cx = snapV(drag.cx + x - drag.x0); sh.cy = snapV(drag.cy + y - drag.y0); drag.moved = true; edLater("maskCanvas", drawMaskEditor);
+    const sh = SIM.shapes[drag.i]; [sh.cx, sh.cy] = snapP(drag.cx + x - drag.x0, drag.cy + y - drag.y0, gridAngles(inPlaneDirs(SFR[SIM.fk].e), SIM.rot)); drag.moved = true; edLater("maskCanvas", drawMaskEditor);
   });
   cv.addEventListener("pointerup", () => { if (drag && drag.moved) { $("simPreset").value = "-1"; markDirty(); } drag = null; });
   cv.setAttribute("tabindex", "0");
