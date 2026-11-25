@@ -58,7 +58,8 @@ function registerCustom() {
   if (!SRATES[SIM.rate]) SIM.rate = "PAL30";
   if (!SRATES[CL.rate]) CL.rate = "PAL30";
   if (!RATES[FD.rate]) FD.rate = "PAL30";
-  const fill = (id, T, val) => { const el = $(id); el.innerHTML = Object.entries(T).map(([k, v]) => `<option value="${k}">${(v as { name: string }).name}</option>`).join(""); el.value = val; };
+  // names of custom etchants can come from imported files: escape them, never insert them as HTML
+  const fill = (id, T, val) => { const el = $(id); el.innerHTML = Object.entries(T).map(([k, v]) => `<option value="${escHTML(k)}">${escHTML((v as { name: string }).name)}</option>`).join(""); el.value = val; };
   fill("selRate", RATES, S.rate); fill("fdRate", RATES, FD.rate); fill("simRate", SRATES, SIM.rate); fill("clRate", SRATES, CL.rate);
   $("simRateSrc").textContent = SRATES[SIM.rate].src;
 }
@@ -66,7 +67,7 @@ let ceCur = null, ceFrom = "sim";
 function ceSetQ(ce) { const q = qOf(ce.base); ce.Q100 = q["100"]; ce.Q110 = q["110"]; ce.Q111 = q["111"]; return ce; }   // defaults of the listed etchant
 function ceDefault() { return ceSetQ({ key: "", name: "", mode: "base", base: "PAL30", T: 70, conc: 30, Q100: 0, Q110: 0, Q111: 0, factor: 1, own: {}, ox: null }); }
 function ceFill() {   // the dialog from ceCur
-  $("ceList").innerHTML = `<option value="">new etchant</option>` + CUSTOM.map(c => `<option value="${c.key}">${c.name.replace(/</g, "&lt;")}</option>`).join("");
+  $("ceList").innerHTML = `<option value="">new etchant</option>` + CUSTOM.map(c => `<option value="${escHTML(c.key)}">${escHTML(c.name)}</option>`).join("");
   $("ceList").value = ceCur.key || "";
   $("ceBase").innerHTML = [...BUILTIN].map(k => `<option value="${k}">${SRATES[k].name}</option>`).join("");
   $("ceName").value = ceCur.name; $("ceMode").value = ceCur.mode; $("ceBase").value = ceCur.base;

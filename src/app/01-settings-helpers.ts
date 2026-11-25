@@ -18,6 +18,8 @@ function snapP(x: number, y: number, angs?: number[]) {
 }
 const EDC: Record<string, number[]> = {};   // cursor position in each 2D editor (world µm), set in 19-coordinates.ts
 const edGrid = (W: number) => niceStep(W/8);
+// text from files or storage (names of etchants and presets) is escaped before it goes into HTML
+function escHTML(v: unknown) { return String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
 // editor speed: pointer moves redraw an editor at most once per frame, and the off-screen mask layers are reused
 var ED_LATER: Record<string, any> = {};
 function edLater(key: string, f: () => void) {

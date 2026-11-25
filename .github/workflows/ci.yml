@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-24.04   # Playwright 1.56 has no Chromium build for ubuntu-latest (26.04)
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false   # no job pushes; keep the token out of .git/config
       - uses: actions/setup-node@v6
         with:
           node-version: 22
@@ -57,6 +59,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false   # no job pushes; keep the token out of .git/config
       - name: Collect the site
         run: mkdir _site && cp index.html .nojekyll _site/
       - uses: actions/configure-pages@v6
