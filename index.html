@@ -4407,10 +4407,14 @@ var BORON = {
   book: { name: "above 10\xB9\u2079 cm\u207B\xB3, KOH: rate \xF7 100", f: 0.01, src: "Rate \xF7 100: \u201Cetch rates can be reduced by one hundreds\u201D above 1 \xD7 10\xB9\u2079 cm\u207B\xB3 in KOH (Pal & Sato p. 93)." },
   tmah: { name: "2.5 \xD7 10\xB2\u2070 cm\u207B\xB3, TMAH: rate \xF7 40", f: 0.025, src: "Rate \xF7 40: heavily to lightly doped silicon in TMAH, about 1:40; the rate drops to a low level at 2.5 \xD7 10\xB2\u2070 cm\u207B\xB3 (Pal & Sato p. 191)." }
 };
+function boronKey(v) {
+  return Object.keys(BORON).find((k) => k === v) || "off";
+}
 function boronIn(b) {
   const o = Object.assign({}, BORON_DEF);
-  if (b && BORON[b.c]) {
-    o.c = b.c;
+  const c = b ? boronKey(b.c) : "off";
+  if (c !== "off") {
+    o.c = c;
     if (Number(b.z0) >= 0) o.z0 = Number(b.z0);
     if (Number(b.z1) >= 0) o.z1 = Number(b.z1);
   }
@@ -5167,7 +5171,7 @@ function boronNote() {
 }
 $("simBoron").innerHTML = Object.entries(BORON).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join("");
 $("simBoron").addEventListener("change", (e) => {
-  SIM.boron = Object.assign({}, BORON_DEF, SIM.boron, { c: e.target.value });
+  SIM.boron = Object.assign({}, BORON_DEF, SIM.boron, { c: boronKey(e.target.value) });
   boronNote();
   markDirty();
 });

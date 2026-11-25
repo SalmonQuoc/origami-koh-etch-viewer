@@ -34,9 +34,12 @@ var BORON = {
   book: { name: "above 10¹⁹ cm⁻³, KOH: rate ÷ 100", f: 0.01, src: "Rate ÷ 100: “etch rates can be reduced by one hundreds” above 1 × 10¹⁹ cm⁻³ in KOH (Pal & Sato p. 93)." },
   tmah: { name: "2.5 × 10²⁰ cm⁻³, TMAH: rate ÷ 40", f: 0.025, src: "Rate ÷ 40: heavily to lightly doped silicon in TMAH, about 1:40; the rate drops to a low level at 2.5 × 10²⁰ cm⁻³ (Pal & Sato p. 191)." },
 };
+// a concentration key from outside (a select, a file): the matching constant key of BORON, else "off"
+function boronKey(v) { return Object.keys(BORON).find(k => k === v) || "off"; }
 function boronIn(b) {   // a saved layer, checked; anything else: no layer
   const o = Object.assign({}, BORON_DEF);
-  if (b && BORON[b.c]) { o.c = b.c; if (Number(b.z0) >= 0) o.z0 = Number(b.z0); if (Number(b.z1) >= 0) o.z1 = Number(b.z1); }
+  const c = b ? boronKey(b.c) : "off";
+  if (c !== "off") { o.c = c; if (Number(b.z0) >= 0) o.z0 = Number(b.z0); if (Number(b.z1) >= 0) o.z1 = Number(b.z1); }
   return o;
 }
 function boronNow() { const b = SIM.boron; return b && BORON[b.c] && BORON[b.c].f < 1 && b.z1 > b.z0 ? b : null; }
@@ -508,7 +511,7 @@ function boronNote() {
   $("simBoronSrc").textContent = t;
 }
 $("simBoron").innerHTML = Object.entries(BORON).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join("");
-$("simBoron").addEventListener("change", e => { SIM.boron = Object.assign({}, BORON_DEF, SIM.boron, { c: e.target.value }); boronNote(); markDirty(); });
+$("simBoron").addEventListener("change", e => { SIM.boron = Object.assign({}, BORON_DEF, SIM.boron, { c: boronKey(e.target.value) }); boronNote(); markDirty(); });
 for (const [id, key] of [["simBz0", "z0"], ["simBz1", "z1"]] as [string, string][])
   $(id).addEventListener("change", e => { const v = Number(e.target.value); if (!(v >= 0)) return; SIM.boron = Object.assign({}, BORON_DEF, SIM.boron, { [key]: v }); boronNote(); markDirty(); });
 $("simQual").addEventListener("change", e => { SIM.quality = e.target.value; markDirty(); });
