@@ -15,7 +15,7 @@
     "check": "npm run validate && npm run typecheck && npm run build && npm test && npm run test:browser"
   },
   "devDependencies": {
-    "esbuild": "0.24.2",
+    "esbuild": "0.28.1",
     "typescript": "5.6.3",
     "playwright": "1.56.1"
   }
